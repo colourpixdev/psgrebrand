@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env.local
+.venv/
+*.tsbuildinfo
+artifacts/screenshots/
+
+# OS/editor
+.DS_Store
+Thumbs.db
