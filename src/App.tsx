@@ -65,8 +65,12 @@ function AppRoutes() {
     return <Navigate to="/login" replace />;
   }
 
-  if (user && location.pathname === '/login') {
-    return <Navigate to="/" replace />;
+  if (location.pathname === '/login') {
+    if (user) {
+      return <Navigate to="/" replace />;
+    }
+
+    return <LoginPage />;
   }
 
   return (
