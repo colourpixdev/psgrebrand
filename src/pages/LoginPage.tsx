@@ -11,7 +11,7 @@ import type { Role } from '../types/domain';
 const roles: Role[] = ['colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'];
 
 const loginSchema = z.object({
-  email: z.string().email('Enter a valid email address'),
+  email: z.string().trim().toLowerCase().email('Enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
@@ -57,39 +57,41 @@ export function LoginPage() {
         <p className="text-sm uppercase tracking-[0.3em] text-sky-300">Secure access</p>
         <h2 className="mt-3 text-3xl font-semibold text-white">PSG Signage Rollout Portal</h2>
         <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-          Sign in with Supabase credentials, or use the role buttons below to preview the dashboard without a backend.
+          Sign in with your Supabase Auth account. Preview roles are available only in local development or when explicitly enabled.
         </p>
 
-        <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4 text-sm text-amber-100">
-          <div className="flex items-start justify-between gap-3">
-            <p className="font-semibold">Seeded demo accounts</p>
-            <button
-              type="button"
-              aria-label="Dismiss"
-              onClick={() => setSetupBannerDismissed(true)}
-              className="shrink-0 rounded-lg p-1 opacity-60 transition hover:opacity-100"
-            >
-              <X width={14} height={14} />
-            </button>
+        {enablePreviewAuth ? (
+          <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4 text-sm text-amber-100">
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-semibold">Local demo accounts</p>
+              <button
+                type="button"
+                aria-label="Dismiss"
+                onClick={() => setSetupBannerDismissed(true)}
+                className="shrink-0 rounded-lg p-1 opacity-60 transition hover:opacity-100"
+              >
+                <X width={14} height={14} />
+              </button>
+            </div>
+            {!setupBannerDismissed && (
+              <>
+                <p className="mt-1 leading-6 text-amber-50/90">
+                  If this Supabase project is reset, recreate these sign-in accounts with{' '}
+                  <code className="rounded bg-amber-900/50 px-1 py-0.5 text-xs">npm run seed:auth</code>{' '}
+                  and reset passwords with <code className="rounded bg-amber-900/50 px-1 py-0.5 text-xs">npm run reset:passwords</code>.
+                </p>
+                <ul className="mt-3 grid gap-1 text-xs text-amber-50/90 md:grid-cols-2">
+                  {seededAuthEmails.map((email) => (
+                    <li key={email}>{email}</li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-xs text-amber-50/70">
+                  Default password: <code className="rounded bg-amber-900/50 px-1 py-0.5">Rebrand2026!</code> — change after first login.
+                </p>
+              </>
+            )}
           </div>
-          {!setupBannerDismissed && (
-            <>
-              <p className="mt-1 leading-6 text-amber-50/90">
-                If this Supabase project is reset, recreate these sign-in accounts with{' '}
-                <code className="rounded bg-amber-900/50 px-1 py-0.5 text-xs">npm run seed:auth</code>{' '}
-                and reset passwords with <code className="rounded bg-amber-900/50 px-1 py-0.5 text-xs">npm run reset:passwords</code>.
-              </p>
-              <ul className="mt-3 grid gap-1 text-xs text-amber-50/90 md:grid-cols-2">
-                {seededAuthEmails.map((email) => (
-                  <li key={email}>{email}</li>
-                ))}
-              </ul>
-              <p className="mt-3 text-xs text-amber-50/70">
-                Default password: <code className="rounded bg-amber-900/50 px-1 py-0.5">Rebrand2026!</code> — change after first login.
-              </p>
-            </>
-          )}
-        </div>
+        ) : null}
 
         <form onSubmit={onSubmit} className="mt-8 rounded-3xl border border-white/10 bg-slate-950/55 p-5">
           <div className="grid gap-4 md:grid-cols-2">

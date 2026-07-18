@@ -4,6 +4,11 @@ dist/
 .env.local
 .venv/
 *.tsbuildinfo
+.agents/
+skills-lock.json
+supabase/.temp/
+artifacts/*
+!artifacts/PSG-Rollout-Portal-Guide.pdf
 artifacts/screenshots/
 
 # OS/editor

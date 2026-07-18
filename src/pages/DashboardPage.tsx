@@ -2,13 +2,26 @@ import { useQuery } from '@tanstack/react-query';
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { ActivityFeed } from '../components/dashboard/ActivityFeed';
 import { TaskList } from '../components/dashboard/TaskList';
-import { getPortalSummary } from '../services/portalService';
+import { getProjects } from '../services/portalService';
+import { useAuth } from '../contexts/AuthContext';
+import { filterProjectsForUser } from '../utils/permissions';
 
 export function DashboardPage() {
-  const { data } = useQuery({
-    queryKey: ['portal-summary'],
-    queryFn: getPortalSummary,
+  const { user } = useAuth();
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: getProjects,
   });
+  const scopedProjects = filterProjectsForUser(projects, user);
+  const recentActivity = scopedProjects.flatMap((project) => project.activity).slice(0, 4);
+  const todayTasks = [...new Set(scopedProjects.flatMap((project) => project.tasks.filter((task) => !task.completed).map((task) => task.text)))].slice(0, 3);
+  const metrics = [
+    { label: 'Projects', value: scopedProjects.length },
+    { label: 'Completed', value: scopedProjects.filter((project) => project.status === 'completed').length },
+    { label: 'In Progress', value: scopedProjects.filter((project) => ['in_progress', 'awaiting_approval'].includes(project.status)).length },
+    { label: 'Awaiting Approval', value: scopedProjects.filter((project) => project.status === 'awaiting_approval').length },
+    { label: 'Delayed', value: scopedProjects.filter((project) => project.status === 'delayed').length },
+  ];
 
   return (
     <div className="space-y-6">
@@ -21,14 +34,14 @@ export function DashboardPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {(data?.metrics ?? []).map((metric) => (
+        {metrics.map((metric) => (
           <MetricCard key={metric.label} label={metric.label} value={metric.value} />
         ))}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
-        <ActivityFeed items={data?.recentActivity ?? []} />
-        <TaskList tasks={data?.todayTasks ?? []} />
+        <ActivityFeed items={recentActivity} />
+        <TaskList tasks={todayTasks} />
       </section>
     </div>
   );

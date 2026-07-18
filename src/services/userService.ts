@@ -90,6 +90,56 @@ export type CreateUserProfileInput = {
   branch?: string;
 };
 
+async function getFunctionErrorMessage(error: Error) {
+  if (error.message.toLowerCase().includes('failed to send a request')) {
+    return 'Unable to reach the invite-user Edge Function. Deploy it with supabase/functions/invite-user and supabase/config.toml so CORS preflight can reach the function.';
+  }
+
+  const response = (error as { context?: Response }).context;
+
+  if (response) {
+    try {
+      const body = await response.clone().json() as { error?: string };
+      if (body.error) {
+        return body.error;
+      }
+    } catch {
+      return error.message;
+    }
+  }
+
+  return error.message;
+}
+
+export async function inviteUser(input: CreateUserProfileInput): Promise<UserRecord> {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const payload = {
+    name: input.name.trim(),
+    email: input.email.trim().toLowerCase(),
+    role: input.role,
+    branch: input.branch?.trim() || undefined,
+  };
+
+  const { data, error } = await supabase.functions.invoke<UserRecord>('invite-user', {
+    body: payload,
+  });
+
+  if (error) {
+    throw new Error(await getFunctionErrorMessage(error));
+  }
+
+  if (!data) {
+    throw new Error('The invite was sent, but no profile was returned.');
+  }
+
+  return data;
+}
+
 export async function createUserProfile(input: CreateUserProfileInput): Promise<UserRecord> {
   if (!supabase) {
     throw new Error('Supabase is not configured.');

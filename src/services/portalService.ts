@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { ActivityItem, CommentItem, Project, Role, UserRecord } from '../types/domain';
+import type { ActivityItem, CommentItem, Project, ProjectFile, Role, TaskItem, UserRecord } from '../types/domain';
 
 export interface PortalSummary {
   metrics: Array<{ label: string; value: number }>;
@@ -25,14 +25,127 @@ type ProjectRow = {
   progress: number | null;
   branch_manager_view_only: boolean | null;
   notes: string | null;
-  files: string[] | null;
-  tasks: string[] | null;
+  files: unknown[] | null;
+  tasks: unknown[] | null;
   comments: CommentItem[] | null;
   activity: ActivityItem[] | null;
 };
 
 async function hydrateAuthSession() {
   await supabase?.auth.getSession();
+}
+
+const projectFilesBucket = 'project-files';
+const voiceUpdatesBucket = 'voice-updates';
+const maxProjectFileSize = 25 * 1024 * 1024;
+const maxVoiceUpdateSize = 50 * 1024 * 1024;
+const allowedProjectFileTypes = new Set([
+  'application/pdf',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+const allowedVoiceUpdateTypes = new Set([
+  'audio/aac',
+  'audio/m4a',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/ogg',
+  'audio/wav',
+  'audio/webm',
+  'video/mp4',
+]);
+
+function normalizeProjectFiles(files: unknown[] | null): ProjectFile[] {
+  if (!Array.isArray(files)) {
+    return [];
+  }
+
+  return files
+    .map((file) => {
+      if (typeof file === 'string') {
+        return { name: file };
+      }
+
+      if (file && typeof file === 'object' && 'name' in file && typeof file.name === 'string') {
+        return file as ProjectFile;
+      }
+
+      return null;
+    })
+    .filter((file): file is ProjectFile => Boolean(file));
+}
+
+function createTaskId() {
+  return globalThis.crypto?.randomUUID?.() ?? `task-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function taskSlug(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'task';
+}
+
+function normalizeProjectTasks(tasks: unknown[] | null): TaskItem[] {
+  if (!Array.isArray(tasks)) {
+    return [];
+  }
+
+  return tasks
+    .map((task, index) => {
+      if (typeof task === 'string') {
+        return {
+          id: `legacy-${index}-${taskSlug(task)}`,
+          text: task,
+          completed: false,
+        };
+      }
+
+      if (task && typeof task === 'object' && 'text' in task && typeof task.text === 'string') {
+        const candidate = task as Partial<TaskItem>;
+        const candidateText = candidate.text ?? '';
+        return {
+          id: typeof candidate.id === 'string' ? candidate.id : `legacy-${index}-${taskSlug(candidateText)}`,
+          text: candidateText,
+          completed: Boolean(candidate.completed),
+          createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : undefined,
+          completedAt: typeof candidate.completedAt === 'string' ? candidate.completedAt : undefined,
+        };
+      }
+
+      return null;
+    })
+    .filter((task): task is TaskItem => Boolean(task));
+}
+
+function sanitizeFileName(fileName: string) {
+  return fileName
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || 'upload';
+}
+
+function validateProjectFile(file: File) {
+  if (file.size > maxProjectFileSize) {
+    throw new Error('File is too large. Upload files up to 25 MB.');
+  }
+
+  if (file.type && !allowedProjectFileTypes.has(file.type)) {
+    throw new Error('Unsupported file type. Upload PDF, Excel, Word, JPG, PNG, or WebP files.');
+  }
+}
+
+function validateVoiceUpdateFile(file: File) {
+  if (file.size > maxVoiceUpdateSize) {
+    throw new Error('Voice note is too large. Upload audio files up to 50 MB.');
+  }
+
+  if (file.type && !allowedVoiceUpdateTypes.has(file.type)) {
+    throw new Error('Unsupported voice note type. Upload M4A, MP3, WAV, OGG, WebM, AAC, or MP4 audio.');
+  }
 }
 
 export type CreateProjectInput = {
@@ -53,6 +166,71 @@ export type CreateProjectInput = {
   notes: string;
 };
 
+export type UpdateProjectWorkflowInput = {
+  projectId: string;
+  currentStage: Project['currentStage'];
+  status: Project['status'];
+  progress: number;
+  actor: string;
+};
+
+export type AddProjectCommentInput = {
+  projectId: string;
+  author: string;
+  message: string;
+};
+
+export type AddProjectTaskInput = {
+  projectId: string;
+  task: string;
+  actor: string;
+};
+
+export type UpdateProjectTaskInput = {
+  projectId: string;
+  taskId: string;
+  text?: string;
+  completed?: boolean;
+  actor: string;
+};
+
+export type DeleteProjectTaskInput = {
+  projectId: string;
+  taskId: string;
+  actor: string;
+};
+
+export type ApplyProjectVoiceUpdateInput = {
+  projectId: string;
+  actor: string;
+  currentStage?: Project['currentStage'];
+  status?: Project['status'];
+  progress?: number;
+  targetDate?: string;
+  installationDate?: string;
+  completionDate?: string;
+  comment?: string;
+  tasks?: string[];
+};
+
+export type UploadVoiceUpdateAudioResult = {
+  path: string;
+  name: string;
+};
+
+function todayLabel() {
+  return new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' });
+}
+
+function createActivity(title: string, detail: string, type: ActivityItem['type'] = 'info'): ActivityItem {
+  return {
+    date: 'Today',
+    title,
+    detail,
+    type,
+  };
+}
+
 function mapProjectRow(row: ProjectRow): Project {
   return {
     id: row.id,
@@ -72,8 +250,8 @@ function mapProjectRow(row: ProjectRow): Project {
     progress: row.progress ?? 0,
     branchManagerViewOnly: Boolean(row.branch_manager_view_only),
     notes: row.notes ?? '',
-    files: row.files ?? [],
-    tasks: row.tasks ?? [],
+    files: normalizeProjectFiles(row.files),
+    tasks: normalizeProjectTasks(row.tasks),
     comments: row.comments ?? [],
     activity: row.activity ?? [],
   };
@@ -107,7 +285,7 @@ export async function getPortalSummary(): Promise<PortalSummary> {
   const inProgress = data.filter((row) => ['in_progress', 'awaiting_approval'].includes(row.status)).length;
   const delayed = data.filter((row) => row.status === 'delayed').length;
   const recentActivity = data.flatMap((row) => row.activity ?? []).slice(0, 4);
-  const todayTasks = [...new Set(data.flatMap((row) => row.tasks ?? []))].slice(0, 3);
+  const todayTasks = [...new Set(data.flatMap((row) => normalizeProjectTasks(row.tasks ?? []).filter((task) => !task.completed).map((task) => task.text)))].slice(0, 3);
 
   return {
     metrics: [
@@ -201,6 +379,418 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   return mapProjectRow(data as ProjectRow);
 }
 
+export async function uploadProjectFile(projectId: string, file: File, currentFiles: ProjectFile[]): Promise<ProjectFile[]> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  validateProjectFile(file);
+  await hydrateAuthSession();
+
+  const path = `${projectId}/${Date.now()}-${crypto.randomUUID()}-${sanitizeFileName(file.name)}`;
+  const { error: uploadError } = await client.storage
+    .from(projectFilesBucket)
+    .upload(path, file, {
+      cacheControl: '3600',
+      contentType: file.type || undefined,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const nextFiles = [
+    ...currentFiles,
+    {
+      name: file.name,
+      path,
+      size: file.size,
+      type: file.type || undefined,
+      uploadedAt: new Date().toISOString(),
+    },
+  ];
+
+  const { error: updateError } = await client
+    .from('projects')
+    .update({ files: nextFiles, updated_at: new Date().toISOString() })
+    .eq('id', projectId);
+
+  if (updateError) {
+    await client.storage.from(projectFilesBucket).remove([path]);
+    throw updateError;
+  }
+
+  return nextFiles;
+}
+
+export async function getProjectFileUrl(file: ProjectFile) {
+  const client = supabase;
+
+  if (!client || !file.path) {
+    return null;
+  }
+
+  await hydrateAuthSession();
+
+  const { data, error } = await client.storage
+    .from(projectFilesBucket)
+    .createSignedUrl(file.path, 60 * 60, { download: file.name });
+
+  if (error) {
+    throw error;
+  }
+
+  return data.signedUrl;
+}
+
+export async function updateProjectWorkflow(input: UpdateProjectWorkflowInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const activity = [
+    createActivity(
+      'Workflow updated',
+      `${input.actor} moved the project to ${input.currentStage} with ${input.progress}% progress.`,
+      input.status === 'delayed' || input.status === 'on_hold' ? 'warning' : input.status === 'completed' ? 'success' : 'info',
+    ),
+    ...existingProject.activity,
+  ];
+
+  const { data, error } = await client
+    .from('projects')
+    .update({
+      current_stage: input.currentStage,
+      status: input.status,
+      progress: input.progress,
+      activity,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to update project workflow.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function addProjectComment(input: AddProjectCommentInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const message = input.message.trim();
+  if (!message) {
+    throw new Error('Comment cannot be empty.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const comments = [
+    {
+      date: todayLabel(),
+      author: input.author,
+      message,
+    },
+    ...existingProject.comments,
+  ];
+  const activity = [createActivity('Comment added', `${input.author} added a project comment.`), ...existingProject.activity];
+
+  const { data, error } = await client
+    .from('projects')
+    .update({ comments, activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to add project comment.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function addProjectTask(input: AddProjectTaskInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const task = input.task.trim();
+  if (!task) {
+    throw new Error('Task cannot be empty.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+    const tasks: TaskItem[] = [{ id: createTaskId(), text: task, completed: false, createdAt: new Date().toISOString() }, ...existingProject.tasks];
+  const activity = [createActivity('Task added', `${input.actor} added task: ${task}`), ...existingProject.activity];
+
+  const { data, error } = await client
+    .from('projects')
+    .update({ tasks, activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to add project task.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const existingTask = existingProject.tasks.find((task) => task.id === input.taskId);
+  if (!existingTask) {
+    throw new Error('Task not found.');
+  }
+
+  const text = input.text?.trim();
+  if (input.text !== undefined && !text) {
+    throw new Error('Task cannot be empty.');
+  }
+
+  const tasks = existingProject.tasks.map((task) => {
+    if (task.id !== input.taskId) {
+      return task;
+    }
+
+    const completed = input.completed ?? task.completed;
+    return {
+      ...task,
+      text: text ?? task.text,
+      completed,
+      completedAt: completed ? task.completedAt ?? new Date().toISOString() : undefined,
+    };
+  });
+  const action = input.completed === undefined ? 'updated' : input.completed ? 'completed' : 'reopened';
+  const activity = [
+    createActivity(
+      input.completed === undefined ? 'Task updated' : input.completed ? 'Task completed' : 'Task reopened',
+      `${input.actor} ${action} task: ${text ?? existingTask.text}`,
+      input.completed ? 'success' : 'info',
+    ),
+    ...existingProject.activity,
+  ];
+
+  const { data, error } = await client
+    .from('projects')
+    .update({ tasks, activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to update project task.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const existingTask = existingProject.tasks.find((task) => task.id === input.taskId);
+  if (!existingTask) {
+    throw new Error('Task not found.');
+  }
+
+  const tasks = existingProject.tasks.filter((task) => task.id !== input.taskId);
+  const activity = [createActivity('Task deleted', `${input.actor} deleted task: ${existingTask.text}`, 'warning'), ...existingProject.activity];
+
+  const { data, error } = await client
+    .from('projects')
+    .update({ tasks, activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to delete project task.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function applyProjectVoiceUpdate(input: ApplyProjectVoiceUpdateInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const cleanTasks = (input.tasks ?? []).map((task) => task.trim()).filter(Boolean);
+  const comment = input.comment?.trim();
+  const now = new Date().toISOString();
+  const nextTasks: TaskItem[] = [
+    ...cleanTasks.map((task) => ({ id: createTaskId(), text: task, completed: false, createdAt: now })),
+    ...existingProject.tasks,
+  ];
+  const nextComments = comment
+    ? [{ date: todayLabel(), author: input.actor, message: comment }, ...existingProject.comments]
+    : existingProject.comments;
+  const changedFields = [
+    input.currentStage && input.currentStage !== existingProject.currentStage ? `stage to ${input.currentStage}` : null,
+    input.status && input.status !== existingProject.status ? `status to ${input.status.replace(/_/g, ' ')}` : null,
+    input.installationDate && input.installationDate !== existingProject.installationDate ? `installation date to ${input.installationDate}` : null,
+    input.targetDate && input.targetDate !== existingProject.targetDate ? `target date to ${input.targetDate}` : null,
+    cleanTasks.length > 0 ? `${cleanTasks.length} task${cleanTasks.length === 1 ? '' : 's'}` : null,
+    comment ? 'comment' : null,
+  ].filter(Boolean);
+
+  const activity = [
+    createActivity(
+      'Voice update applied',
+      `${input.actor} applied a voice batch update${changedFields.length > 0 ? `: ${changedFields.join(', ')}` : '.'}`,
+      input.status === 'delayed' || input.status === 'on_hold' ? 'warning' : input.status === 'completed' ? 'success' : 'info',
+    ),
+    ...existingProject.activity,
+  ];
+
+  const { data, error } = await client
+    .from('projects')
+    .update({
+      current_stage: input.currentStage ?? existingProject.currentStage,
+      status: input.status ?? existingProject.status,
+      progress: input.progress ?? existingProject.progress,
+      target_date: input.targetDate ?? existingProject.targetDate,
+      installation_date: input.installationDate ?? existingProject.installationDate,
+      completion_date: input.completionDate ?? existingProject.completionDate,
+      tasks: nextTasks,
+      comments: nextComments,
+      activity,
+      updated_at: now,
+    })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to apply voice update.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function uploadVoiceUpdateAudio(file: File): Promise<UploadVoiceUpdateAudioResult> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  validateVoiceUpdateFile(file);
+  await hydrateAuthSession();
+
+  const { data: sessionData, error: sessionError } = await client.auth.getSession();
+  const userId = sessionData.session?.user.id;
+
+  if (sessionError || !userId) {
+    throw new Error('A signed-in user is required to upload voice notes.');
+  }
+
+  const path = `${userId}/${Date.now()}-${crypto.randomUUID()}-${sanitizeFileName(file.name)}`;
+  const { error } = await client.storage
+    .from(voiceUpdatesBucket)
+    .upload(path, file, {
+      cacheControl: '3600',
+      contentType: file.type || undefined,
+      upsert: false,
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return { path, name: file.name };
+}
+
+export async function transcribeVoiceUpdateAudio(path: string): Promise<string> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const { data, error } = await client.functions.invoke('transcribe-voice-update', {
+    body: { path },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const transcript = typeof data?.transcript === 'string' ? data.transcript.trim() : '';
+
+  if (!transcript) {
+    throw new Error('No transcript was returned for this voice note.');
+  }
+
+  return transcript;
+}
+
 export function getMockUsers() {
   return [] as UserRecord[];
 }
@@ -208,5 +798,3 @@ export function getMockUsers() {
 export function getRoleUsers(role: Role) {
   return [] as UserRecord[];
 }
-
-export const reportCards = ['Completed Projects', 'Outstanding Quotes', 'Delayed Projects', 'Projects by Province', 'Projects by Installer', 'Projects This Week'];

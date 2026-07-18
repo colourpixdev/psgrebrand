@@ -3,20 +3,65 @@ import { supabase } from '../lib/supabase';
 import type { Role, UserRecord } from '../types/domain';
 import { roleLabels } from '../constants/portal';
 
-export function sessionToUser(session: Session | null): UserRecord | null {
+const validRoles: Role[] = ['colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'];
+
+type ProfileRow = {
+  name: string;
+  role: Role;
+  branch: string | null;
+  email: string;
+};
+
+function isRole(value: unknown): value is Role {
+  return typeof value === 'string' && validRoles.includes(value as Role);
+}
+
+function fallbackSessionUser(session: Session | null): UserRecord | null {
   if (!session) {
     return null;
   }
 
-  const metadataRole = session.user.user_metadata?.role as Role | undefined;
-  const metadataName = session.user.user_metadata?.name as string | undefined;
-  const metadataBranch = session.user.user_metadata?.branch as string | undefined;
+  const metadataName = session.user.user_metadata?.name;
+  const metadataBranch = session.user.user_metadata?.branch;
+  const role = isRole(session.user.app_metadata?.role) ? session.user.app_metadata.role : 'psg_head_office';
 
   return {
-    name: metadataName ?? session.user.email ?? roleLabels[metadataRole ?? 'psg_head_office'],
-    role: metadataRole ?? 'psg_head_office',
-    branch: metadataBranch,
+    name: typeof metadataName === 'string' ? metadataName : session.user.email ?? roleLabels[role],
+    role,
+    branch: typeof metadataBranch === 'string' ? metadataBranch : undefined,
     email: session.user.email ?? '',
+  };
+}
+
+export async function sessionToUser(session: Session | null): Promise<UserRecord | null> {
+  if (!session) {
+    return null;
+  }
+
+  const fallbackUser = fallbackSessionUser(session);
+  const email = session.user.email?.trim().toLowerCase();
+
+  if (!supabase || !email) {
+    return fallbackUser;
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('name, role, branch, email')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (error || !data) {
+    return fallbackUser;
+  }
+
+  const profile = data as ProfileRow;
+
+  return {
+    name: profile.name,
+    role: isRole(profile.role) ? profile.role : fallbackUser?.role ?? 'psg_head_office',
+    branch: profile.branch ?? undefined,
+    email: profile.email,
   };
 }
 
@@ -26,7 +71,16 @@ export async function loadSessionUser() {
   }
 
   const { data } = await supabase.auth.getSession();
-  return sessionToUser(data.session);
+  if (!data.session) {
+    return null;
+  }
+
+  const { data: userData, error } = await supabase.auth.getUser();
+  if (error || !userData.user) {
+    return null;
+  }
+
+  return sessionToUser({ ...data.session, user: userData.user });
 }
 
 export async function signOutSession() {
@@ -38,16 +92,18 @@ export async function signOutSession() {
 }
 
 export async function signInWithEmailPassword(email: string, password: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+
   if (!supabase) {
     return {
-      name: email.split('@')[0] || 'Signed in user',
+      name: normalizedEmail.split('@')[0] || 'Signed in user',
       role: 'psg_head_office' as Role,
-      email,
+      email: normalizedEmail,
     };
   }
 
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: normalizedEmail,
     password,
   });
 
@@ -55,5 +111,10 @@ export async function signInWithEmailPassword(email: string, password: string) {
     throw error;
   }
 
-  return sessionToUser(data.session);
+  const sessionUser = await sessionToUser(data.session);
+  if (!sessionUser) {
+    throw new Error('Sign-in succeeded, but no user profile could be loaded.');
+  }
+
+  return sessionUser;
 }

@@ -10,7 +10,14 @@ declare module 'lucide-react' {
   export const Search: LucideIcon;
   export const Users: LucideIcon;
   export const MapPinned: LucideIcon;
+  export const Mic2: LucideIcon;
+  export const Wand2: LucideIcon;
+  export const ClipboardCheck: LucideIcon;
   export const LogOut: LucideIcon;
   export const Sparkles: LucideIcon;
   export const X: LucideIcon;
+  export const CheckCircle2: LucideIcon;
+  export const Database: LucideIcon;
+  export const KeyRound: LucideIcon;
+  export const ShieldCheck: LucideIcon;
 }

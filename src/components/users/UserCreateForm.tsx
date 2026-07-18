@@ -2,14 +2,14 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createUserProfile } from '../../services/userService';
+import { inviteUser } from '../../services/userService';
 import { roleLabels } from '../../constants/portal';
 
 const userSchema = z.object({
-  name: z.string().min(2, 'Name is required'),
-  email: z.string().email('Enter a valid email address'),
+  name: z.string().trim().min(2, 'Name is required'),
+  email: z.string().trim().toLowerCase().email('Enter a valid email address'),
   role: z.enum(['colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company']),
-  branch: z.string().optional(),
+  branch: z.string().trim().optional(),
 });
 
 type UserFormValues = z.infer<typeof userSchema>;
@@ -28,7 +28,7 @@ export function UserCreateForm() {
   });
 
   const mutation = useMutation({
-    mutationFn: createUserProfile,
+    mutationFn: inviteUser,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['users'] });
       reset({ name: '', email: '', role: 'psg_head_office', branch: '' });
@@ -43,10 +43,10 @@ export function UserCreateForm() {
     <section className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-6 shadow-soft">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-white">Add user profile</h3>
-          <p className="mt-1 text-sm text-slate-400">Create a profile record in Supabase. To make it sign-in capable, create the matching Auth user too.</p>
+          <h3 className="text-lg font-semibold text-white">Invite user</h3>
+          <p className="mt-1 text-sm text-slate-400">Send a Supabase Auth invite and create the matching access profile in one controlled step.</p>
         </div>
-        <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">Profile table write enabled</p>
+        <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">Admin invite flow</p>
       </div>
 
       <form onSubmit={onSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
@@ -81,7 +81,7 @@ export function UserCreateForm() {
         {mutation.error ? <p className="text-sm text-red-300 md:col-span-2">{mutation.error.message}</p> : null}
 
         <button type="submit" disabled={isSubmitting || mutation.isPending} className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2">
-          {isSubmitting || mutation.isPending ? 'Saving user...' : 'Add user profile'}
+          {isSubmitting || mutation.isPending ? 'Sending invite...' : 'Send invite'}
         </button>
       </form>
     </section>

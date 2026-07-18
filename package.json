@@ -21,6 +21,9 @@
     "seed:profiles": "node scripts/seed-profiles.mjs",
     "seed:sample-projects": "node scripts/seed-sample-projects.mjs",
     "apply:profiles": "node scripts/apply-profiles-schema.mjs",
+    "apply:rls": "node scripts/apply-rls-hardening.mjs",
+    "check:rls": "node scripts/check-rls-scope.mjs",
+    "check:voice-storage": "node scripts/check-voice-storage.mjs",
     "reset:passwords": "node scripts/reset-auth-passwords.mjs"
   },
   "dependencies": {

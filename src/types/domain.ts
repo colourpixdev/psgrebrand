@@ -43,10 +43,26 @@ export interface Project {
   progress: number;
   branchManagerViewOnly: boolean;
   notes: string;
-  files: string[];
-  tasks: string[];
+  files: ProjectFile[];
+  tasks: TaskItem[];
   comments: CommentItem[];
   activity: ActivityItem[];
+}
+
+export interface ProjectFile {
+  name: string;
+  path?: string;
+  size?: number;
+  type?: string;
+  uploadedAt?: string;
+}
+
+export interface TaskItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  createdAt?: string;
+  completedAt?: string;
 }
 
 export interface CommentItem {

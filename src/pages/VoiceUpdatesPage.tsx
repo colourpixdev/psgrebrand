@@ -1,0 +1,527 @@
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ClipboardCheck, Mic2, Wand2 } from 'lucide-react';
+import { applyProjectVoiceUpdate, getProjects, transcribeVoiceUpdateAudio, uploadVoiceUpdateAudio } from '../services/portalService';
+import { timelineStages } from '../constants/portal';
+import { useAuth } from '../contexts/AuthContext';
+import type { Project, ProjectStage, ProjectStatus } from '../types/domain';
+
+type VoiceSuggestion = {
+  id: string;
+  projectId: string;
+  branch: string;
+  excerpt: string;
+  confidence: number;
+  selected: boolean;
+  currentStage?: ProjectStage;
+  status?: ProjectStatus;
+  progress?: number;
+  installationDate?: string;
+  targetDate?: string;
+  comment: string;
+  tasks: string;
+};
+
+type SpeechRecognitionInstance = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  onresult: ((event: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+
+const statusOptions: ProjectStatus[] = ['in_progress', 'awaiting_approval', 'delayed', 'on_hold', 'cancelled', 'completed'];
+
+function progressForStage(stage: ProjectStage) {
+  const index = timelineStages.indexOf(stage);
+  if (index < 0) {
+    return stage === 'Completed' ? 100 : 0;
+  }
+
+  return Math.round((index / (timelineStages.length - 1)) * 100);
+}
+
+function statusForStage(stage: ProjectStage, fallback: ProjectStatus): ProjectStatus {
+  if (stage === 'Completed') {
+    return 'completed';
+  }
+
+  if (stage === 'Awaiting Approval') {
+    return 'awaiting_approval';
+  }
+
+  return fallback === 'completed' || fallback === 'cancelled' ? 'in_progress' : fallback;
+}
+
+function normalise(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function splitTranscript(transcript: string) {
+  return transcript
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+function inferStage(segment: string): ProjectStage | undefined {
+  const text = normalise(segment);
+  const directStage = timelineStages.find((stage) => text.includes(normalise(stage)));
+  if (directStage) {
+    return directStage;
+  }
+
+  if (/client sign ?off|sign ?off/.test(text)) {
+    return 'Client Signoff';
+  }
+
+  if (/photo|photos uploaded/.test(text)) {
+    return 'Photos Uploaded';
+  }
+
+  if (/installing|installation in progress/.test(text)) {
+    return 'Installation In Progress';
+  }
+
+  if (/install(ed|ation complete)|completed|done/.test(text)) {
+    return 'Completed';
+  }
+
+  if (/install(ation)? scheduled|booked/.test(text)) {
+    return 'Installation Scheduled';
+  }
+
+  if (/production|manufacturing/.test(text)) {
+    return 'Production';
+  }
+
+  if (/po issued|purchase order issued/.test(text)) {
+    return 'PO Issued';
+  }
+
+  if (/quotation received|quote came in|quote received/.test(text)) {
+    return 'Quotation Received';
+  }
+
+  if (/quotation requested|quote requested/.test(text)) {
+    return 'Quotation Requested';
+  }
+
+  if (/approved/.test(text)) {
+    return 'Approved';
+  }
+
+  if (/approval|waiting for approval|awaiting approval/.test(text)) {
+    return 'Awaiting Approval';
+  }
+
+  if (/artwork sent/.test(text)) {
+    return 'Artwork Sent';
+  }
+
+  if (/artwork/.test(text)) {
+    return 'Artwork In Progress';
+  }
+
+  if (/measurement|dimensions/.test(text)) {
+    return 'Measurements Received';
+  }
+
+  if (/site survey|survey/.test(text)) {
+    return 'Site Survey';
+  }
+
+  return undefined;
+}
+
+function inferStatus(segment: string, stage: ProjectStage | undefined, currentStatus: ProjectStatus): ProjectStatus | undefined {
+  const text = normalise(segment);
+
+  if (/cancelled|canceled/.test(text)) {
+    return 'cancelled';
+  }
+
+  if (/on hold|paused/.test(text)) {
+    return 'on_hold';
+  }
+
+  if (/delay|delayed|stuck|waiting on|waiting for/.test(text)) {
+    return 'delayed';
+  }
+
+  if (stage) {
+    return statusForStage(stage, currentStatus);
+  }
+
+  return undefined;
+}
+
+function extractDate(segment: string) {
+  return segment.match(/\b\d{1,2}\s+(?:Jan|January|Feb|February|Mar|March|Apr|April|May|Jun|June|Jul|July|Aug|August|Sep|Sept|September|Oct|October|Nov|November|Dec|December)\b/i)?.[0]
+    ?? segment.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0]
+    ?? segment.match(/\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/)?.[0];
+}
+
+function extractTasks(segment: string) {
+  const text = segment.trim();
+  const tasks = new Set<string>();
+  const cleanTaskSubject = (value: string | undefined) => value?.split(/\s+and\s+|,|;/i)[0]?.trim();
+  const followUp = cleanTaskSubject(text.match(/follow up(?: on)?\s+([^.!?]+)/i)?.[1]);
+  const waiting = cleanTaskSubject(text.match(/waiting (?:on|for)\s+([^.!?]+)/i)?.[1]);
+  const needs = cleanTaskSubject(text.match(/needs? to\s+([^.!?]+)/i)?.[1]);
+
+  if (followUp) {
+    tasks.add(`Follow up ${followUp}`);
+  }
+
+  if (waiting) {
+    tasks.add(`Follow up ${waiting}`);
+  }
+
+  if (needs) {
+    tasks.add(needs.charAt(0).toUpperCase() + needs.slice(1));
+  }
+
+  if (/po .*outstanding|outstanding .*po/i.test(text)) {
+    tasks.add('Follow up outstanding PO');
+  }
+
+  return [...tasks].slice(0, 3);
+}
+
+function matchProjects(projects: Project[], transcript: string): VoiceSuggestion[] {
+  const segments = splitTranscript(transcript);
+  const suggestions: VoiceSuggestion[] = [];
+
+  for (const project of projects) {
+    const branch = normalise(project.branch);
+    const id = normalise(project.id);
+    const town = normalise(project.town);
+    const matchedSegment = segments.find((segment) => {
+      const text = normalise(segment);
+      return text.includes(branch) || text.includes(id) || (town.length > 4 && text.includes(town));
+    });
+
+    if (!matchedSegment) {
+      continue;
+    }
+
+    const text = normalise(matchedSegment);
+    const currentStage = inferStage(matchedSegment);
+    const status = inferStatus(matchedSegment, currentStage, project.status);
+    const date = extractDate(matchedSegment);
+    const tasks = extractTasks(matchedSegment);
+    const confidence = text.includes(branch) || text.includes(id) ? 0.92 : 0.68;
+
+    suggestions.push({
+      id: `${project.id}-${suggestions.length}`,
+      projectId: project.id,
+      branch: project.branch,
+      excerpt: matchedSegment,
+      confidence,
+      selected: confidence >= 0.75,
+      currentStage,
+      status,
+      progress: currentStage ? progressForStage(currentStage) : undefined,
+      installationDate: /install/i.test(matchedSegment) ? date : undefined,
+      targetDate: /target|deadline|due/i.test(matchedSegment) ? date : undefined,
+      comment: matchedSegment,
+      tasks: tasks.join('\n'),
+    });
+  }
+
+  return suggestions.sort((left, right) => right.confidence - left.confidence);
+}
+
+export function VoiceUpdatesPage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [transcript, setTranscript] = useState('');
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [suggestions, setSuggestions] = useState<VoiceSuggestion[]>([]);
+  const [isListening, setIsListening] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: getProjects });
+  const transcribeMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const upload = await uploadVoiceUpdateAudio(file);
+      return transcribeVoiceUpdateAudio(upload.path);
+    },
+    onSuccess: (nextTranscript) => {
+      setTranscript(nextTranscript);
+      setSuggestions([]);
+      setNotice('Voice note transcribed. Review the text, then detect updates.');
+    },
+  });
+  const applyMutation = useMutation({
+    mutationFn: async (approved: VoiceSuggestion[]) => {
+      for (const suggestion of approved) {
+        await applyProjectVoiceUpdate({
+          projectId: suggestion.projectId,
+          actor: user?.name ?? 'Portal user',
+          currentStage: suggestion.currentStage,
+          status: suggestion.status,
+          progress: suggestion.progress,
+          targetDate: suggestion.targetDate,
+          installationDate: suggestion.installationDate,
+          comment: suggestion.comment,
+          tasks: suggestion.tasks.split('\n').map((task) => task.trim()).filter(Boolean),
+        });
+      }
+
+      return approved.length;
+    },
+    onSuccess: async (count) => {
+      setNotice(`${count} voice update${count === 1 ? '' : 's'} applied.`);
+      setSuggestions([]);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['projects'] }),
+        queryClient.invalidateQueries({ queryKey: ['portal-summary'] }),
+      ]);
+    },
+  });
+
+  function updateSuggestion(id: string, patch: Partial<VoiceSuggestion>) {
+    setSuggestions((current) => current.map((suggestion) => (suggestion.id === id ? { ...suggestion, ...patch } : suggestion)));
+  }
+
+  function startDictation() {
+    const Recognition = ((globalThis as typeof globalThis & { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }).SpeechRecognition
+      ?? (globalThis as typeof globalThis & { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }).webkitSpeechRecognition);
+
+    if (typeof Recognition !== 'function') {
+      setNotice('Voice dictation is not available in this browser. Paste the transcript instead.');
+      return;
+    }
+
+    const recognition = new Recognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'en-ZA';
+    recognition.onresult = (event) => {
+      const text = Array.from(event.results).map((result) => result[0].transcript).join(' ');
+      setTranscript((current) => `${current}${current ? ' ' : ''}${text}`.trim());
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+    recognition.start();
+    setIsListening(true);
+  }
+
+  function analyseTranscript() {
+    const matches = matchProjects(projects, transcript);
+    setSuggestions(matches);
+    setNotice(matches.length > 0 ? `${matches.length} project update${matches.length === 1 ? '' : 's'} detected.` : 'No confident project matches found.');
+  }
+
+  const selectedSuggestions = suggestions.filter((suggestion) => suggestion.selected);
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.28em] text-sky-300">Voice updates</p>
+            <h2 className="mt-3 text-2xl font-semibold text-white">Batch project amendments</h2>
+          </div>
+          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            Review required before save
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-soft">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={startDictation}
+              disabled={isListening}
+              className="inline-flex items-center gap-2 rounded-2xl bg-sky-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Mic2 className="h-4 w-4" />
+              {isListening ? 'Listening...' : 'Dictate'}
+            </button>
+            <button
+              type="button"
+              onClick={analyseTranscript}
+              disabled={!transcript.trim() || projects.length === 0}
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Wand2 className="h-4 w-4" />
+              Detect updates
+            </button>
+          </div>
+
+          <div className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-4">
+            <label className="grid gap-2 text-sm text-slate-300">
+              Voice note upload
+              <input
+                type="file"
+                accept="audio/aac,audio/m4a,audio/mp4,audio/mpeg,audio/ogg,audio/wav,audio/webm,video/mp4,.aac,.m4a,.mp3,.ogg,.wav,.webm,.mp4"
+                onChange={(event) => setAudioFile(event.target.files?.[0] ?? null)}
+                className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-slate-200 file:mr-4 file:rounded-xl file:border-0 file:bg-sky-500 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+              />
+            </label>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-5 text-slate-400">
+                {audioFile ? `${audioFile.name} · ${(audioFile.size / 1024 / 1024).toFixed(1)} MB` : 'Upload a WhatsApp voice note, MP3, WAV, OGG, WebM, AAC, or MP4 audio file.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => audioFile && transcribeMutation.mutate(audioFile)}
+                disabled={!audioFile || transcribeMutation.isPending}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-400/25 bg-sky-500/10 px-4 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Mic2 className="h-4 w-4" />
+                {transcribeMutation.isPending ? 'Transcribing...' : 'Transcribe file'}
+              </button>
+            </div>
+          </div>
+
+          <label className="mt-5 grid gap-2 text-sm text-slate-300">
+            Transcript
+            <textarea
+              value={transcript}
+              onChange={(event) => setTranscript(event.target.value)}
+              rows={14}
+              className="min-h-72 rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400/50"
+              placeholder="PSG Hermanus is now in production. ABC Signage confirmed installation for 15 August. Cape Town Waterfront is delayed waiting for artwork approval."
+            />
+          </label>
+
+          {notice ? <p className="mt-4 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">{notice}</p> : null}
+          {transcribeMutation.error instanceof Error ? <p className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">{transcribeMutation.error.message}</p> : null}
+          {applyMutation.error instanceof Error ? <p className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">{applyMutation.error.message}</p> : null}
+        </div>
+
+        <div className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-soft">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-white">Review queue</h3>
+              <p className="mt-1 text-sm text-slate-400">{selectedSuggestions.length} selected from {suggestions.length} detected</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => applyMutation.mutate(selectedSuggestions)}
+              disabled={selectedSuggestions.length === 0 || applyMutation.isPending}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              {applyMutation.isPending ? 'Applying...' : 'Apply selected'}
+            </button>
+          </div>
+
+          <div className="mt-5 space-y-4">
+            {suggestions.length > 0 ? suggestions.map((suggestion) => (
+              <article key={suggestion.id} className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <label className="flex items-start gap-3 text-sm text-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={suggestion.selected}
+                      onChange={(event) => updateSuggestion(suggestion.id, { selected: event.target.checked })}
+                      className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-950"
+                    />
+                    <span>
+                      <span className="block font-semibold text-white">{suggestion.branch}</span>
+                      <span className="mt-1 block text-xs text-slate-400">{suggestion.projectId}</span>
+                    </span>
+                  </label>
+                  <span className="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-100">
+                    {Math.round(suggestion.confidence * 100)}% match
+                  </span>
+                </div>
+
+                <p className="mt-4 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm leading-6 text-slate-300">{suggestion.excerpt}</p>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <label className="grid gap-2 text-sm text-slate-300">
+                    Stage
+                    <select
+                      value={suggestion.currentStage ?? ''}
+                      onChange={(event) => {
+                        const stage = event.target.value as ProjectStage;
+                        updateSuggestion(suggestion.id, {
+                          currentStage: stage || undefined,
+                          progress: stage ? progressForStage(stage) : undefined,
+                          status: stage ? statusForStage(stage, suggestion.status ?? 'in_progress') : suggestion.status,
+                        });
+                      }}
+                      className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50"
+                    >
+                      <option value="">No stage change</option>
+                      {timelineStages.map((stage) => <option key={stage} value={stage}>{stage}</option>)}
+                    </select>
+                  </label>
+
+                  <label className="grid gap-2 text-sm text-slate-300">
+                    Status
+                    <select
+                      value={suggestion.status ?? ''}
+                      onChange={(event) => updateSuggestion(suggestion.id, { status: event.target.value as ProjectStatus || undefined })}
+                      className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50"
+                    >
+                      <option value="">No status change</option>
+                      {statusOptions.map((status) => <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>)}
+                    </select>
+                  </label>
+
+                  <label className="grid gap-2 text-sm text-slate-300">
+                    Installation date
+                    <input
+                      value={suggestion.installationDate ?? ''}
+                      onChange={(event) => updateSuggestion(suggestion.id, { installationDate: event.target.value || undefined })}
+                      className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50"
+                      placeholder="15 August"
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-sm text-slate-300">
+                    Target date
+                    <input
+                      value={suggestion.targetDate ?? ''}
+                      onChange={(event) => updateSuggestion(suggestion.id, { targetDate: event.target.value || undefined })}
+                      className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50"
+                      placeholder="30 August"
+                    />
+                  </label>
+                </div>
+
+                <label className="mt-4 grid gap-2 text-sm text-slate-300">
+                  Comment
+                  <textarea
+                    value={suggestion.comment}
+                    onChange={(event) => updateSuggestion(suggestion.id, { comment: event.target.value })}
+                    rows={3}
+                    className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50"
+                  />
+                </label>
+
+                <label className="mt-4 grid gap-2 text-sm text-slate-300">
+                  Tasks
+                  <textarea
+                    value={suggestion.tasks}
+                    onChange={(event) => updateSuggestion(suggestion.id, { tasks: event.target.value })}
+                    rows={2}
+                    className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50"
+                    placeholder="One task per line"
+                  />
+                </label>
+              </article>
+            )) : (
+              <div className="rounded-3xl border border-dashed border-white/15 bg-white/5 p-8 text-center text-sm text-slate-400">
+                No updates waiting for review.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

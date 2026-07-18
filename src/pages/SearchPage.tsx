@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { getProjects } from '../services/portalService';
+import { useAuth } from '../contexts/AuthContext';
+import { filterProjectsForUser } from '../utils/permissions';
 
 export function SearchPage() {
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
 
   const { data: projects = [] } = useQuery({
@@ -11,9 +15,10 @@ export function SearchPage() {
   });
 
   const q = query.trim().toLowerCase();
+  const scopedProjects = filterProjectsForUser(projects, user);
 
   const filtered = q
-    ? projects.filter(
+    ? scopedProjects.filter(
         (p) =>
           p.branch.toLowerCase().includes(q) ||
           p.town.toLowerCase().includes(q) ||
@@ -24,7 +29,7 @@ export function SearchPage() {
           p.status.toLowerCase().includes(q) ||
           p.manager.toLowerCase().includes(q),
       )
-    : projects;
+    : scopedProjects;
 
   return (
     <div className="space-y-6">
@@ -48,14 +53,14 @@ export function SearchPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         {filtered.length > 0 ? (
           filtered.map((project) => (
-            <div key={project.id} className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft">
+            <Link key={project.id} to={`/projects/${project.id}`} className="block rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft transition hover:border-sky-400/40 hover:bg-white/5">
               <p className="text-lg font-semibold text-white">{project.branch}</p>
               <p className="mt-1 text-sm text-slate-400">{project.id}</p>
               <p className="mt-3 text-sm text-slate-300">{project.town}, {project.province}</p>
               <p className="text-sm text-slate-300">Installer: {project.installer}</p>
               <p className="text-sm text-slate-300">Stage: {project.currentStage}</p>
               <p className="text-sm text-slate-300">Status: {project.status}</p>
-            </div>
+            </Link>
           ))
         ) : (
           <div className="rounded-3xl border border-dashed border-white/15 bg-slate-950/40 p-6 text-sm text-slate-400 lg:col-span-2">

@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import { getProjects } from '../services/portalService';
+import { useAuth } from '../contexts/AuthContext';
+import { filterProjectsForUser } from '../utils/permissions';
 import type { Project } from '../types/domain';
 import 'leaflet/dist/leaflet.css';
 
@@ -13,19 +15,44 @@ type ProjectLocation = {
   color: string;
 };
 
+const branchCoordinates: Record<string, LatLngTuple> = {
+  'PSG-SAMPLE-BFN-005': [-29.0852, 26.1596],
+  'PSG-SAMPLE-CTN-001': [-33.9035, 18.4207],
+  'PSG-SAMPLE-DBN-004': [-29.7253, 31.0665],
+  'PSG-SAMPLE-EL-006': [-33.0153, 27.9116],
+  'PSG-SAMPLE-JHB-002': [-26.1466, 28.0415],
+  'PSG-SAMPLE-MBK-010': [-25.4753, 30.9694],
+  'PSG-SAMPLE-PLK-009': [-23.9045, 29.4689],
+  'PSG-SAMPLE-PTA-003': [-25.7863, 28.3155],
+  'PSG-SAMPLE-WHK-007': [-22.5609, 17.0658],
+  'PSG-SAMPLE-WVB-008': [-22.9576, 14.5053],
+};
+
 const townCoordinates: Record<string, LatLngTuple> = {
+  'bloemfontein|free state': [-29.0852, 26.1596],
   'cape town|western cape': [-33.9249, 18.4241],
   'durban|kwazulu-natal': [-29.8587, 31.0218],
+  'east london|eastern cape': [-33.0192, 27.8999],
   'hermanus|western cape': [-34.4092, 19.2504],
+  'johannesburg|gauteng': [-26.2041, 28.0473],
+  'mbombela|mpumalanga': [-25.4753, 30.9694],
   'mossel bay|western cape': [-34.1831, 22.1461],
   'paarl|western cape': [-33.7342, 18.9621],
+  'polokwane|limpopo': [-23.9045, 29.4689],
+  'pretoria|gauteng': [-25.7479, 28.2293],
   'rosebank|gauteng': [-26.1466, 28.0415],
   'sandton|gauteng': [-26.1076, 28.0567],
+  'umhlanga|kwazulu-natal': [-29.7253, 31.0665],
+  'walvis bay|namibia': [-22.9576, 14.5053],
   'windhoek|namibia': [-22.5609, 17.0658],
 };
 
 const provinceCoordinates: Record<string, LatLngTuple> = {
+  'eastern cape': [-32.2968, 26.4194],
+  'free state': [-28.4541, 26.7968],
   gauteng: [-26.2041, 28.0473],
+  limpopo: [-23.4013, 29.4179],
+  mpumalanga: [-25.5653, 30.5279],
   namibia: [-22.9576, 18.4904],
   'kwazulu-natal': [-29.0852, 30.5917],
   'western cape': [-33.2278, 21.8569],
@@ -45,7 +72,7 @@ function coordinateKey(project: Project) {
 }
 
 function getProjectPosition(project: Project): LatLngTuple {
-  return townCoordinates[coordinateKey(project)] ?? provinceCoordinates[project.province.toLowerCase()] ?? [-28.4793, 24.6727];
+  return branchCoordinates[project.id] ?? townCoordinates[coordinateKey(project)] ?? provinceCoordinates[project.province.toLowerCase()] ?? [-28.4793, 24.6727];
 }
 
 function createProjectIcon(project: Project) {
@@ -83,16 +110,29 @@ function FitProjectBounds({ locations }: { locations: ProjectLocation[] }) {
 }
 
 export function MapPage() {
+  const { user } = useAuth();
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: getProjects,
   });
 
-  const locations = projects.map((project) => ({
+  const scopedProjects = filterProjectsForUser(projects, user);
+  const locations = scopedProjects.map((project) => ({
     project,
     position: getProjectPosition(project),
     color: statusStyles[project.status].color,
   }));
+  const statusCounts = locations.reduce<Record<Project['status'], number>>((counts, { project }) => {
+    counts[project.status] += 1;
+    return counts;
+  }, {
+    awaiting_approval: 0,
+    cancelled: 0,
+    completed: 0,
+    delayed: 0,
+    in_progress: 0,
+    on_hold: 0,
+  });
 
   return (
     <div className="space-y-6">
@@ -137,7 +177,18 @@ export function MapPage() {
         <aside className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-white">Live Locations</h3>
-            <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">{projects.length} projects</p>
+            <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">{scopedProjects.length} projects</p>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-300">
+            {Object.entries(statusStyles).map(([status, style]) => (
+              <div key={status} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                <span className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: style.color }} />
+                  {style.label}
+                </span>
+                <span className="font-semibold text-white">{statusCounts[status as Project['status']]}</span>
+              </div>
+            ))}
           </div>
           <div className="mt-5 space-y-3">
             {locations.map(({ project, color }) => (
