@@ -12,4 +12,5 @@ declare module 'lucide-react' {
   export const MapPinned: LucideIcon;
   export const LogOut: LucideIcon;
   export const Sparkles: LucideIcon;
+  export const X: LucideIcon;
 }

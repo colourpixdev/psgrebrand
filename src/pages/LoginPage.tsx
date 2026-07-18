@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
+import { X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { roleLabels } from '../constants/portal';
 import type { Role } from '../types/domain';
@@ -20,6 +21,7 @@ export function LoginPage() {
   const { signInAs, signInWithEmailPassword } = useAuth();
   const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(null);
+  const [setupBannerDismissed, setSetupBannerDismissed] = useState(false);
   const enablePreviewAuth = import.meta.env.DEV || import.meta.env.VITE_ENABLE_PREVIEW_AUTH === 'true';
 
   const seededAuthEmails = [
@@ -59,15 +61,34 @@ export function LoginPage() {
         </p>
 
         <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4 text-sm text-amber-100">
-          <p className="font-semibold">Auth users required</p>
-          <p className="mt-1 leading-6 text-amber-50/90">
-            The database is connected, but email/password sign-in only works if these emails also exist in Supabase Auth:
-          </p>
-          <ul className="mt-3 grid gap-1 text-xs text-amber-50/90 md:grid-cols-2">
-            {seededAuthEmails.map((email) => (
-              <li key={email}>{email}</li>
-            ))}
-          </ul>
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-semibold">Seeded demo accounts</p>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => setSetupBannerDismissed(true)}
+              className="shrink-0 rounded-lg p-1 opacity-60 transition hover:opacity-100"
+            >
+              <X width={14} height={14} />
+            </button>
+          </div>
+          {!setupBannerDismissed && (
+            <>
+              <p className="mt-1 leading-6 text-amber-50/90">
+                If this Supabase project is reset, recreate these sign-in accounts with{' '}
+                <code className="rounded bg-amber-900/50 px-1 py-0.5 text-xs">npm run seed:auth</code>{' '}
+                and reset passwords with <code className="rounded bg-amber-900/50 px-1 py-0.5 text-xs">npm run reset:passwords</code>.
+              </p>
+              <ul className="mt-3 grid gap-1 text-xs text-amber-50/90 md:grid-cols-2">
+                {seededAuthEmails.map((email) => (
+                  <li key={email}>{email}</li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-amber-50/70">
+                Default password: <code className="rounded bg-amber-900/50 px-1 py-0.5">Rebrand2026!</code> — change after first login.
+              </p>
+            </>
+          )}
         </div>
 
         <form onSubmit={onSubmit} className="mt-8 rounded-3xl border border-white/10 bg-slate-950/55 p-5">

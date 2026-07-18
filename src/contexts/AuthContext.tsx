@@ -6,6 +6,7 @@ import { roleLabels } from '../constants/portal';
 
 interface AuthContextValue {
   user: UserRecord | null;
+  isLoading: boolean;
   roleLabel: string;
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
   signInAs: (role: Role) => void;
@@ -16,17 +17,24 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserRecord | null>(null);
+  const [isLoading, setIsLoading] = useState(Boolean(supabase));
 
   useEffect(() => {
     let isMounted = true;
 
     if (!supabase) {
+      setIsLoading(false);
       return;
     }
 
     loadSessionUser().then((sessionUser) => {
       if (isMounted) {
         setUser(sessionUser);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (isMounted) {
+        setIsLoading(false);
       }
     });
 
@@ -44,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
+    isLoading,
     roleLabel: user ? roleLabels[user.role] : 'Guest',
     signInWithEmailPassword: async (email, password) => {
       const sessionUser = await signInWithEmailPassword(email, password);
@@ -60,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signOutSession();
       setUser(null);
     },
-  }), [user]);
+  }), [isLoading, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

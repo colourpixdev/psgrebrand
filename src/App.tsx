@@ -25,7 +25,7 @@ const navigation = [
 ];
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const location = useLocation();
   const [supabaseStatus, setSupabaseStatus] = useState<string | null>(null);
 
@@ -60,6 +60,14 @@ function AppRoutes() {
       isMounted = false;
     };
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-slate-950 px-4 text-sm text-slate-300">
+        Loading secure session...
+      </div>
+    );
+  }
 
   if (!user && location.pathname !== '/login') {
     return <Navigate to="/login" replace />;

@@ -84,6 +84,9 @@ export function ProjectCreateForm() {
     await mutation.mutateAsync(values);
   });
 
+  const mutationError = mutation.error instanceof Error ? mutation.error.message : null;
+  const isRlsError = mutationError?.toLowerCase().includes('row-level security');
+
   return (
     <section className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-6 shadow-soft">
       <div className="flex items-start justify-between gap-4">
@@ -91,7 +94,7 @@ export function ProjectCreateForm() {
           <h3 className="text-lg font-semibold text-white">Add project</h3>
           <p className="mt-1 text-sm text-slate-400">Create a new rollout directly in Supabase.</p>
         </div>
-        <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">Database write enabled</p>
+        <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">Database write path</p>
       </div>
 
       <form onSubmit={onSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
@@ -196,7 +199,12 @@ export function ProjectCreateForm() {
           {errors.notes ? <span className="text-xs text-red-300">{errors.notes.message}</span> : null}
         </label>
 
-        {mutation.error ? <p className="text-sm text-red-300 md:col-span-2">{mutation.error.message}</p> : null}
+        {mutationError ? (
+          <p className="text-sm text-red-300 md:col-span-2">
+            {mutationError}
+            {isRlsError ? ' Run supabase/repair-live-database.sql in the Supabase SQL Editor to enable authenticated project writes.' : null}
+          </p>
+        ) : null}
 
         <button type="submit" disabled={isSubmitting || mutation.isPending} className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2">
           {isSubmitting || mutation.isPending ? 'Saving project...' : 'Add project'}

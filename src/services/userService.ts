@@ -8,17 +8,52 @@ type ProfileRow = {
   email: string;
 };
 
+export class UserProfilesNotConfiguredError extends Error {
+  constructor() {
+    super('The Supabase profiles table is not installed yet.');
+    this.name = 'UserProfilesNotConfiguredError';
+  }
+}
+
+export type UsersResult = {
+  profilesConfigured: boolean;
+  users: UserRecord[];
+};
+
+function isMissingProfilesTable(error: { code?: string; message?: string }) {
+  return (
+    error.code === 'PGRST205' ||
+    error.code === '42P01' ||
+    error.message?.toLowerCase().includes("could not find the table 'public.profiles'") ||
+    error.message?.toLowerCase().includes('relation "public.profiles" does not exist')
+  );
+}
+
+async function hydrateAuthSession() {
+  await supabase?.auth.getSession();
+}
+
 export async function getUsers(): Promise<UserRecord[]> {
   if (!supabase) {
     return [];
   }
+
+  await hydrateAuthSession();
 
   const { data, error } = await supabase
     .from('profiles')
     .select('name, role, branch, email')
     .order('name', { ascending: true });
 
-  if (error || !data) {
+  if (error) {
+    if (isMissingProfilesTable(error)) {
+      throw new UserProfilesNotConfiguredError();
+    }
+
+    throw error;
+  }
+
+  if (!data) {
     return [];
   }
 
@@ -28,6 +63,24 @@ export async function getUsers(): Promise<UserRecord[]> {
     branch: row.branch ?? undefined,
     email: row.email,
   }));
+}
+
+export async function getUsersResult(): Promise<UsersResult> {
+  try {
+    return {
+      profilesConfigured: true,
+      users: await getUsers(),
+    };
+  } catch (error) {
+    if (error instanceof UserProfilesNotConfiguredError) {
+      return {
+        profilesConfigured: false,
+        users: [],
+      };
+    }
+
+    throw error;
+  }
 }
 
 export type CreateUserProfileInput = {
@@ -41,6 +94,8 @@ export async function createUserProfile(input: CreateUserProfileInput): Promise<
   if (!supabase) {
     throw new Error('Supabase is not configured.');
   }
+
+  await hydrateAuthSession();
 
   const { data, error } = await supabase
     .from('profiles')

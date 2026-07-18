@@ -31,6 +31,10 @@ type ProjectRow = {
   activity: ActivityItem[] | null;
 };
 
+async function hydrateAuthSession() {
+  await supabase?.auth.getSession();
+}
+
 export type CreateProjectInput = {
   id: string;
   province: string;
@@ -86,6 +90,8 @@ export async function getPortalSummary(): Promise<PortalSummary> {
     };
   }
 
+  await hydrateAuthSession();
+
   const { data, error } = await client.from('projects').select('status, tasks, activity');
 
   if (error || !data) {
@@ -123,6 +129,8 @@ export async function getProjects(): Promise<Project[]> {
     return [];
   }
 
+  await hydrateAuthSession();
+
   const { data, error } = await client.from('projects').select('*').order('updated_at', { ascending: false });
 
   if (error || !data) {
@@ -139,6 +147,8 @@ export async function getProjectById(projectId: string): Promise<Project | undef
     return undefined;
   }
 
+  await hydrateAuthSession();
+
   const { data, error } = await client.from('projects').select('*').eq('id', projectId).maybeSingle();
 
   if (error || !data) {
@@ -154,6 +164,8 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   if (!client) {
     throw new Error('Supabase is not configured.');
   }
+
+  await hydrateAuthSession();
 
   const { data, error } = await client
     .from('projects')
