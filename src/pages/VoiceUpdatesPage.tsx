@@ -283,6 +283,7 @@ export function VoiceUpdatesPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const transcriptRef = useRef('');
+  const transcriptInputRef = useRef<HTMLTextAreaElement>(null);
   const [transcript, setTranscript] = useState('');
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [suggestions, setSuggestions] = useState<VoiceSuggestion[]>([]);
@@ -291,7 +292,11 @@ export function VoiceUpdatesPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: getProjects });
-  function reviewTranscript(nextTranscript = transcriptRef.current) {
+  function getCurrentTranscript() {
+    return transcriptInputRef.current?.value ?? transcriptRef.current;
+  }
+
+  function reviewTranscript(nextTranscript = getCurrentTranscript()) {
     if (projects.length === 0) {
       setNotice('Projects are still loading. Try reviewing the transcript again in a moment.');
       return;
@@ -468,6 +473,7 @@ export function VoiceUpdatesPage() {
           <label className="mt-5 grid gap-2 text-sm text-slate-300">
             Transcript
             <textarea
+              ref={transcriptInputRef}
               value={transcript}
               onChange={(event) => updateTranscript(event.target.value)}
               rows={14}
