@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { ClipboardCheck, Mic2, Wand2 } from 'lucide-react';
 import { applyProjectVoiceUpdate, getProjects, transcribeVoiceUpdateAudio, uploadVoiceUpdateAudio } from '../services/portalService';
 import { timelineStages } from '../constants/portal';
 import { useAuth } from '../contexts/AuthContext';
 import type { Project, ProjectStage, ProjectStatus } from '../types/domain';
+
+type AppliedProject = Pick<Project, 'id' | 'branch' | 'currentStage' | 'status'>;
 
 type VoiceSuggestion = {
   id: string;
@@ -229,34 +232,46 @@ function matchProjects(projects: Project[], transcript: string): VoiceSuggestion
 
   for (const project of projects) {
     const matches = segments
-      .map((segment) => ({ segment, confidence: matchConfidence(segment, project) }))
+      .map((segment, index) => ({ segment, index, confidence: matchConfidence(segment, project) }))
       .filter((match) => match.confidence > 0)
       .sort((left, right) => right.confidence - left.confidence);
     const matchedSegment = matches[0]?.segment;
+    const matchedIndex = matches[0]?.index;
 
-    if (!matchedSegment) {
+    if (!matchedSegment || matchedIndex === undefined) {
       continue;
     }
 
-    const currentStage = inferStage(matchedSegment);
-    const status = inferStatus(matchedSegment, currentStage, project.status);
-    const date = extractDate(matchedSegment);
-    const tasks = extractTasks(matchedSegment);
+    const excerptSegments = [matchedSegment];
+    for (const nextSegment of segments.slice(matchedIndex + 1)) {
+      const startsAnotherProject = projects.some((candidate) => candidate.id !== project.id && matchConfidence(nextSegment, candidate) > 0);
+      if (startsAnotherProject) {
+        break;
+      }
+
+      excerptSegments.push(nextSegment);
+    }
+
+    const excerpt = excerptSegments.join(' ');
+    const currentStage = inferStage(excerpt);
+    const status = inferStatus(excerpt, currentStage, project.status);
+    const date = extractDate(excerpt);
+    const tasks = extractTasks(excerpt);
     const confidence = matches[0].confidence;
 
     suggestions.push({
       id: `${project.id}-${suggestions.length}`,
       projectId: project.id,
       branch: project.branch,
-      excerpt: matchedSegment,
+      excerpt,
       confidence,
       selected: confidence >= 0.75,
       currentStage,
       status,
       progress: currentStage ? progressForStage(currentStage) : undefined,
-      installationDate: /install/i.test(matchedSegment) ? date : undefined,
-      targetDate: /target|deadline|due/i.test(matchedSegment) ? date : undefined,
-      comment: matchedSegment,
+      installationDate: /install/i.test(excerpt) ? date : undefined,
+      targetDate: /target|deadline|due/i.test(excerpt) ? date : undefined,
+      comment: excerpt,
       tasks: tasks.join('\n'),
     });
   }
@@ -267,28 +282,50 @@ function matchProjects(projects: Project[], transcript: string): VoiceSuggestion
 export function VoiceUpdatesPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const transcriptRef = useRef('');
   const [transcript, setTranscript] = useState('');
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [suggestions, setSuggestions] = useState<VoiceSuggestion[]>([]);
+  const [appliedProjects, setAppliedProjects] = useState<AppliedProject[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: getProjects });
+  function reviewTranscript(nextTranscript = transcriptRef.current) {
+    if (projects.length === 0) {
+      setNotice('Projects are still loading. Try reviewing the transcript again in a moment.');
+      return;
+    }
+
+    const matches = matchProjects(projects, nextTranscript);
+    setSuggestions(matches);
+    setAppliedProjects([]);
+    setNotice(matches.length > 0 ? `${matches.length} project update${matches.length === 1 ? '' : 's'} ready to review.` : 'No confident project matches found. Add the exact PSG branch name or project ID to the transcript and review again.');
+  }
+
   const transcribeMutation = useMutation({
     mutationFn: async (file: File) => {
       const upload = await uploadVoiceUpdateAudio(file);
       return transcribeVoiceUpdateAudio(upload.path);
     },
     onSuccess: (nextTranscript) => {
+      transcriptRef.current = nextTranscript;
       setTranscript(nextTranscript);
-      setSuggestions([]);
-      setNotice('Voice note transcribed. Review the text, then detect updates.');
+      if (projects.length > 0) {
+        reviewTranscript(nextTranscript);
+      } else {
+        setSuggestions([]);
+        setAppliedProjects([]);
+        setNotice('Voice note transcribed. Projects are still loading; select Review transcript in a moment.');
+      }
     },
   });
   const applyMutation = useMutation({
     mutationFn: async (approved: VoiceSuggestion[]) => {
+      const updatedProjects: AppliedProject[] = [];
+
       for (const suggestion of approved) {
-        await applyProjectVoiceUpdate({
+        const updatedProject = await applyProjectVoiceUpdate({
           projectId: suggestion.projectId,
           actor: user?.name ?? 'Portal user',
           currentStage: suggestion.currentStage,
@@ -299,13 +336,20 @@ export function VoiceUpdatesPage() {
           comment: suggestion.comment,
           tasks: suggestion.tasks.split('\n').map((task) => task.trim()).filter(Boolean),
         });
+        updatedProjects.push({
+          id: updatedProject.id,
+          branch: updatedProject.branch,
+          currentStage: updatedProject.currentStage,
+          status: updatedProject.status,
+        });
       }
 
-      return approved.length;
+      return updatedProjects;
     },
-    onSuccess: async (count) => {
-      setNotice(`${count} voice update${count === 1 ? '' : 's'} applied.`);
+    onSuccess: async (updatedProjects) => {
+      setNotice(`${updatedProjects.length} voice update${updatedProjects.length === 1 ? '' : 's'} applied. Open the project link below to confirm the change.`);
       setSuggestions([]);
+      setAppliedProjects(updatedProjects);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['projects'] }),
         queryClient.invalidateQueries({ queryKey: ['portal-summary'] }),
@@ -315,6 +359,14 @@ export function VoiceUpdatesPage() {
 
   function updateSuggestion(id: string, patch: Partial<VoiceSuggestion>) {
     setSuggestions((current) => current.map((suggestion) => (suggestion.id === id ? { ...suggestion, ...patch } : suggestion)));
+  }
+
+  function updateTranscript(nextTranscript: string) {
+    transcriptRef.current = nextTranscript;
+    setTranscript(nextTranscript);
+    setSuggestions([]);
+    setAppliedProjects([]);
+    setNotice(null);
   }
 
   function startDictation() {
@@ -332,7 +384,11 @@ export function VoiceUpdatesPage() {
     recognition.lang = 'en-ZA';
     recognition.onresult = (event) => {
       const text = Array.from(event.results).map((result) => result[0].transcript).join(' ');
-      setTranscript((current) => `${current}${current ? ' ' : ''}${text}`.trim());
+      setTranscript((current) => {
+        const nextTranscript = `${current}${current ? ' ' : ''}${text}`.trim();
+        transcriptRef.current = nextTranscript;
+        return nextTranscript;
+      });
     };
     recognition.onend = () => setIsListening(false);
     recognition.onerror = () => setIsListening(false);
@@ -341,9 +397,7 @@ export function VoiceUpdatesPage() {
   }
 
   function analyseTranscript() {
-    const matches = matchProjects(projects, transcript);
-    setSuggestions(matches);
-    setNotice(matches.length > 0 ? `${matches.length} project update${matches.length === 1 ? '' : 's'} detected.` : 'No confident project matches found.');
+    reviewTranscript();
   }
 
   const selectedSuggestions = suggestions.filter((suggestion) => suggestion.selected);
@@ -381,7 +435,7 @@ export function VoiceUpdatesPage() {
               className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Wand2 className="h-4 w-4" />
-              Detect updates
+              Review transcript
             </button>
           </div>
 
@@ -415,7 +469,7 @@ export function VoiceUpdatesPage() {
             Transcript
             <textarea
               value={transcript}
-              onChange={(event) => setTranscript(event.target.value)}
+              onChange={(event) => updateTranscript(event.target.value)}
               rows={14}
               className="min-h-72 rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400/50"
               placeholder="PSG Hermanus is now in production. ABC Signage confirmed installation for 15 August. Cape Town Waterfront is delayed waiting for artwork approval."
@@ -423,6 +477,18 @@ export function VoiceUpdatesPage() {
           </label>
 
           {notice ? <p className="mt-4 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">{notice}</p> : null}
+          {appliedProjects.length > 0 ? (
+            <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+              <p className="font-semibold">Updated projects</p>
+              <div className="mt-2 grid gap-2">
+                {appliedProjects.map((project) => (
+                  <Link key={project.id} to={`/projects/${project.id}`} className="rounded-xl border border-emerald-300/15 bg-emerald-950/30 px-3 py-2 transition hover:bg-emerald-900/40">
+                    {project.branch} · {project.currentStage} · {project.status.replace(/_/g, ' ')}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {transcribeMutation.error instanceof Error ? <p className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">{transcribeMutation.error.message}</p> : null}
           {applyMutation.error instanceof Error ? <p className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">{applyMutation.error.message}</p> : null}
         </div>
@@ -440,7 +506,7 @@ export function VoiceUpdatesPage() {
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ClipboardCheck className="h-4 w-4" />
-              {applyMutation.isPending ? 'Applying...' : 'Apply selected'}
+              {applyMutation.isPending ? 'Applying...' : 'Apply selected updates'}
             </button>
           </div>
 
