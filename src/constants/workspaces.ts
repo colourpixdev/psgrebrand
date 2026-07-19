@@ -4,6 +4,18 @@ export const defaultGraphicsPartner = 'Colourpix (Pty) Ltd';
 export const platformOwnerEmail = 'francois@colourpix.co.za';
 export const allWorkspaceAdminEmails = [platformOwnerEmail, 'beverley@colourpix.co.za'];
 
+export const workspaceAdminContact = {
+  name: 'Workspace administrator',
+  company: defaultGraphicsPartner,
+  emails: allWorkspaceAdminEmails,
+} as const;
+
+export const rolloutSupportContact = {
+  name: 'RolloutHQ support',
+  company: 'RolloutHQ',
+  emails: [platformOwnerEmail],
+} as const;
+
 export const defaultWorkspace: Workspace = {
   id: 'psg-national-signage-rollout',
   name: 'PSG National Signage Rollout',

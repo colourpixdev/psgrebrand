@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
-import type { ActivityItem, CommentItem, Project, ProjectFile, Role, TaskItem, UserRecord } from '../types/domain';
+import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectTemplateId, Role, TaskItem, UserRecord } from '../types/domain';
 import { defaultWorkspace } from '../constants/workspaces';
+import { defaultProjectTemplate, getProjectTemplate } from '../constants/projectTemplates';
 
 export interface PortalSummary {
   metrics: Array<{ label: string; value: number }>;
@@ -14,6 +15,10 @@ type ProjectRow = {
   workspace_name?: string | null;
   client_company?: string | null;
   graphics_partner?: string | null;
+  project_type?: string | null;
+  project_type_name?: string | null;
+  site_label?: string | null;
+  delivery_partner_label?: string | null;
   province: string;
   town: string;
   branch: string;
@@ -169,6 +174,7 @@ export type CreateProjectInput = {
   workspaceName?: string;
   clientCompany?: string;
   graphicsPartner?: string;
+  projectType?: ProjectTemplateId;
   province: string;
   town: string;
   branch: string;
@@ -281,12 +287,18 @@ function createActivity(title: string, detail: string, type: ActivityItem['type'
 }
 
 function mapProjectRow(row: ProjectRow): Project {
+  const template = getProjectTemplate(row.project_type);
+
   return {
     id: row.id,
     workspaceId: row.workspace_id ?? defaultWorkspace.id,
     workspaceName: row.workspace_name ?? defaultWorkspace.name,
     clientCompany: row.client_company ?? defaultWorkspace.clientCompany,
     graphicsPartner: row.graphics_partner ?? defaultWorkspace.graphicsPartner,
+    projectType: template.id,
+    projectTypeName: row.project_type_name ?? template.name,
+    siteLabel: row.site_label ?? template.siteLabel,
+    deliveryPartnerLabel: row.delivery_partner_label ?? template.deliveryPartnerLabel,
     province: row.province,
     town: row.town,
     branch: row.branch,
@@ -401,6 +413,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   const workspaceName = input.workspaceName?.trim() || defaultWorkspace.name;
   const clientCompany = input.clientCompany?.trim() || defaultWorkspace.clientCompany;
   const graphicsPartner = input.graphicsPartner?.trim() || defaultWorkspace.graphicsPartner;
+  const template = input.projectType ? getProjectTemplate(input.projectType) : defaultProjectTemplate;
   const basePayload = {
     id: input.id,
     province: input.province,
@@ -429,6 +442,10 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     workspace_name: workspaceName,
     client_company: clientCompany,
     graphics_partner: graphicsPartner,
+    project_type: template.id,
+    project_type_name: template.name,
+    site_label: template.siteLabel,
+    delivery_partner_label: template.deliveryPartnerLabel,
   };
 
   let { data, error } = await client
@@ -437,7 +454,14 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     .select('*')
     .single();
 
-  if (error?.message.toLowerCase().includes('workspace_') || error?.message.toLowerCase().includes('client_company') || error?.message.toLowerCase().includes('graphics_partner')) {
+  if (
+    error?.message.toLowerCase().includes('workspace_') ||
+    error?.message.toLowerCase().includes('client_company') ||
+    error?.message.toLowerCase().includes('graphics_partner') ||
+    error?.message.toLowerCase().includes('project_type') ||
+    error?.message.toLowerCase().includes('site_label') ||
+    error?.message.toLowerCase().includes('delivery_partner_label')
+  ) {
     const fallbackResult = await client
       .from('projects')
       .insert(basePayload)

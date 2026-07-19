@@ -31,7 +31,10 @@ export function ProjectCard({ project, user }: { project: Project; user?: UserRe
             {project.town}, {project.province}
           </p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusTone[project.status]}`}>{project.currentStage}</span>
+        <div className="flex flex-col items-end gap-2">
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200">{project.projectTypeName}</span>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusTone[project.status]}`}>{project.currentStage}</span>
+        </div>
       </div>
 
       {openQuestions > 0 || unreadAnswers > 0 ? (
@@ -43,7 +46,7 @@ export function ProjectCard({ project, user }: { project: Project; user?: UserRe
 
       <div className="mt-4 grid gap-2 text-sm text-slate-300">
         <p>Manager: {project.manager}</p>
-        <p>Installer: {project.installer}</p>
+        <p>{project.deliveryPartnerLabel}: {project.installer}</p>
         <p>Target: {project.targetDate}</p>
       </div>
 

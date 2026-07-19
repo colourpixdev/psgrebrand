@@ -9,6 +9,8 @@ export interface Workspace {
   status: 'active' | 'planning' | 'archived';
 }
 
+export type ProjectTemplateId = 'signage_rollout' | 'general_rollout' | 'service_delivery';
+
 export type ProjectStage =
   | 'New Project'
   | 'Awaiting Information'
@@ -40,6 +42,10 @@ export interface Project {
   workspaceName: string;
   clientCompany: string;
   graphicsPartner: string;
+  projectType: ProjectTemplateId;
+  projectTypeName: string;
+  siteLabel: string;
+  deliveryPartnerLabel: string;
   province: string;
   town: string;
   branch: string;

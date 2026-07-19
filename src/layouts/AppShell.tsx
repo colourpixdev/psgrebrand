@@ -18,7 +18,7 @@ interface NavigationItem {
 export function AppShell({ navigation, children, statusBanner }: { navigation: NavigationItem[]; children: ReactNode; statusBanner?: ReactNode }) {
   const { user, roleLabel, signOut } = useAuth();
   const navigate = useNavigate();
-  const mobileNavigation = navigation.filter((item) => ['/', '/projects', '/voice-updates', '/search', '/reports'].includes(item.to));
+  const mobileNavigation = navigation.filter((item) => ['/', '/projects', '/voice-updates', '/support', '/search', '/reports'].includes(item.to));
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,rgba(2,6,23,0.88),rgba(15,23,42,0.98))] text-slate-100">
@@ -62,8 +62,8 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
 
           <div className="mb-6 rounded-2xl border border-teal-400/15 bg-teal-400/8 p-4 text-xs text-slate-300">
             <p className="font-medium text-white">{productBrand.workspace}</p>
-            <p className="mt-1 text-slate-400">Client workspace for {productBrand.customer}</p>
-            <p className="mt-1 text-slate-500">Projects, quote requests, files, and completion history in one place.</p>
+            <p className="mt-1 text-slate-400">Workspace for {productBrand.customer}</p>
+            <p className="mt-1 text-slate-500">Projects, requests, files, updates, and completion history in one place.</p>
             <p className="mt-1 text-slate-500">In partnership with {productBrand.partner}</p>
           </div>
 
@@ -118,7 +118,7 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
         </main>
 
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-slate-950/92 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 backdrop-blur lg:hidden">
-          <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+          <div className="mx-auto grid max-w-xl grid-cols-6 gap-1">
             {mobileNavigation.map((item) => {
               const Icon = item.icon;
               return (

@@ -8,7 +8,7 @@ import { can, filterProjectsForUser } from '../utils/permissions';
 import type { Project, ProjectStatus, Role } from '../types/domain';
 
 type ReportType =
-  | 'rollout-summary'
+  | 'workspace-summary'
   | 'completed-projects'
   | 'delayed-projects'
   | 'outstanding-quotes'
@@ -29,14 +29,14 @@ const statusLabels: Record<ProjectStatus, string> = {
 };
 
 const reportTypes: Array<{ value: ReportType; label: string; description: string }> = [
-  { value: 'rollout-summary', label: 'Rollout summary', description: 'All branches with progress, stage, status, installer, and key dates.' },
-  { value: 'completed-projects', label: 'Completed projects', description: 'Completed rollout records for handover, signoff, and invoice checks.' },
+  { value: 'workspace-summary', label: 'Workspace summary', description: 'All sites with progress, stage, status, delivery partner, project type, and key dates.' },
+  { value: 'completed-projects', label: 'Completed projects', description: 'Completed project records for handover, signoff, and invoice checks.' },
   { value: 'delayed-projects', label: 'Delayed and at-risk', description: 'Delayed, on-hold, or overdue projects needing escalation.' },
   { value: 'outstanding-quotes', label: 'Outstanding quotes', description: 'Quotation requested or received items waiting for the next commercial step.' },
   { value: 'awaiting-approval', label: 'Awaiting approval', description: 'Artwork, quotation, PO, and client approval bottlenecks.' },
-  { value: 'installation-schedule', label: 'Installation schedule', description: 'Installers, branches, towns, and planned installation dates.' },
-  { value: 'photos-signoff', label: 'Photos and signoff', description: 'Installed branches that still need photos, client signoff, or closeout.' },
-  { value: 'installer-performance', label: 'Installer performance', description: 'Installer workload, completed jobs, delays, and average progress.' },
+  { value: 'installation-schedule', label: 'Delivery schedule', description: 'Delivery partners, sites, towns, and planned delivery or installation dates.' },
+  { value: 'photos-signoff', label: 'Evidence and signoff', description: 'Delivered projects that still need photos, client signoff, or closeout.' },
+  { value: 'installer-performance', label: 'Delivery partner performance', description: 'Partner workload, completed jobs, delays, and average progress.' },
 ];
 
 const dateFields: Array<{ value: DateField; label: string }> = [
@@ -47,10 +47,10 @@ const dateFields: Array<{ value: DateField; label: string }> = [
 ];
 
 const roleReportGuidance: Record<Role, string[]> = {
-  colourpix_admin: ['Full rollout summary', 'Delayed and at-risk projects', 'Installer performance', 'Outstanding quotes and approvals'],
-  psg_head_office: ['Province and branch progress', 'Awaiting approval items', 'Completed handover reports', 'Delayed escalation list'],
-  psg_branch_manager: ['My branch status', 'Approval and signoff actions', 'Installation schedule', 'Photos outstanding'],
-  sign_company: ['Assigned installation schedule', 'Site survey pipeline', 'Photos and signoff outstanding', 'Delayed jobs by installer'],
+  colourpix_admin: ['Full workspace summary', 'Delayed and at-risk projects', 'Delivery partner performance', 'Outstanding quotes and approvals'],
+  psg_head_office: ['Province and site progress', 'Awaiting approval items', 'Completed handover reports', 'Delayed escalation list'],
+  psg_branch_manager: ['My site status', 'Approval and signoff actions', 'Delivery schedule', 'Evidence outstanding'],
+  sign_company: ['Assigned delivery schedule', 'Site survey pipeline', 'Evidence and signoff outstanding', 'Delayed jobs by delivery partner'],
 };
 
 function uniqueSorted(values: string[]) {
@@ -76,7 +76,7 @@ function projectMatchesReportType(project: Project, reportType: ReportType) {
     case 'photos-signoff':
       return ['Installed', 'Photos Uploaded', 'Client Signoff'].includes(project.currentStage);
     case 'installer-performance':
-    case 'rollout-summary':
+    case 'workspace-summary':
     default:
       return true;
   }
@@ -122,10 +122,11 @@ function formatFileName(reportName: string) {
 }
 
 function buildReportTable(projects: Project[], reportName: string) {
-  const headers = ['Project ID', 'Branch', 'Town', 'Province', 'Manager', 'Installer', 'Stage', 'Status', 'Progress', 'Target', 'Installation', 'Completed', 'Updated'];
+  const headers = ['Project ID', 'Site', 'Project Type', 'Town', 'Province', 'Manager', 'Delivery Partner', 'Stage', 'Status', 'Progress', 'Target', 'Delivery', 'Completed', 'Updated'];
   const rows = projects.map((project) => [
     project.id,
     project.branch,
+    project.projectTypeName,
     project.town,
     project.province,
     project.manager,
@@ -196,7 +197,7 @@ function openPdfReport(projects: Project[], reportName: string) {
 
 export function ReportsPage() {
   const { user, roleLabel } = useAuth();
-  const [reportType, setReportType] = useState<ReportType>('rollout-summary');
+  const [reportType, setReportType] = useState<ReportType>('workspace-summary');
   const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
   const [stage, setStage] = useState('all');
   const [province, setProvince] = useState('all');
@@ -213,7 +214,7 @@ export function ReportsPage() {
 
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
   const selectedReport = reportTypes.find((report) => report.value === reportType) ?? reportTypes[0];
-  const guidance = user ? roleReportGuidance[user.role] : ['Rollout summary', 'Delayed projects', 'Completed projects', 'Installation schedule'];
+  const guidance = user ? roleReportGuidance[user.role] : ['Workspace summary', 'Delayed projects', 'Completed projects', 'Delivery schedule'];
   const normalizedQuery = query.trim().toLowerCase();
 
   const filterOptions = useMemo(() => ({
@@ -259,7 +260,7 @@ export function ReportsPage() {
           <div>
             <h2 className="text-2xl font-semibold text-white">Reports</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-              Pull practical rollout reports by branch, province, installer, stage, status, search term, and date range. Exports are Excel or PDF only.
+              Pull practical workspace reports by site, province, delivery partner, project type, stage, status, search term, and date range. Exports are Excel or PDF only.
             </p>
           </div>
           <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
@@ -275,7 +276,7 @@ export function ReportsPage() {
             <Shield className="mt-1 h-5 w-5 text-emerald-300" />
             <div>
               <h3 className="text-lg font-semibold text-white">Useful reports for this role</h3>
-              <p className="mt-1 text-sm text-slate-400">Common client, licensee, and delivery-partner reporting pulls.</p>
+              <p className="mt-1 text-sm text-slate-400">Common client, workspace owner, and delivery-partner reporting pulls.</p>
             </div>
           </div>
           <div className="mt-4 grid gap-2 md:grid-cols-2">
@@ -341,9 +342,9 @@ export function ReportsPage() {
           </label>
 
           <label className="grid gap-2 text-sm text-slate-300">
-            Installer
+            Delivery partner
             <select value={installer} onChange={(event) => setInstaller(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-              <option value="all">All installers</option>
+              <option value="all">All delivery partners</option>
               {filterOptions.installers.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
@@ -373,7 +374,7 @@ export function ReportsPage() {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Branch, town, manager, installer, project ID..."
+                placeholder="Site, town, manager, delivery partner, project ID..."
                 className="w-full rounded-2xl border border-white/10 bg-slate-900/80 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
               />
             </div>
@@ -408,10 +409,11 @@ export function ReportsPage() {
             <thead className="bg-white/5 text-xs uppercase tracking-[0.18em] text-slate-400">
               <tr>
                 <th className="px-5 py-4 font-medium">Project</th>
-                <th className="px-5 py-4 font-medium">Branch</th>
+                <th className="px-5 py-4 font-medium">Site</th>
+                <th className="px-5 py-4 font-medium">Type</th>
                 <th className="px-5 py-4 font-medium">Location</th>
                 <th className="px-5 py-4 font-medium">Manager</th>
-                <th className="px-5 py-4 font-medium">Installer</th>
+                <th className="px-5 py-4 font-medium">Delivery partner</th>
                 <th className="px-5 py-4 font-medium">Stage</th>
                 <th className="px-5 py-4 font-medium">Status</th>
                 <th className="px-5 py-4 font-medium">Target</th>
@@ -420,11 +422,12 @@ export function ReportsPage() {
             </thead>
             <tbody className="divide-y divide-white/10">
               {isLoading ? (
-                <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
+                <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : filteredProjects.length > 0 ? filteredProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300">
                   <td className="px-5 py-4 text-white">{project.id}</td>
                   <td className="px-5 py-4">{project.branch}</td>
+                  <td className="px-5 py-4">{project.projectTypeName}</td>
                   <td className="px-5 py-4">{project.town}, {project.province}</td>
                   <td className="px-5 py-4">{project.manager}</td>
                   <td className="px-5 py-4">{project.installer}</td>
@@ -434,7 +437,7 @@ export function ReportsPage() {
                   <td className="px-5 py-4">{project.progress}%</td>
                 </tr>
               )) : (
-                <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-400">No projects match the selected report filters.</td></tr>
+                <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">No projects match the selected report filters.</td></tr>
               )}
             </tbody>
           </table>

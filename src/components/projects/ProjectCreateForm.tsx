@@ -6,18 +6,20 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createProject, type CreateProjectInput } from '../../services/portalService';
 import { timelineStages } from '../../constants/portal';
 import { defaultGraphicsPartner, defaultWorkspace } from '../../constants/workspaces';
+import { defaultProjectTemplate, projectTemplateOptions } from '../../constants/projectTemplates';
 
 const projectSchema = z.object({
   id: z.string().min(3, 'Project ID is required'),
+  projectType: z.enum(['signage_rollout', 'general_rollout', 'service_delivery']),
   workspaceName: z.string().min(2, 'Workspace is required'),
   clientCompany: z.string().min(2, 'Client company is required'),
-  graphicsPartner: z.string().min(2, 'Graphics partner is required'),
+  graphicsPartner: z.string().min(2, 'Service partner is required'),
   province: z.string().min(2, 'Province is required'),
   town: z.string().min(2, 'Town is required'),
-  branch: z.string().min(2, 'Branch is required'),
+  branch: z.string().min(2, 'Site or project location is required'),
   manager: z.string().min(2, 'Manager is required'),
   managerEmail: z.string().email('Enter a valid manager email'),
-  installer: z.string().min(2, 'Installer is required'),
+  installer: z.string().min(2, 'Delivery partner is required'),
   designer: z.string().min(2, 'Designer is required'),
   currentStage: z.string().min(1, 'Stage is required'),
   status: z.enum(['completed', 'in_progress', 'awaiting_approval', 'delayed', 'on_hold', 'cancelled']),
@@ -31,7 +33,7 @@ const projectSchema = z.object({
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
 function generateProjectId() {
-  return `PSG-${Math.floor(Date.now() % 100000).toString().padStart(5, '0')}`;
+  return `RHQ-${Math.floor(Date.now() % 100000).toString().padStart(5, '0')}`;
 }
 
 export function ProjectCreateForm() {
@@ -42,6 +44,7 @@ export function ProjectCreateForm() {
     resolver: zodResolver(projectSchema),
     defaultValues: {
       id: defaultProjectId,
+      projectType: defaultProjectTemplate.id,
       workspaceName: defaultWorkspace.name,
       clientCompany: defaultWorkspace.clientCompany,
       graphicsPartner: defaultGraphicsPartner,
@@ -69,6 +72,7 @@ export function ProjectCreateForm() {
       await queryClient.invalidateQueries({ queryKey: ['portal-summary'] });
       reset({
         id: generateProjectId(),
+        projectType: defaultProjectTemplate.id,
         workspaceName: defaultWorkspace.name,
         clientCompany: defaultWorkspace.clientCompany,
         graphicsPartner: defaultGraphicsPartner,
@@ -115,6 +119,16 @@ export function ProjectCreateForm() {
         </label>
 
         <label className="grid gap-2 text-sm text-slate-300">
+          Project type
+          <select {...register('projectType')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none">
+            {projectTemplateOptions.map((template) => (
+              <option key={template.id} value={template.id}>{template.name}</option>
+            ))}
+          </select>
+          {errors.projectType ? <span className="text-xs text-red-300">{errors.projectType.message}</span> : null}
+        </label>
+
+        <label className="grid gap-2 text-sm text-slate-300">
           Workspace
           <input {...register('workspaceName')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
           {errors.workspaceName ? <span className="text-xs text-red-300">{errors.workspaceName.message}</span> : null}
@@ -127,13 +141,13 @@ export function ProjectCreateForm() {
         </label>
 
         <label className="grid gap-2 text-sm text-slate-300">
-          Graphics partner
+          Service partner
           <input {...register('graphicsPartner')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
           {errors.graphicsPartner ? <span className="text-xs text-red-300">{errors.graphicsPartner.message}</span> : null}
         </label>
 
         <label className="grid gap-2 text-sm text-slate-300">
-          Branch
+          Site / location
           <input {...register('branch')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
           {errors.branch ? <span className="text-xs text-red-300">{errors.branch.message}</span> : null}
         </label>
@@ -163,7 +177,7 @@ export function ProjectCreateForm() {
         </label>
 
         <label className="grid gap-2 text-sm text-slate-300">
-          Installer
+          Delivery partner
           <input {...register('installer')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
           {errors.installer ? <span className="text-xs text-red-300">{errors.installer.message}</span> : null}
         </label>

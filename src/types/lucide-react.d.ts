@@ -20,4 +20,6 @@ declare module 'lucide-react' {
   export const Database: LucideIcon;
   export const KeyRound: LucideIcon;
   export const ShieldCheck: LucideIcon;
+  export const LifeBuoy: LucideIcon;
+  export const Mail: LucideIcon;
 }

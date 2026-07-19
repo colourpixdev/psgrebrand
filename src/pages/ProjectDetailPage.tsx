@@ -251,12 +251,13 @@ export function ProjectDetailPage() {
         <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Project ID {selectedProject.id}</p>
         <h2 className="mt-2 text-3xl font-semibold text-white">{selectedProject.branch}</h2>
         <p className="mt-2 text-sm text-slate-400">
-          {selectedProject.town}, {selectedProject.province} · Manager {selectedProject.manager} · Installer {selectedProject.installer}
+          {selectedProject.town}, {selectedProject.province} · Manager {selectedProject.manager} · {selectedProject.deliveryPartnerLabel} {selectedProject.installer}
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-4 text-sm text-slate-300">
           <div>Workspace: <span className="text-white">{selectedProject.workspaceName}</span></div>
           <div>Client: <span className="text-white">{selectedProject.clientCompany}</span></div>
-          <div>Design Partner: <span className="text-white">{selectedProject.graphicsPartner}</span></div>
+          <div>Project type: <span className="text-white">{selectedProject.projectTypeName}</span></div>
+          <div>Service partner: <span className="text-white">{selectedProject.graphicsPartner}</span></div>
           <div>Current Status: <span className="text-white">{selectedProject.currentStage}</span></div>
           <div>Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>
           <div>Installation Date: <span className="text-white">{selectedProject.installationDate}</span></div>
@@ -270,7 +271,7 @@ export function ProjectDetailPage() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-white">Project Questions</h3>
-            <p className="mt-1 text-sm text-slate-400">Client users can request a stage update here. The design partner can answer and update project details in the same response.</p>
+            <p className="mt-1 text-sm text-slate-400">Client users can request a stage update here. The workspace team can answer and update project details in the same response.</p>
           </div>
           {unreadAnswers.length > 0 ? <span className="rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100">{unreadAnswers.length} new answer{unreadAnswers.length === 1 ? '' : 's'}</span> : null}
         </div>
@@ -279,7 +280,7 @@ export function ProjectDetailPage() {
           <div className="mt-5 grid gap-3 rounded-2xl border border-sky-400/15 bg-sky-500/10 p-4">
             <div className="grid gap-3 md:grid-cols-[1fr_220px]">
               <label className="grid gap-2 text-sm text-slate-300">
-                Question for Colourpix
+                Question for workspace team
                 <textarea value={questionMessage} onChange={(event) => setQuestionMessage(event.target.value)} rows={3} placeholder="Please confirm whether artwork approval is still blocking this stage." className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50" />
               </label>
               <label className="grid content-start gap-2 text-sm text-slate-300">
@@ -308,7 +309,7 @@ export function ProjectDetailPage() {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-semibold text-white">{question.author}</p>
-                      <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-xs text-slate-200">{question.status === 'answered' ? 'Answered' : 'Awaiting Colourpix'}</span>
+                      <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-xs text-slate-200">{question.status === 'answered' ? 'Answered' : 'Awaiting workspace team'}</span>
                       {question.requestStage ? <span className="rounded-full border border-sky-400/20 bg-sky-500/10 px-2.5 py-1 text-xs text-sky-100">{question.requestStage}</span> : null}
                     </div>
                     <p className="mt-2 text-sm leading-6 text-slate-200">{question.message}</p>
@@ -324,7 +325,7 @@ export function ProjectDetailPage() {
                 {question.answer || question.relatedChanges?.length ? (
                   <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/50 p-4">
                     <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                      <span className="font-semibold text-emerald-100">{question.answeredBy ?? 'Colourpix'}</span>
+                      <span className="font-semibold text-emerald-100">{question.answeredBy ?? 'Workspace team'}</span>
                       {question.answeredAt ? <span>{new Date(question.answeredAt).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })}</span> : null}
                     </div>
                     {question.answer ? <p className="mt-2 text-sm leading-6 text-slate-200">{question.answer}</p> : null}

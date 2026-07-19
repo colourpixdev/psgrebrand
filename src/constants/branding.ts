@@ -1,6 +1,6 @@
 export const productBrand = {
   name: 'RolloutHQ™',
-  description: 'Enterprise Rollout Management Platform',
+  description: 'Configurable Project Workspace Platform',
   developer: 'Francois Botha',
   licensee: 'Francois Botha',
   customer: 'PSG',

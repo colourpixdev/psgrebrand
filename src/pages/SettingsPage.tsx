@@ -42,7 +42,7 @@ export function SettingsPage() {
           <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4">
             <Database className="text-sky-200" width={22} height={22} />
             <p className="mt-3 text-sm font-semibold text-white">Profiles</p>
-            <p className="mt-1 text-sm leading-6 text-slate-400">Workspace access is hydrated from name, email, branch, and role values in the Supabase profiles table.</p>
+            <p className="mt-1 text-sm leading-6 text-slate-400">Workspace access is hydrated from name, email, site scope, and role values in the Supabase profiles table.</p>
           </div>
           <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4">
             <CheckCircle2 className="text-sky-200" width={22} height={22} />

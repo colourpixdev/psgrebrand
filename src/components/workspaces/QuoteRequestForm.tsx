@@ -31,7 +31,7 @@ const requestTypeLabels: Record<RequestType, string> = {
 
 const requestTypeDescriptions: Record<RequestType, string> = {
   project_quote: 'For a new project inside an existing workspace.',
-  new_workspace: 'For a new client, programme, or rollout workspace.',
+  new_workspace: 'For a new client, programme, or managed project workspace.',
   user_access: 'For a user who needs access to an existing workspace.',
 };
 
@@ -80,12 +80,12 @@ export function QuoteRequestForm({
       `Project: ${values.projectName}`,
       `Location / branch / site: ${values.location}`,
       `Access or role needed: ${values.roleRequested}`,
-      `Default graphics partner: ${defaultGraphicsPartner}`,
+      `Preferred service partner: ${defaultGraphicsPartner}`,
       '',
       'Project brief:',
       values.brief,
       '',
-      `${productBrand.name} keeps projects grouped inside workspace databases so users can view the rollout history, quote requests, approvals, files, questions, and completion record in one place.`,
+      `${productBrand.name} keeps projects grouped inside workspace databases so users can view project history, quote requests, approvals, files, questions, and completion records in one place.`,
     ].join('\n');
 
     window.location.href = `mailto:francois@colourpix.co.za?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -97,7 +97,7 @@ export function QuoteRequestForm({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-white">Request a quote, workspace, or access</p>
-          <p className="mt-1 text-sm leading-6 text-slate-400">New and existing clients can request signage work while keeping every project tied to the right workspace.</p>
+          <p className="mt-1 text-sm leading-6 text-slate-400">New and existing clients can request project work while keeping every record tied to the right workspace.</p>
         </div>
         <span className="rounded-full border border-teal-300/25 bg-teal-300/10 px-3 py-1 text-xs font-semibold text-teal-100">francois@colourpix.co.za</span>
       </div>
@@ -142,7 +142,7 @@ export function QuoteRequestForm({
 
         <label className="grid gap-2 text-sm text-slate-300">
           Project name
-          <input {...register('projectName')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-teal-300/50" placeholder="Store refresh, pylon signs, public wayfinding..." />
+          <input {...register('projectName')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-teal-300/50" placeholder="Store refresh, rollout, service request, public wayfinding..." />
           {errors.projectName ? <span className="text-xs text-red-300">{errors.projectName.message}</span> : null}
         </label>
 
@@ -154,7 +154,7 @@ export function QuoteRequestForm({
 
         <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">
           Access or role needed
-          <input {...register('roleRequested')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-teal-300/50" placeholder="Client admin, project manager, installer, viewer..." />
+          <input {...register('roleRequested')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-teal-300/50" placeholder="Client admin, project manager, delivery partner, viewer..." />
           {errors.roleRequested ? <span className="text-xs text-red-300">{errors.roleRequested.message}</span> : null}
         </label>
       </div>

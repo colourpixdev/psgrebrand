@@ -26,6 +26,7 @@ export function SearchPage() {
           p.installer.toLowerCase().includes(q) ||
           p.id.toLowerCase().includes(q) ||
           p.currentStage.toLowerCase().includes(q) ||
+          p.projectTypeName.toLowerCase().includes(q) ||
           p.status.toLowerCase().includes(q) ||
           p.manager.toLowerCase().includes(q),
       )
@@ -35,12 +36,12 @@ export function SearchPage() {
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
         <h2 className="text-2xl font-semibold text-white">Search</h2>
-        <p className="mt-2 text-sm text-slate-400">Search by branch, town, province, installer, status, or project ID.</p>
+        <p className="mt-2 text-sm text-slate-400">Search by site, location, project type, delivery partner, status, or project ID.</p>
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="e.g. Hermanus, delayed, ABC Signage, PSG-00123…"
+          placeholder="e.g. Hermanus, delayed, delivery partner, PSG-00123..."
           className="mt-4 w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400/50 md:max-w-lg"
         />
         {q ? (
@@ -56,8 +57,9 @@ export function SearchPage() {
             <Link key={project.id} to={`/projects/${project.id}`} className="block rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft transition hover:border-sky-400/40 hover:bg-white/5">
               <p className="text-lg font-semibold text-white">{project.branch}</p>
               <p className="mt-1 text-sm text-slate-400">{project.id}</p>
+              <p className="mt-3 text-xs uppercase tracking-[0.2em] text-teal-200/80">{project.projectTypeName}</p>
               <p className="mt-3 text-sm text-slate-300">{project.town}, {project.province}</p>
-              <p className="text-sm text-slate-300">Installer: {project.installer}</p>
+              <p className="text-sm text-slate-300">{project.deliveryPartnerLabel}: {project.installer}</p>
               <p className="text-sm text-slate-300">Stage: {project.currentStage}</p>
               <p className="text-sm text-slate-300">Status: {project.status}</p>
             </Link>

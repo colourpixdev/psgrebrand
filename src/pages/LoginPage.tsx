@@ -64,6 +64,7 @@ export function LoginPage() {
               <p className="text-sm uppercase tracking-[0.3em] text-teal-300">Secure access</p>
               <h2 className="mt-3 text-4xl font-semibold text-white">{productBrand.name}</h2>
               <p className="mt-2 text-base text-slate-200">{productBrand.description}</p>
+              <p className="mt-3 text-sm leading-6 text-slate-400">A tailored workspace service for companies that need clients, teams, suppliers, and project records in one controlled place.</p>
             </div>
           </div>
 
@@ -72,7 +73,7 @@ export function LoginPage() {
               <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Current workspace</p>
               <p className="mt-1 font-medium text-white">{productBrand.workspace}</p>
             </div>
-            <p className="text-sm leading-6 text-slate-400">Sign in to see the projects, quotes, files, questions, and project journal entries that belong to your workspace.</p>
+            <p className="text-sm leading-6 text-slate-400">Sign in to see the projects, requests, files, questions, voice updates, and project journal entries that belong to your workspace.</p>
           </div>
 
           <form onSubmit={onSubmit} className="mt-6 rounded-3xl border border-white/10 bg-slate-950/55 p-5">
@@ -179,8 +180,8 @@ export function LoginPage() {
 
         <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-6 shadow-soft backdrop-blur-xl">
           <p className="text-xs uppercase tracking-[0.3em] text-teal-200/80">New request</p>
-          <h3 className="mt-3 text-2xl font-semibold text-white">Ask for a quote or a workspace</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-400">New clients can request a quote before they have a login. Existing clients can sign in first and request more projects from inside their workspace.</p>
+          <h3 className="mt-3 text-2xl font-semibold text-white">Ask for a project quote or tailored workspace</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-400">New clients can request a project before they have a login. Existing clients can sign in first and request more work from inside their workspace.</p>
           <div className="mt-5">
             <QuoteRequestForm allowedRequestTypes={['project_quote', 'new_workspace', 'user_access']} defaultRequestType="project_quote" compact />
           </div>

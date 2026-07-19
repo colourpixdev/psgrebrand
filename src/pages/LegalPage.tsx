@@ -15,7 +15,7 @@ const sections = [
   },
   {
     title: 'Project Data Retention',
-    body: 'RolloutHQ™ is an operational workspace and project database, but it is not guaranteed to be a permanent archive after a project is marked completed by Colourpix or RolloutHQ. Completed records, files, communications, and related project data may be archived, exported, or removed as part of operational cleanup. Users remain responsible for keeping independent copies of documents they are legally, financially, or operationally required to retain.',
+    body: 'RolloutHQ™ is an operational workspace and project database, but it is not guaranteed to be a permanent archive after a project is marked completed by the workspace owner, service partner, or RolloutHQ. Completed records, files, communications, and related project data may be archived, exported, or removed as part of operational cleanup. Users remain responsible for keeping independent copies of documents they are legally, financially, or operationally required to retain.',
   },
   {
     title: 'AI Disclaimer',
@@ -29,7 +29,7 @@ export function LegalPage() {
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
         <p className="text-sm uppercase tracking-[0.32em] text-teal-200/80">Legal</p>
         <h2 className="mt-3 text-3xl font-semibold text-white">{productBrand.name} licence and use terms</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Licensed to {productBrand.licensee} for the {productBrand.workspace} workspace. Current customer context: {productBrand.customer}.</p>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Licensed to {productBrand.licensee}. Current workspace context: {productBrand.workspace} for {productBrand.customer}.</p>
       </section>
 
       <section className="grid gap-4">

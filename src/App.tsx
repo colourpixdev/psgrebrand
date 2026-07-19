@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, FileText, Shield, Search, Users, MapPinned, Mic2, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, KanbanSquare, FileText, Shield, Search, Users, MapPinned, Mic2, ShieldCheck, LifeBuoy } from 'lucide-react';
 import { AppShell } from './layouts/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -17,6 +17,7 @@ const SearchPage = lazy(() => import('./pages/SearchPage').then((module) => ({ d
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const UsersPage = lazy(() => import('./pages/UsersPage').then((module) => ({ default: module.UsersPage })));
 const VoiceUpdatesPage = lazy(() => import('./pages/VoiceUpdatesPage').then((module) => ({ default: module.VoiceUpdatesPage })));
+const SupportPage = lazy(() => import('./pages/SupportPage').then((module) => ({ default: module.SupportPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const LegalPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.LegalPage })));
 
@@ -27,6 +28,7 @@ const navigation = [
   { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/map', label: 'Map', icon: MapPinned },
   { to: '/voice-updates', label: 'Voice Updates', icon: Mic2 },
+  { to: '/support', label: 'Support', icon: LifeBuoy },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/settings', label: 'Settings', icon: Shield },
   { to: '/about', label: 'About', icon: ShieldCheck },
@@ -42,6 +44,7 @@ const routeTitles: Record<string, string> = {
   '/search': 'Search',
   '/map': 'Map',
   '/voice-updates': 'Voice Updates',
+  '/support': 'Support',
   '/about': 'About',
   '/legal': 'Legal',
   '/login': 'Sign in',
@@ -161,6 +164,7 @@ function AppRoutes() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/voice-updates" element={<VoiceUpdatesPage />} />
+          <Route path="/support" element={<SupportPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/legal" element={<LegalPage />} />
         </Routes>

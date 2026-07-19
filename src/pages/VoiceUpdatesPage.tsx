@@ -50,15 +50,15 @@ type SpeechRecognitionInstance = {
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
 
 const statusOptions: ProjectStatus[] = ['in_progress', 'awaiting_approval', 'delayed', 'on_hold', 'cancelled', 'completed'];
-const genericProjectWords = new Set(['psg', 'branch', 'office', 'wealth', 'insure', 'signage', 'project']);
+const genericProjectWords = new Set(['psg', 'branch', 'office', 'wealth', 'insure', 'signage', 'project', 'site', 'location', 'rollout', 'service']);
 const voicePromptChips = [
-  'Say the branch or project ID first',
+  'Say the site or project ID first',
   'Mention the new stage',
   'Add install or target dates',
   'Say what is blocking progress',
   'End with follow-up tasks',
 ];
-const sampleVoiceUpdate = 'PSG Hermanus is now in production. ABC Signage confirmed installation for 15 August. Please follow up the outstanding PO.';
+const sampleVoiceUpdate = 'Hermanus project is now in production. The delivery partner confirmed installation for 15 August. Please follow up the outstanding approval.';
 
 function progressForStage(stage: ProjectStage) {
   const index = timelineStages.indexOf(stage);

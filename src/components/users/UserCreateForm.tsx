@@ -73,7 +73,7 @@ export function UserCreateForm() {
         </label>
 
         <label className="grid gap-2 text-sm text-slate-300">
-          Branch
+          Site or branch scope
           <input {...register('branch')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" placeholder="Optional" />
           {errors.branch ? <span className="text-xs text-red-300">{errors.branch.message}</span> : null}
         </label>

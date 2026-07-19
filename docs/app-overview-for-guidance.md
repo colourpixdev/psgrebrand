@@ -2,43 +2,57 @@
 
 ## Executive Summary
 
-RolloutHQ™ is intended to be a secure, role-aware enterprise platform for managing multi-site rollout work across separate client workspaces. The application is licensed to Francois Botha, with the first workspace configured for the PSG National Signage Rollout and Colourpix (Pty) Ltd positioned as the default graphics and design partner at this stage. Its purpose is to replace scattered spreadsheets, WhatsApp messages, email threads, and manual status chasing with one shared project record for every site, branch, or public signage job.
+RolloutHQ™ is intended to be a secure, role-aware project workspace platform for managing repeatable work across separate client workspaces. The application is licensed to Francois Botha, with the first workspace configured for the PSG National Signage Rollout and Colourpix (Pty) Ltd positioned as the default service partner at this stage. PSG signage is the first proof-of-concept template, not the limit of the product. Its purpose is to replace scattered spreadsheets, WhatsApp messages, email threads, and manual status chasing with one shared project record for every site, location, customer request, rollout item, or delivery job.
 
-The platform gives platform owners, Colourpix, client head office teams, client branch or site users, and delivery partners a controlled view of the rollout work relevant to them. It tracks each project from initial setup through surveys, artwork, approvals, quotations, production, installation, photos, client signoff, and completion.
+The platform gives platform owners, workspace administrators, client administrators, site contacts, and delivery partners a controlled view of the project work relevant to them. It tracks each project from initial setup through information gathering, approvals, quotations, production or delivery, evidence, signoff, and completion.
 
-The current version is a working production-oriented scaffold connected to Supabase for authentication, project data, file storage, role-based access, and live project updates. It already supports dashboard reporting, project workflow management, file uploads, comments, project Q&A requests, voice-note batch updates, search, maps, reports, and user profile management.
+The current version is a working production-oriented scaffold connected to Supabase for authentication, project data, file storage, role-based access, and live project updates. It already supports dashboard reporting, project workflow management, project templates, file uploads, comments, project Q&A requests, voice-note batch updates, search, maps, reports, and user profile management.
 
 ## Intended Use
 
-The app is intended to serve as the single operational source of truth for signage rollout projects across multiple workspaces. PSG is the current active client workspace, but the product is intended to support other private and public signage projects over time.
+The app is intended to serve as the single operational source of truth for managed projects across multiple client workspaces. PSG signage is the current active workspace and default template, but the product is intended to support other private, public, signage, service delivery, facilities, operations, and multi-location project workflows over time.
 
 It should help the business answer questions such as:
 
-- Which branches are in progress, delayed, awaiting approval, or completed?
-- What stage is each branch currently at?
+- Which sites, jobs, requests, or locations are in progress, delayed, awaiting approval, or completed?
+- What stage is each project currently at?
 - Who is responsible for the next action?
-- Which branches need PSG approval, artwork confirmation, a purchase order, photos, or signoff?
-- Which installer or sign company is assigned?
+- Which projects need client approval, design confirmation, a purchase order, evidence, or signoff?
+- Which delivery partner, service partner, or supplier is assigned?
 - What journal entries, files, questions, tasks, decisions, and activity belong to each project?
 - Which client users are waiting for an answer from the design partner?
 - What has changed recently, and who made the update?
 
-The authenticated workspace is not meant to be a public website. It is an internal operational tool for managing rollouts and communicating status clearly between clients, Colourpix, and suppliers. The public landing page may collect access and new-workspace requests, which can then be reviewed before users are invited.
+The authenticated workspace is not meant to be a public website. It is an internal operational tool for managing project delivery and communicating status clearly between clients, workspace administrators, service partners, and suppliers. The public landing page may collect quote, access, and new-workspace requests, which can then be reviewed before users are invited.
+
+Every signed-in user should also have a clear support channel. Project or workspace questions should go to the workspace administrator. Product support, functionality requests, report customization requests, workflow/template suggestions, and technical issues should go to RolloutHQ support with the workspace administrator copied so requests can be approved before implementation.
 
 ## Workspace Model
 
-RolloutHQ™ should support separate client workspaces so users only see the projects they are meant to see. A workspace can represent a national client rollout, a regional programme, a public signage programme, or a dedicated customer environment.
+RolloutHQ™ should support separate client workspaces so users only see the projects they are meant to see. A workspace can represent a national client rollout, a regional programme, a public works programme, a signage deployment, a service-delivery queue, or a dedicated customer environment.
 
 The current default workspace is PSG National Signage Rollout. Future workspaces should carry at least:
 
 - Workspace name
 - Client company
-- Default graphics or design partner
+- Default service partner
 - Member users
 - Platform administrators
 - Project records and journal entries scoped to that workspace
 
-Francois Botha and Beverley should have all-workspace administrative access. Other users should belong only to the specific workspaces they are invited into. Colourpix (Pty) Ltd is currently the default design partner for all workspaces and should be presented as "in partnership with Colourpix (Pty) Ltd" rather than as the licence owner.
+Francois Botha and Beverley should have all-workspace administrative access. Other users should belong only to the specific workspaces they are invited into. Colourpix (Pty) Ltd is currently the default service partner for all workspaces and should be presented as "in partnership with Colourpix (Pty) Ltd" rather than as the licence owner.
+
+## Project Templates and SaaS Direction
+
+RolloutHQ™ should be treated as a configurable service that can be sold or resold to companies that need controlled project workspaces. The platform should support project templates so each workspace can use language and workflows that match the work being managed.
+
+Current template direction:
+
+- Signage rollout: multi-site signage, graphics, approvals, production, installation, photos, and signoff.
+- General rollout: repeatable delivery across locations, departments, customers, or operational sites.
+- Service delivery: customer requests, supplier updates, approvals, operational tasks, and closeout records.
+
+The code should continue to preserve legacy database field names such as branch and installer where they already exist, but the user interface should increasingly display generic labels such as site, location, delivery partner, service partner, workspace administrator, client administrator, and site contact.
 
 ## Recommended Product Direction: One Project Journal
 
@@ -50,19 +64,19 @@ Every significant event would become a timestamped journal entry, for example:
 
 - Project created
 - Survey uploaded
-- PSG question asked
-- Colourpix answer posted
+- Client question asked
+- Workspace answer posted
 - Stage changed
 - File uploaded
 - Voice-note transcript processed
 - AI suggestion applied
 - Task assigned
-- Installer update received
+- Delivery partner update received
 - Installation photos uploaded
 - Client signed off
 - Project completed
 
-This would make the Project Journal the complete story of the branch from start to finish.
+This would make the Project Journal the complete story of the project from start to finish.
 
 ### Why This Matters
 
@@ -112,7 +126,7 @@ Every journal entry should carry structured metadata:
 - Linked project fields
 - Linked decisions or approvals
 
-This metadata is what makes reporting powerful. For example, the business could later report on all PSG questions in June, all installer-uploaded files last month, average response time from PSG question to Colourpix answer, or all projects with repeated communication and delayed status.
+This metadata is what makes reporting powerful. For example, the business could later report on all client questions in June, all delivery-partner uploaded files last month, average response time from client question to workspace answer, or all projects with repeated communication and delayed status.
 
 ### Visibility Rules
 
@@ -120,16 +134,16 @@ Not every journal entry should be visible to every user.
 
 Recommended visibility options:
 
-- Colourpix only
-- PSG and Colourpix
-- Installer and Colourpix
+- Workspace administrators only
+- Client and workspace administrators
+- Delivery partner and workspace administrators
 - Everyone on the project
 
-This allows one journal to support internal notes, supplier communication, PSG-facing updates, and general project activity without splitting the project record across separate places.
+This allows one journal to support internal notes, supplier communication, client-facing updates, and general project activity without splitting the project record across separate places.
 
 ### Threaded Discussions
 
-Some journal entries should support replies. A PSG question, for example, may need a short conversation before it is closed.
+Some journal entries should support replies. A client question, for example, may need a short conversation before it is closed.
 
 Example:
 
@@ -147,7 +161,7 @@ Once all meaningful events live in one structured journal, the portal can genera
 
 Example summary:
 
-> Project currently sits in Production. Artwork was approved on 4 July. Quote accepted. Installation scheduled for 18 July. No outstanding PSG questions. One installer task is overdue. Waiting for installation photographs.
+> Project currently sits in Production. Artwork was approved on 4 July. Quote accepted. Delivery scheduled for 18 July. No outstanding client questions. One delivery-partner task is overdue. Waiting for completion evidence.
 
 This would help managers understand the current position without reading a long history manually.
 
@@ -167,7 +181,7 @@ Example:
 
 - Decision: Replace illuminated sign with ACM panel
 - Reason: Budget constraints
-- Approved by: PSG Head Office
+- Approved by: Client Administrator
 - Linked document: Quote 241.pdf
 
 This prevents later disputes or uncertainty about who approved a change and why.
@@ -222,7 +236,7 @@ Workflow policy should define whether a role can:
 - Reopen completed projects
 - Change target dates
 
-Business rules should then sit on top of these permissions. For example, an installer may be allowed to change stage, but only within the installation sequence: Production to Installation Scheduled, then Installation In Progress, then Installed.
+Business rules should then sit on top of these permissions. For example, a delivery partner may be allowed to change stage, but only within the delivery sequence: Production to Scheduled, then In Progress, then Delivered.
 
 ### Communication Policy
 
@@ -239,7 +253,7 @@ Communication policy should define whether a role can:
 - Mention users
 - Create internal notes
 
-For example, PSG branch managers should be able to ask Colourpix questions, but should not answer questions, delete communication, or create internal Colourpix notes.
+For example, site contacts should be able to ask workspace questions, but should not answer questions, delete communication, or create internal workspace notes.
 
 ### File Policy
 
@@ -313,11 +327,11 @@ The long-term model should be capability-based rather than hard-coding every rul
 
 Example capability:
 
-| Capability | Colourpix Admin | PSG Head Office | Branch Manager | Installer |
+| Capability | Workspace Administrator | Client Administrator | Site Contact | Delivery Partner |
 | --- | --- | --- | --- | --- |
 | Change project stage | Yes | Limited | No | Limited |
 | Upload files | Yes | Yes | Yes | Yes |
-| Answer PSG questions | Yes | No | No | No |
+| Answer client questions | Yes | No | No | No |
 | Invite users | Yes | No | No | No |
 
 This makes it easier to add a new role later without rewriting the whole permission system.
@@ -359,9 +373,9 @@ Every communication entry should record:
 
 Every journal entry should have a visibility level:
 
-- Internal: visible only to Colourpix
-- Operational: visible to Colourpix and installer
-- Client: visible to PSG
+- Internal: visible only to workspace administrators
+- Operational: visible to workspace administrators and delivery partners
+- Client: visible to client users
 - Public project: visible to everyone assigned to the project
 - Administrator: visible only to administrators
 
@@ -373,7 +387,7 @@ Every journal entry should include metadata that is searchable and filterable:
 - Category
 - Stage
 - Project
-- Branch
+- Site or location
 - Province
 - Author
 - Role
@@ -415,7 +429,7 @@ The system should also recalculate:
 
 ### Administrator Rules
 
-Colourpix administrators should be able to:
+Workspace administrators should be able to:
 
 - Modify any project
 - Override workflow rules
@@ -434,28 +448,28 @@ Colourpix administrators should be able to:
 
 ## User Groups and Access
 
-The portal currently supports four main role types.
+The portal currently supports four main role types. The internal role keys still use legacy PSG/Colourpix names for compatibility, but the visible product model should be generic.
 
 | Role | Intended User | Current Access |
 | --- | --- | --- |
-| Colourpix Administrator | Colourpix project/operations team, including Beverley or admin users | Full project visibility, project creation, workflow updates, file uploads, comments, tasks, voice updates, user management, settings, reports, and answering PSG questions |
-| PSG Head Office | PSG central rollout stakeholders | Full project visibility, reports, workflow/project visibility, voice updates, comments, tasks, and ability to ask Colourpix project questions |
-| PSG Branch Manager | Individual PSG branch users | Scoped project visibility for their branch, uploads/comments, reports, and ability to ask Colourpix project questions |
-| Sign Company | External installer/signage supplier | Scoped project visibility for assigned projects, workflow updates, uploads, comments, and tasks |
+| Workspace Administrator | Francois, Beverley, Colourpix, or the workspace operations team | Full project visibility, project creation, workflow updates, file uploads, comments, tasks, voice updates, user management, settings, reports, and answering client questions |
+| Client Administrator | Client head office or central stakeholders | Full workspace visibility, reports, project visibility, voice updates, comments, tasks, and ability to ask project questions |
+| Site Contact | Individual site, branch, location, or department users | Scoped project visibility for their site, uploads/comments, reports, and ability to ask project questions |
+| Delivery Partner | External installer, supplier, contractor, or service partner | Scoped project visibility for assigned projects, workflow updates, uploads, comments, and tasks |
 
-Role-scoped access is enforced through the portal UI and Supabase row-level security policies. Colourpix administrators and PSG head office can see all projects. Branch managers and sign companies are limited to the projects relevant to them.
+Role-scoped access is enforced through the portal UI and Supabase row-level security policies. Workspace administrators and client administrators can see all relevant workspace projects. Site contacts and delivery partners are limited to the projects relevant to them.
 
 ## Main Capabilities
 
 ### 1. Secure Sign-In and Role-Based Portal Access
 
-Users sign in with Supabase Auth using email and password. After login, the portal resolves each user's profile, role, branch, and permissions from the Supabase profiles table.
+Users sign in with Supabase Auth using email and password. After login, the portal resolves each user's profile, role, site scope, workspace membership, and permissions from the Supabase profiles table.
 
-The navigation automatically changes depending on role. For example, Colourpix administrators can access user management and settings, while branch managers only see the operational areas relevant to their role.
+The navigation automatically changes depending on role. For example, workspace administrators can access user management and settings, while site contacts only see the operational areas relevant to their role.
 
 ### 2. Dashboard
 
-The dashboard provides a high-level operational snapshot of the rollout.
+The dashboard provides a high-level operational snapshot of the active workspace.
 
 It currently shows:
 
@@ -467,18 +481,18 @@ It currently shows:
 - Recent project activity
 - Current open tasks
 
-The dashboard is intended to give managers a fast view of rollout health without opening every project individually.
+The dashboard is intended to give managers a fast view of project health without opening every project individually.
 
 ### 3. Project List and Kanban Workflow Board
 
-The Projects page shows rollout projects in two ways:
+The Projects page shows workspace projects in two ways:
 
-- A kanban-style workflow board grouped by rollout phase
-- Project cards with branch, location, manager, installer, target date, progress, and communication badges
+- A kanban-style workflow board grouped by project phase
+- Project cards with site, location, manager, delivery partner, project type, target date, progress, and communication badges
 
-Colourpix administrators, PSG head office, and other permitted users can move projects through the rollout stages where their role allows it.
+Workspace administrators, client administrators, and other permitted users can move projects through stages where their role allows it.
 
-The rollout stages currently include:
+The default signage rollout stages currently include:
 
 - New Project
 - Awaiting Information
@@ -499,15 +513,15 @@ The rollout stages currently include:
 - Client Signoff
 - Completed
 
-Project cards and kanban cards now also show project communication indicators such as open PSG questions and unread Colourpix answers.
+Project cards and kanban cards now also show project communication indicators such as open client questions and unread workspace-team answers.
 
 ### 4. Project Detail Records
 
 Each project has a detailed project record containing:
 
-- Branch and project identity
+- Site/location and project identity
 - Province and town
-- Manager and installer
+- Manager and delivery partner
 - Current stage and status
 - Progress percentage
 - Target, installation, and completion dates
@@ -517,15 +531,15 @@ Each project has a detailed project record containing:
 - Activity history
 - Uploaded files
 - Communication log
-- PSG-to-Colourpix project questions
+- Client-to-workspace project questions
 
-The project detail page is intended to be the main working record for a branch. The recommended direction is to evolve this page into a single Project Journal where timeline updates, communication, files, questions, tasks, voice updates, photos, approvals, and decisions all appear as chronological entries.
+The project detail page is intended to be the main working record for a project. The recommended direction is to evolve this page into a single Project Journal where timeline updates, communication, files, questions, tasks, voice updates, photos, approvals, and decisions all appear as chronological entries.
 
 ### 5. Workflow Updates
 
 Permitted users can update a project's stage, status, and progress. Updates are saved to Supabase and added to the activity history so the project record shows what changed.
 
-This is intended to reduce manual status chasing and give PSG and Colourpix a shared view of where each project stands.
+This is intended to reduce manual status chasing and give clients, workspace administrators, and delivery partners a shared view of where each project stands.
 
 ### 6. Tasks
 
@@ -533,11 +547,11 @@ Project tasks can be added, edited, completed, reopened, or deleted by permitted
 
 Tasks are intended for operational next actions such as:
 
-- Confirm branch contacts
-- Request landlord signage rules
+- Confirm site contacts
+- Request site or landlord requirements
 - Follow up on artwork approval
 - Confirm purchase order
-- Upload installation photos
+- Upload delivery or installation evidence
 - Complete client signoff
 
 ### 7. File Uploads and Downloads
@@ -553,7 +567,7 @@ Supported project file types include:
 - PNG
 - WebP
 
-This is intended for documents such as surveys, quotations, artwork, purchase orders, site photos, and signoff evidence.
+This is intended for documents such as surveys, quotations, artwork, purchase orders, site photos, delivery evidence, and signoff records.
 
 ### 8. Communication Log
 
@@ -561,30 +575,30 @@ Each project has a general communication log where users can add comments and up
 
 In the recommended journal model, this communication log would become part of the wider Project Journal rather than a separate section.
 
-### 9. PSG Project Questions and Colourpix Answers
+### 9. Client Project Questions and Workspace Answers
 
 The portal now includes a project-specific Q&A workflow.
 
-This is intended for cases where PSG needs a direct answer or status clarification from Colourpix, for example:
+This is intended for cases where a client needs a direct answer or status clarification from the workspace team, for example:
 
 - "Please confirm whether artwork approval is still blocking this stage."
-- "When is installation expected for this branch?"
+- "When is delivery expected for this site?"
 - "Has the quote been received yet?"
-- "Can Colourpix confirm whether the project has moved to production?"
+- "Can the workspace team confirm whether the project has moved to production?"
 
 Current flow:
 
-1. A PSG user opens a project.
-2. The PSG user asks Colourpix a question, optionally linked to a rollout stage.
-3. Colourpix sees the open question on the project record.
-4. Colourpix can answer the question.
-5. Colourpix can also amend the project details while answering, including stage, status, progress, target date, and installation date.
-6. The PSG requester receives a "new answer" notification in the portal.
+1. A client user opens a project.
+2. The client user asks the workspace team a question, optionally linked to a project stage.
+3. The workspace team sees the open question on the project record.
+4. The workspace team can answer the question.
+5. The workspace team can also amend the project details while answering, including stage, status, progress, target date, and delivery date.
+6. The requester receives a "new answer" notification in the portal.
 7. The requester can open the project, read the answer, and mark it as read.
 
 This is intended to create basic instant project communication without needing a separate messaging platform.
 
-In the recommended journal model, a PSG question would be a journal entry with metadata, visibility, threaded replies, status, attachments, and response-time reporting.
+In the recommended journal model, a client question would be a journal entry with metadata, visibility, threaded replies, status, attachments, and response-time reporting.
 
 ### 10. Voice Updates
 
@@ -610,29 +624,29 @@ In the recommended journal model, the uploaded voice note, transcript, AI sugges
 
 The Search page lets users search across their visible projects by:
 
-- Branch
+- Site or location
 - Town
 - Province
-- Installer
+- Delivery partner
 - Project ID
 - Stage
 - Status
 - Manager
 
-This helps users quickly locate a project without scrolling through the full rollout list.
+This helps users quickly locate a project without scrolling through the full project list.
 
 ### 12. Map View
 
-The Map page shows branch/project locations across South Africa and Namibia, with markers coloured by project status.
+The Map page shows site/project locations across South Africa and Namibia, with markers coloured by project status.
 
 It includes:
 
 - Interactive map markers
 - Status counts
-- Branch location list
+- Site location list
 - Links from map items to project records
 
-This is intended to give management and operations a geographic view of rollout progress.
+This is intended to give management and operations a geographic view of project progress.
 
 ### 13. Reports
 
@@ -640,20 +654,20 @@ The Reports page supports filtered reporting and exports.
 
 Current report types include:
 
-- Rollout summary
+- Workspace summary
 - Completed projects
 - Delayed and at-risk projects
 - Outstanding quotes
 - Awaiting approval
-- Installation schedule
-- Photos and signoff
-- Installer performance
+- Delivery schedule
+- Evidence and signoff
+- Delivery partner performance
 
-Reports can be filtered by status, stage, province, installer, date range, and search text. The page supports Excel download and printable/PDF-style report output.
+Reports can be filtered by status, stage, province, delivery partner, date range, and search text. The page supports Excel download and printable/PDF-style report output.
 
 ### 14. User Management
 
-Colourpix administrators can manage user profile records for Colourpix administrators, PSG staff, branch managers, and sign companies.
+Workspace administrators can manage user profile records for administrators, client users, site contacts, and delivery partners.
 
 The app also includes an invite-user Edge Function path for inviting users through Supabase Auth, subject to deployment and configuration.
 
@@ -669,6 +683,23 @@ The app is designed with:
 - Private storage buckets
 - Role-scoped project access
 - Signed file download links
+
+### 16. Support and Customization Requests
+
+The Support page gives all signed-in roles a structured way to contact either the workspace administrator or RolloutHQ support.
+
+Current support request types include:
+
+- Project or update help
+- Workspace access or data questions
+- Functionality requests
+- Report customization
+- Workflow or template changes
+- Technical issues
+
+The page routes project/workspace help to the workspace administrator and copies RolloutHQ support so repeated needs can be tracked. Product, report, workflow, template, and technical requests route to RolloutHQ support and copy the workspace administrator. The email body includes the user, role, workspace, related project, request type, urgency, details, expected outcome, and an approval note.
+
+The long-term product direction should store these requests as structured support records so RolloutHQ can measure demand, discover customization opportunities, and identify reusable features across workspaces.
 
 ## Current Technical Foundation
 
@@ -706,15 +737,16 @@ The current version supports the following working flows:
 - Project tasks
 - Project comments
 - Project file uploads and signed downloads
-- PSG-to-Colourpix project questions
-- Colourpix answers with optional project amendments
-- Portal notifications for answered PSG questions
+- Client-to-workspace project questions
+- Workspace answers with optional project amendments
+- Portal notifications for answered client questions
 - Basic project history through comments, activity, tasks, files, and question records
 - Search
 - Map view
 - Reports and exports
 - User profile management
 - Voice transcript and voice-note update review flow
+- Support and customization request routing
 
 The Project Journal described above is a recommended product direction. It is not yet fully implemented as one unified feed.
 
@@ -724,20 +756,20 @@ The platform is far enough along that the next step should be business guidance 
 
 ### 1. Which Users Should Get Access First?
 
-Confirm whether the first rollout should include:
+Confirm whether the first customer workspace should include:
 
-- Colourpix only
-- Colourpix plus PSG head office
-- Colourpix plus selected PSG branch managers
-- Sign companies from the start or later
+- Workspace administrators only
+- Workspace administrators plus client administrators
+- Workspace administrators plus selected site contacts
+- Delivery partners from the start or later
 
 ### 2. Who Is Allowed To Change Official Project Status?
 
-Current permissions allow multiple operational roles to update workflow fields. Management should confirm whether official status changes should be limited to Colourpix, PSG head office, sign companies, or a combination.
+Current permissions allow multiple operational roles to update workflow fields. Management should confirm whether official status changes should be limited to workspace administrators, client administrators, delivery partners, or a combination.
 
-### 3. Should PSG Branch Managers Only Ask Questions, Or Also Upload Files And Comment?
+### 3. Should Site Contacts Only Ask Questions, Or Also Upload Files And Comment?
 
-Branch managers currently have scoped project access and can add comments/uploads where permitted. Confirm whether that is appropriate or whether their role should be more restricted.
+Site contacts currently have scoped project access and can add comments/uploads where permitted. Confirm whether that is appropriate or whether their role should be more restricted.
 
 ### 4. What Counts As An Official Notification?
 
@@ -774,18 +806,18 @@ If approved, the next design phase should define:
 
 The journal model depends on clear visibility rules. Management should confirm which types of entries should be visible to:
 
-- Colourpix only
-- PSG and Colourpix
-- Installer and Colourpix
+- Workspace administrators only
+- Client and workspace administrators
+- Delivery partner and workspace administrators
 - Everyone on the project
 
-This is especially important for internal notes, supplier issues, pricing discussions, PSG-facing updates, and dispute-sensitive decisions.
+This is especially important for internal notes, supplier issues, pricing discussions, client-facing updates, and dispute-sensitive decisions.
 
 ### 8. Should The Portal Include A Formal Decision Log?
 
 Management should decide whether important project decisions must be captured as structured entries, including decision, reason, approver, date, and linked documents.
 
-This would help answer future questions such as "Who approved this change?", "Why was this signage option selected?", or "Which quote did PSG approve?"
+This would help answer future questions such as "Who approved this change?", "Why was this option selected?", or "Which quote did the client approve?"
 
 ### 9. What AI Summaries Would Be Useful?
 
@@ -793,7 +825,7 @@ If the project journal becomes the central record, AI could generate summaries s
 
 - Current project status
 - Outstanding blockers
-- Last PSG question and response
+- Last client question and response
 - Missing files or approvals
 - Overdue tasks
 - Reason for delay
@@ -807,25 +839,25 @@ The reports page has several useful report types, but management should confirm 
 
 The journal model would also enable more advanced reports, for example:
 
-- PSG questions by date range and province
-- Average response time from PSG question to Colourpix answer
-- Files uploaded by installers last month
+- Client questions by date range and province
+- Average response time from client question to workspace answer
+- Files uploaded by delivery partners last month
 - Projects with more than 10 communication entries and delayed status
-- Decisions made by PSG head office
+- Decisions made by client administrators
 - Open approvals by stage
 
-### 11. What Is The Authoritative List Of Rollout Stages?
+### 11. What Is The Authoritative List Of Project Stages?
 
-The current stage list is detailed and operational. Management should confirm whether these stages match the real Colourpix/PSG rollout process or need to be simplified.
+The current stage list is detailed and operational. Management should confirm whether each workspace should use the signage template stages, a general rollout template, a service delivery template, or a simplified custom workflow.
 
 ### 12. What Data Should Be Mandatory On Each Project?
 
 Confirm required fields such as:
 
-- Branch contact
-- PSG regional owner
+- Site contact
+- Client regional owner
 - Landlord approval status
-- Sign company contact
+- Delivery partner contact
 - Quote number
 - Purchase order number
 - Installation date
@@ -834,7 +866,7 @@ Confirm required fields such as:
 
 ### 13. Should Voice Updates Be Used Operationally?
 
-Voice updates can speed up admin work, but management should decide whether this should be part of the formal process or kept as an internal Colourpix convenience tool.
+Voice updates can speed up admin work, but management should decide whether this should be part of the formal process or kept as an internal workspace convenience tool.
 
 ### 14. What Audit Trail Is Required?
 
@@ -842,31 +874,31 @@ The app records activity on project changes, but management should confirm wheth
 
 ## Suggested Next Phase
 
-A practical next phase would be to run a small pilot with a limited set of real users and real branches.
+A practical next phase would be to run a small pilot with a limited set of real users and real projects.
 
 Recommended pilot scope:
 
-- 1 to 2 Colourpix administrators
-- PSG head office stakeholder
-- 3 to 5 PSG branch managers
-- 1 sign company
-- 10 to 20 active rollout projects
+- 1 to 2 workspace administrators
+- 1 client administrator
+- 3 to 5 site contacts
+- 1 delivery partner
+- 10 to 20 active projects
 
 During the pilot, test:
 
 - Whether the project stages match the real workflow
-- Whether PSG users understand the question/request flow
-- Whether Colourpix can keep project records updated without duplicate admin work
+- Whether client users understand the question/request flow
+- Whether workspace administrators can keep project records updated without duplicate admin work
 - Whether reports satisfy management needs
 - Whether notifications are visible enough
-- Whether sign companies should have direct workflow update access
+- Whether delivery partners should have direct workflow update access
 - Whether users prefer one chronological Project Journal over separate comments, tasks, files, and activity sections
 - Which journal entry types and visibility rules are required for real operations
 
 ## Summary
 
-RolloutHQ™ is intended to become the shared operational control room for the current rollout workspace and future enterprise rollout workspaces. It already covers the core workflows needed to manage projects, communicate updates, store files, track status, report progress, and notify client users when Colourpix responds to their project questions.
+RolloutHQ™ is intended to become the shared operational control room for the current PSG workspace and future enterprise project workspaces. It already covers the core workflows needed to manage projects, communicate updates, store files, track status, report progress, and notify client users when the workspace team responds to their project questions.
 
 The most important product recommendation is to evolve the project detail record into a unified Project Journal. Instead of treating comments, questions, tasks, files, voice notes, and activity as separate modules, every significant project event should become a structured, searchable, permission-aware timeline entry.
 
-The main decision now is not whether the app can support the rollout, but how the business wants the process governed: who updates what, who sees what, what counts as official communication, what belongs in the official journal, and what reporting management needs.
+The main decision now is not whether the app can support one rollout, but how the business wants the platform governed across workspaces: who updates what, who sees what, what counts as official communication, what belongs in the official journal, and what reporting management needs.

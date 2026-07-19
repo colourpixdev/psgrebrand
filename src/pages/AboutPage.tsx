@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { productBrand } from '../constants/branding';
+import { projectTemplateOptions } from '../constants/projectTemplates';
 import { supabase } from '../lib/supabase';
 
 function useDatabaseStatus() {
@@ -27,9 +28,10 @@ export function AboutPage() {
     ['Description', productBrand.description],
     ['Developer', productBrand.developer],
     ['Current License', productBrand.licensee],
-    ['Default Design Partner', productBrand.partner],
+    ['Default Service Partner', productBrand.partner],
     ['Current Client', productBrand.customer],
     ['Current Workspace', productBrand.workspace],
+    ['Available Project Templates', projectTemplateOptions.map((template) => template.name).join(', ')],
     ['Version', productBrand.version],
     ['Database', databaseStatus],
     ['License Status', productBrand.licenseStatus],
@@ -40,7 +42,9 @@ export function AboutPage() {
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
         <p className="text-sm uppercase tracking-[0.32em] text-teal-200/80">About</p>
         <h2 className="mt-3 text-3xl font-semibold text-white">{productBrand.name}</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">{productBrand.description}</p>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+          {productBrand.description} for client workspaces, project templates, controlled users, supplier coordination, project journals, voice updates, files, and reporting.
+        </p>
       </section>
 
       <section className="rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft">

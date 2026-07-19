@@ -36,7 +36,7 @@ export function UsersPage() {
             <p className="text-lg font-semibold text-white">{user.name}</p>
             <p className="mt-1 text-sm text-slate-400">{user.email}</p>
             <p className="mt-4 text-sm text-slate-300">Role: {user.role}</p>
-            <p className="text-sm text-slate-300">Branch: {user.branch ?? 'All branches'}</p>
+            <p className="text-sm text-slate-300">Site scope: {user.branch ?? 'All sites'}</p>
             <p className="text-sm text-slate-300">Workspaces: {user.canAccessAllWorkspaces ? 'All workspaces' : user.workspaceIds?.join(', ') ?? 'Default workspace'}</p>
           </div>
         )) : (
