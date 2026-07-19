@@ -9,7 +9,6 @@ import { roleLabels } from '../constants/portal';
 import type { Role } from '../types/domain';
 import { productBrand } from '../constants/branding';
 import { RolloutLogo } from '../components/brand/RolloutLogo';
-import { QuoteRequestForm } from '../components/workspaces/QuoteRequestForm';
 
 const roles: Role[] = ['colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'];
 
@@ -62,8 +61,8 @@ export function LoginPage() {
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-teal-300">Secure access</p>
               <h2 className="mt-3 text-4xl font-semibold text-white">{productBrand.name}</h2>
-              <p className="mt-2 text-base text-slate-200">{productBrand.description}</p>
-              <p className="mt-3 text-sm leading-6 text-slate-400">A tailored workspace service for companies that need clients, teams, suppliers, and project records in one controlled place.</p>
+              <p className="mt-2 text-base text-slate-200">Private workspace instance</p>
+              <p className="mt-3 text-sm leading-6 text-slate-400">This sign-in page is for invited users working inside an active client workspace.</p>
             </div>
           </div>
 
@@ -178,11 +177,20 @@ export function LoginPage() {
         </section>
 
         <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-6 shadow-soft backdrop-blur-xl">
-          <p className="text-xs uppercase tracking-[0.3em] text-teal-200/80">New request</p>
-          <h3 className="mt-3 text-2xl font-semibold text-white">Ask for a project quote or tailored workspace</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-400">New clients can request a project before they have a login. Existing clients can sign in first and request more work from inside their workspace.</p>
-          <div className="mt-5">
-            <QuoteRequestForm allowedRequestTypes={['project_quote', 'new_workspace', 'user_access']} defaultRequestType="project_quote" compact />
+          <p className="text-xs uppercase tracking-[0.3em] text-teal-200/80">Workspace access</p>
+          <h3 className="mt-3 text-2xl font-semibold text-white">This is a private client workspace instance.</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            Sign in with the account assigned to your active workspace. Public enquiries and commercial onboarding are handled outside this operational environment before users are invited here.
+          </p>
+          <div className="mt-5 grid gap-3 text-sm text-slate-300">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="font-semibold text-white">Invited users only</p>
+              <p className="mt-1 text-slate-400">Access is managed by the workspace administrator for the client programme.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="font-semibold text-white">Operational records stay here</p>
+              <p className="mt-1 text-slate-400">Projects, files, questions, approvals, updates, and reports remain tied to this workspace instance.</p>
+            </div>
           </div>
         </section>
       </div>

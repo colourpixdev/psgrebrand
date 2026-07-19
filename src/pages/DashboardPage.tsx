@@ -8,7 +8,6 @@ import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
 import { productBrand } from '../constants/branding';
-import { QuoteRequestForm } from '../components/workspaces/QuoteRequestForm';
 import { WorkspaceBrandStrip } from '../components/brand/WorkspaceBrandStrip';
 import { defaultWorkspace } from '../constants/workspaces';
 
@@ -36,18 +35,18 @@ export function DashboardPage() {
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(14,165,233,0.18),rgba(2,6,23,0.65))] p-6 shadow-soft">
         <p className="text-sm uppercase tracking-[0.32em] text-teal-200/80">{productBrand.workspace}</p>
-        <h2 className="mt-3 text-3xl font-semibold text-white">Configurable workspaces for repeatable project delivery.</h2>
+        <h2 className="mt-3 text-3xl font-semibold text-white">Active workspace command centre.</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-          Track requests, approvals, suppliers, files, questions, voice updates, decisions, and closeout records in one live workspace tailored to each client.
+          Track approvals, suppliers, files, questions, voice updates, decisions, and closeout records for the projects already running in this client workspace.
         </p>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+      <section className="grid gap-4">
         <div className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
           <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Workspace database</p>
           <h3 className="mt-3 text-xl font-semibold text-white">Your projects are grouped as one larger operating record.</h3>
           <p className="mt-3 text-sm leading-6 text-slate-400">
-            A workspace is the shared database for all projects, quotes, files, questions, activity, and completion history that belong to the same client programme.
+            This workspace is the shared database for active projects, files, questions, activity, and completion history that belong to the same client programme.
           </p>
           <div className="mt-5 grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
@@ -71,14 +70,6 @@ export function DashboardPage() {
             Contact the workspace administrator or RolloutHQ support
           </Link>
         </div>
-
-        <QuoteRequestForm
-          user={user}
-          workspaceName={activeWorkspaces[0] ?? productBrand.workspace}
-          organisation={clientCompanies[0] ?? productBrand.customer}
-          allowedRequestTypes={['project_quote']}
-          defaultRequestType="project_quote"
-        />
       </section>
 
       <WorkspaceBrandStrip workspace={defaultWorkspace} />
