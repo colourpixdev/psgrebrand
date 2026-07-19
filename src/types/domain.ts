@@ -5,6 +5,8 @@ export interface Workspace {
   name: string;
   clientCompany: string;
   graphicsPartner: string;
+  clientLogoUrl?: string;
+  servicePartnerLogoUrl?: string;
   description: string;
   status: 'active' | 'planning' | 'archived';
 }
@@ -114,6 +116,9 @@ export interface UserRecord {
   branch?: string;
   email: string;
   company?: string;
+  profileTitle?: string;
+  avatarUrl?: string;
+  logoUrl?: string;
   workspaceIds?: string[];
   canAccessAllWorkspaces?: boolean;
   isPlatformOwner?: boolean;

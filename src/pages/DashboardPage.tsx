@@ -9,6 +9,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
 import { productBrand } from '../constants/branding';
 import { QuoteRequestForm } from '../components/workspaces/QuoteRequestForm';
+import { WorkspaceBrandStrip } from '../components/brand/WorkspaceBrandStrip';
+import { defaultWorkspace } from '../constants/workspaces';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -78,6 +80,8 @@ export function DashboardPage() {
           defaultRequestType="project_quote"
         />
       </section>
+
+      <WorkspaceBrandStrip workspace={defaultWorkspace} />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {metrics.map((metric) => (

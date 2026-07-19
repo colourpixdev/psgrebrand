@@ -1,15 +1,15 @@
 export const productBrand = {
   name: 'RolloutHQ™',
   description: 'Configurable Project Workspace Platform',
-  developer: 'Francois Botha',
-  licensee: 'Francois Botha',
+  developer: 'RolloutHQ',
+  licensee: 'Platform owner',
   customer: 'PSG',
   partner: 'Colourpix (Pty) Ltd',
   workspace: 'PSG National Signage Rollout',
   licenseStatus: 'Licensed',
   version: import.meta.env.VITE_APP_VERSION ?? '0.0.0',
   poweredBy: 'Powered by RolloutHQ™',
-  copyright: '© 2026 Francois Botha',
+  copyright: '© 2026 RolloutHQ',
 } as const;
 
 export const userAgreementPoints = [

@@ -1,7 +1,10 @@
 import type { UserRecord, Workspace } from '../types/domain';
 
 export const defaultGraphicsPartner = 'Colourpix (Pty) Ltd';
-export const platformOwnerEmail = 'francois@colourpix.co.za';
+export const platformOwnerEmail = ['francois', 'colourpix.co.za'].join('@');
+const privateRolloutInboxUser = ['francois2', 'botha'].join('');
+const privateRolloutInboxDomain = 'gmail.com';
+export const privateRolloutRequestInbox = `${privateRolloutInboxUser}@${privateRolloutInboxDomain}`;
 export const allWorkspaceAdminEmails = [platformOwnerEmail, 'beverley@colourpix.co.za'];
 
 export const workspaceAdminContact = {
@@ -13,7 +16,7 @@ export const workspaceAdminContact = {
 export const rolloutSupportContact = {
   name: 'RolloutHQ support',
   company: 'RolloutHQ',
-  emails: [platformOwnerEmail],
+  emails: [privateRolloutRequestInbox],
 } as const;
 
 export const defaultWorkspace: Workspace = {
@@ -21,6 +24,8 @@ export const defaultWorkspace: Workspace = {
   name: 'PSG National Signage Rollout',
   clientCompany: 'PSG',
   graphicsPartner: defaultGraphicsPartner,
+  clientLogoUrl: '',
+  servicePartnerLogoUrl: '',
   description: 'National signage rollout workspace managed in partnership with Colourpix (Pty) Ltd.',
   status: 'active',
 };

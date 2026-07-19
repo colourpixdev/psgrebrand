@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, FileText, Shield, Search, Users, MapPinned, Mic2, ShieldCheck, LifeBuoy } from 'lucide-react';
+import { LayoutDashboard, KanbanSquare, FileText, Shield, Search, Users, MapPinned, Mic2, ShieldCheck, LifeBuoy, UserCircle } from 'lucide-react';
 import { AppShell } from './layouts/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -18,6 +18,7 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage').then((module) => 
 const UsersPage = lazy(() => import('./pages/UsersPage').then((module) => ({ default: module.UsersPage })));
 const VoiceUpdatesPage = lazy(() => import('./pages/VoiceUpdatesPage').then((module) => ({ default: module.VoiceUpdatesPage })));
 const SupportPage = lazy(() => import('./pages/SupportPage').then((module) => ({ default: module.SupportPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then((module) => ({ default: module.ProfilePage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const LegalPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.LegalPage })));
 
@@ -29,6 +30,7 @@ const navigation = [
   { to: '/map', label: 'Map', icon: MapPinned },
   { to: '/voice-updates', label: 'Voice Updates', icon: Mic2 },
   { to: '/support', label: 'Support', icon: LifeBuoy },
+  { to: '/profile', label: 'Profile', icon: UserCircle },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/settings', label: 'Settings', icon: Shield },
   { to: '/about', label: 'About', icon: ShieldCheck },
@@ -45,6 +47,7 @@ const routeTitles: Record<string, string> = {
   '/map': 'Map',
   '/voice-updates': 'Voice Updates',
   '/support': 'Support',
+  '/profile': 'Profile',
   '/about': 'About',
   '/legal': 'Legal',
   '/login': 'Sign in',
@@ -165,6 +168,7 @@ function AppRoutes() {
           <Route path="/map" element={<MapPage />} />
           <Route path="/voice-updates" element={<VoiceUpdatesPage />} />
           <Route path="/support" element={<SupportPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/legal" element={<LegalPage />} />
         </Routes>

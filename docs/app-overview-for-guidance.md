@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-RolloutHQ™ is intended to be a secure, role-aware project workspace platform for managing repeatable work across separate client workspaces. The application is licensed to Francois Botha, with the first workspace configured for the PSG National Signage Rollout and Colourpix (Pty) Ltd positioned as the default service partner at this stage. PSG signage is the first proof-of-concept template, not the limit of the product. Its purpose is to replace scattered spreadsheets, WhatsApp messages, email threads, and manual status chasing with one shared project record for every site, location, customer request, rollout item, or delivery job.
+RolloutHQ™ is intended to be a secure, role-aware project workspace platform for managing repeatable work across separate client workspaces. The application is licensed software, with the first workspace configured for the PSG National Signage Rollout and Colourpix (Pty) Ltd positioned as the default service partner at this stage. PSG signage is the first proof-of-concept template, not the limit of the product. Its purpose is to replace scattered spreadsheets, WhatsApp messages, email threads, and manual status chasing with one shared project record for every site, location, customer request, rollout item, or delivery job.
 
 The platform gives platform owners, workspace administrators, client administrators, site contacts, and delivery partners a controlled view of the project work relevant to them. It tracks each project from initial setup through information gathering, approvals, quotations, production or delivery, evidence, signoff, and completion.
 
@@ -40,7 +40,7 @@ The current default workspace is PSG National Signage Rollout. Future workspaces
 - Platform administrators
 - Project records and journal entries scoped to that workspace
 
-Francois Botha and Beverley should have all-workspace administrative access. Other users should belong only to the specific workspaces they are invited into. Colourpix (Pty) Ltd is currently the default service partner for all workspaces and should be presented as "in partnership with Colourpix (Pty) Ltd" rather than as the licence owner.
+The platform owner and nominated senior workspace administrators should have all-workspace administrative access. Other users should belong only to the specific workspaces they are invited into. Colourpix (Pty) Ltd is currently the default service partner for all workspaces and should be presented as "in partnership with Colourpix (Pty) Ltd" rather than as the licence owner.
 
 ## Project Templates and SaaS Direction
 
@@ -700,6 +700,19 @@ Current support request types include:
 The page routes project/workspace help to the workspace administrator and copies RolloutHQ support so repeated needs can be tracked. Product, report, workflow, template, and technical requests route to RolloutHQ support and copy the workspace administrator. The email body includes the user, role, workspace, related project, request type, urgency, details, expected outcome, and an approval note.
 
 The long-term product direction should store these requests as structured support records so RolloutHQ can measure demand, discover customization opportunities, and identify reusable features across workspaces.
+
+### 17. Profile and Workspace Branding
+
+Users should be able to control how they appear inside a workspace without receiving permission to change their role or access scope. The current UI supports a local-first editable profile identity with display name, title, company, avatar URL, and organisation logo URL. These fields are also represented as optional Supabase profile columns for a future live profile editor.
+
+Recommended administration boundaries:
+
+- RolloutHQ platform owner: controls platform-level roles, workspace creation, global support routing, product configuration, and reusable features.
+- Workspace administrator: manages workspace branding, client/project records, delivery partners, and user membership for that workspace.
+- Client administrator: approves client-side users, report needs, workflow changes, and feature requests inside their workspace.
+- Site contact and delivery partner: maintain their own avatar/profile identity and request changes through Support.
+
+Workspace branding should support a client logo and a workspace administrator/service partner logo. The PSG/Colourpix workspace is the first example; future workspaces should be able to replace those marks without changing RolloutHQ platform branding.
 
 ## Current Technical Foundation
 

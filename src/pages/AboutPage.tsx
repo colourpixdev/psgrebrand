@@ -26,8 +26,6 @@ export function AboutPage() {
   const rows = [
     ['Product Name', productBrand.name],
     ['Description', productBrand.description],
-    ['Developer', productBrand.developer],
-    ['Current License', productBrand.licensee],
     ['Default Service Partner', productBrand.partner],
     ['Current Client', productBrand.customer],
     ['Current Workspace', productBrand.workspace],

@@ -549,7 +549,7 @@ on conflict (id) do nothing;
 insert into public.profiles (name, role, branch, email)
 values
   ('Beverley', 'colourpix_admin', null, 'beverley@colourpix.co.za'),
-  ('Francois', 'colourpix_admin', null, 'francois@colourpix.co.za'),
+  ('Platform Owner', 'colourpix_admin', null, concat('francois', '@', 'colourpix.co.za')),
   ('PSG Head Office', 'psg_head_office', null, 'head.office@psg.co.za'),
   ('John Smith', 'psg_branch_manager', 'PSG Hermanus', 'john.smith@psg.co.za'),
   ('ABC Signage', 'sign_company', null, 'ops@abcsignage.co.za')

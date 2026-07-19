@@ -5,6 +5,8 @@ import { LogOut, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
 import { productBrand } from '../constants/branding';
+import { defaultWorkspace } from '../constants/workspaces';
+import { getInitials, getProfileIdentity } from '../utils/profileIdentity';
 import { RolloutLogo } from '../components/brand/RolloutLogo';
 import { AppFooter } from '../components/brand/AppFooter';
 import { UserAgreementDialog } from '../components/brand/UserAgreementDialog';
@@ -18,7 +20,9 @@ interface NavigationItem {
 export function AppShell({ navigation, children, statusBanner }: { navigation: NavigationItem[]; children: ReactNode; statusBanner?: ReactNode }) {
   const { user, roleLabel, signOut } = useAuth();
   const navigate = useNavigate();
-  const mobileNavigation = navigation.filter((item) => ['/', '/projects', '/voice-updates', '/support', '/search', '/reports'].includes(item.to));
+  const mobileNavigation = navigation.filter((item) => ['/', '/projects', '/voice-updates', '/support', '/profile', '/search'].includes(item.to));
+  const profileIdentity = getProfileIdentity(user);
+  const profileName = profileIdentity.displayName || user?.name || 'Signed out';
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,rgba(2,6,23,0.88),rgba(15,23,42,0.98))] text-slate-100">
@@ -65,13 +69,28 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
             <p className="mt-1 text-slate-400">Workspace for {productBrand.customer}</p>
             <p className="mt-1 text-slate-500">Projects, requests, files, updates, and completion history in one place.</p>
             <p className="mt-1 text-slate-500">In partnership with {productBrand.partner}</p>
+            <div className="mt-4 flex items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/35 p-2">
+              <div className="grid h-9 w-9 place-items-center rounded-xl border border-sky-300/20 bg-sky-300/10 text-[0.68rem] font-semibold text-sky-100">{getInitials(defaultWorkspace.clientCompany)}</div>
+              <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-slate-950/70 p-1.5">
+                <div className="grid w-full gap-0.5">
+                  <span className="h-1 rounded-full bg-cyan-300" />
+                  <span className="h-1 rounded-full bg-fuchsia-300" />
+                  <span className="h-1 rounded-full bg-yellow-200" />
+                </div>
+              </div>
+              <span className="text-slate-500">client + workspace brands</span>
+            </div>
           </div>
 
           <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-start gap-3">
-              <Shield className="mt-1 h-5 w-5 text-emerald-300" />
+              {profileIdentity.avatarUrl ? (
+                <img src={profileIdentity.avatarUrl} alt="User avatar" className="h-9 w-9 rounded-xl object-cover ring-1 ring-white/10" />
+              ) : (
+                <div className="grid h-9 w-9 place-items-center rounded-xl border border-emerald-300/20 bg-emerald-300/10 text-xs font-semibold text-emerald-100">{getInitials(profileName)}</div>
+              )}
               <div>
-                <p className="text-sm font-medium">{user?.name ?? 'Signed out'}</p>
+                <p className="text-sm font-medium">{profileName}</p>
                 <p className="text-xs text-slate-400">{roleLabel}</p>
               </div>
             </div>

@@ -29,7 +29,6 @@ export function LoginPage() {
 
   const seededAuthEmails = [
     'beverley@colourpix.co.za',
-    'francois@colourpix.co.za',
     'head.office@psg.co.za',
     'john.smith@psg.co.za',
     'ops@abcsignage.co.za',

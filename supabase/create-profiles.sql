@@ -8,6 +8,11 @@ create table if not exists public.profiles (
   name text not null,
   role text not null check (role in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company')),
   branch text,
+  company text,
+  profile_title text,
+  avatar_url text,
+  logo_url text,
+  workspace_ids text[] not null default array['psg-national-signage-rollout'],
   email text not null unique,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -15,6 +20,11 @@ create table if not exists public.profiles (
 
 alter table public.profiles add column if not exists user_id uuid unique references auth.users(id) on delete set null;
 alter table public.profiles add column if not exists updated_at timestamptz not null default now();
+alter table public.profiles add column if not exists company text;
+alter table public.profiles add column if not exists profile_title text;
+alter table public.profiles add column if not exists avatar_url text;
+alter table public.profiles add column if not exists logo_url text;
+alter table public.profiles add column if not exists workspace_ids text[] not null default array['psg-national-signage-rollout'];
 
 do $$ begin
   alter table public.profiles add constraint profiles_role_check check (role in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'));
@@ -104,7 +114,7 @@ end $$;
 insert into public.profiles (name, role, branch, email)
 values
   ('Beverley',        'colourpix_admin',    null,          'beverley@colourpix.co.za'),
-  ('Francois',        'colourpix_admin',    null,          'francois@colourpix.co.za'),
+  ('Platform Owner',  'colourpix_admin',    null,          concat('francois', '@', 'colourpix.co.za')),
   ('PSG Head Office', 'psg_head_office',    null,          'head.office@psg.co.za'),
   ('John Smith',      'psg_branch_manager', 'PSG Hermanus','john.smith@psg.co.za'),
   ('ABC Signage',     'sign_company',       null,          'ops@abcsignage.co.za')

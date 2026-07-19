@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { defaultGraphicsPartner, defaultWorkspace } from '../../constants/workspaces';
+import { defaultGraphicsPartner, defaultWorkspace, privateRolloutRequestInbox } from '../../constants/workspaces';
 import { productBrand } from '../../constants/branding';
 import type { UserRecord } from '../../types/domain';
 
@@ -88,8 +88,8 @@ export function QuoteRequestForm({
       `${productBrand.name} keeps projects grouped inside workspace databases so users can view project history, quote requests, approvals, files, questions, and completion records in one place.`,
     ].join('\n');
 
-    window.location.href = `mailto:francois@colourpix.co.za?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    setNotice('Your email app should open with this request addressed to francois@colourpix.co.za.');
+    window.location.href = `mailto:${encodeURIComponent(privateRolloutRequestInbox)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setNotice('Your email app should open with this request addressed to the private RolloutHQ request channel.');
   });
 
   return (
@@ -99,7 +99,7 @@ export function QuoteRequestForm({
           <p className="text-sm font-semibold text-white">Request a quote, workspace, or access</p>
           <p className="mt-1 text-sm leading-6 text-slate-400">New and existing clients can request project work while keeping every record tied to the right workspace.</p>
         </div>
-        <span className="rounded-full border border-teal-300/25 bg-teal-300/10 px-3 py-1 text-xs font-semibold text-teal-100">francois@colourpix.co.za</span>
+        <span className="rounded-full border border-teal-300/25 bg-teal-300/10 px-3 py-1 text-xs font-semibold text-teal-100">Private request channel</span>
       </div>
 
       <fieldset className="mt-4 grid gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-3 text-sm text-slate-200 md:grid-cols-3">

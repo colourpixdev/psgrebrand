@@ -3,11 +3,11 @@ import { productBrand } from '../constants/branding';
 const sections = [
   {
     title: 'Software Ownership',
-    body: 'RolloutHQ™, including all source code, user interface design, database structure, workflow logic, documentation, reports, AI functionality, branding and supporting software remains the intellectual property of Francois Botha unless transferred by written agreement.',
+    body: 'RolloutHQ™, including all source code, user interface design, database structure, workflow logic, documentation, reports, AI functionality, branding and supporting software remains the intellectual property of the platform owner unless transferred by written agreement.',
   },
   {
     title: 'License',
-    body: 'This application is licensed to Francois Botha. The licence does not transfer ownership away from the software owner. The software may not be copied, redistributed, modified or sublicensed without written permission from the owner.',
+    body: 'This application is licensed software. The licence does not transfer ownership away from the software owner. The software may not be copied, redistributed, modified or sublicensed without written permission from the owner.',
   },
   {
     title: 'Audit',
@@ -29,7 +29,7 @@ export function LegalPage() {
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
         <p className="text-sm uppercase tracking-[0.32em] text-teal-200/80">Legal</p>
         <h2 className="mt-3 text-3xl font-semibold text-white">{productBrand.name} licence and use terms</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Licensed to {productBrand.licensee}. Current workspace context: {productBrand.workspace} for {productBrand.customer}.</p>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Current workspace context: {productBrand.workspace} for {productBrand.customer}. Licence details are retained in the platform operating record.</p>
       </section>
 
       <section className="grid gap-4">

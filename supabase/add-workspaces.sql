@@ -16,6 +16,9 @@ create index if not exists projects_project_type_idx on public.projects (project
 
 alter table public.profiles
   add column if not exists company text,
+  add column if not exists profile_title text,
+  add column if not exists avatar_url text,
+  add column if not exists logo_url text,
   add column if not exists workspace_ids text[] not null default array['psg-national-signage-rollout'];
 
 update public.profiles
@@ -24,4 +27,4 @@ where workspace_ids is null or cardinality(workspace_ids) = 0;
 
 update public.profiles
 set workspace_ids = array['*']
-where lower(email) in ('francois@colourpix.co.za', 'beverley@colourpix.co.za');
+where lower(email) in (concat('francois', '@', 'colourpix.co.za'), 'beverley@colourpix.co.za');

@@ -15,7 +15,14 @@ export function UsersPage() {
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
         <h2 className="text-2xl font-semibold text-white">Users</h2>
-        <p className="mt-2 text-sm text-slate-400">Manage platform administrators, client users, partner teams, and delivery-company access by workspace.</p>
+        <p className="mt-2 text-sm text-slate-400">Manage platform administrators, workspace administrators, client administrators, site contacts, and delivery-partner access by workspace.</p>
+      </section>
+
+      <section className="rounded-[2rem] border border-teal-300/15 bg-teal-300/8 p-5 text-sm text-slate-300 shadow-soft">
+        <p className="font-semibold text-white">Administration model</p>
+        <p className="mt-2 leading-6 text-slate-400">
+          RolloutHQ owns platform-level configuration and support routing. Workspace administrators manage their client workspaces, users, branding approvals, and project data. Client administrators manage their own client-side users and approvals inside the workspace boundaries. Individual users can maintain profile identity details such as avatar, title, company, and organisation logo.
+        </p>
       </section>
 
       {profilesNotConfigured ? (
@@ -36,6 +43,8 @@ export function UsersPage() {
             <p className="text-lg font-semibold text-white">{user.name}</p>
             <p className="mt-1 text-sm text-slate-400">{user.email}</p>
             <p className="mt-4 text-sm text-slate-300">Role: {user.role}</p>
+            {user.profileTitle ? <p className="text-sm text-slate-300">Title: {user.profileTitle}</p> : null}
+            {user.company ? <p className="text-sm text-slate-300">Company: {user.company}</p> : null}
             <p className="text-sm text-slate-300">Site scope: {user.branch ?? 'All sites'}</p>
             <p className="text-sm text-slate-300">Workspaces: {user.canAccessAllWorkspaces ? 'All workspaces' : user.workspaceIds?.join(', ') ?? 'Default workspace'}</p>
           </div>

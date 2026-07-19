@@ -12,6 +12,9 @@ type ProfileRow = {
   branch: string | null;
   email: string;
   company?: string | null;
+  profile_title?: string | null;
+  avatar_url?: string | null;
+  logo_url?: string | null;
   workspace_ids?: string[] | null;
 };
 
@@ -50,14 +53,14 @@ export async function sessionToUser(session: Session | null): Promise<UserRecord
 
   const profileResult = await supabase
     .from('profiles')
-    .select('name, role, branch, email, company, workspace_ids')
+    .select('name, role, branch, email, company, profile_title, avatar_url, logo_url, workspace_ids')
     .eq('email', email)
     .maybeSingle();
 
   let data: Partial<ProfileRow> | null = profileResult.data as Partial<ProfileRow> | null;
   let error = profileResult.error;
 
-  if (error?.message.toLowerCase().includes('company') || error?.message.toLowerCase().includes('workspace_ids')) {
+  if (['company', 'profile_title', 'avatar_url', 'logo_url', 'workspace_ids'].some((column) => error?.message.toLowerCase().includes(column))) {
     const fallbackResult = await supabase
       .from('profiles')
       .select('name, role, branch, email')
@@ -79,6 +82,9 @@ export async function sessionToUser(session: Session | null): Promise<UserRecord
     role: isRole(profile.role) ? profile.role : fallbackUser?.role ?? 'psg_head_office',
     branch: profile.branch ?? undefined,
     company: profile.company ?? undefined,
+    profileTitle: profile.profile_title ?? undefined,
+    avatarUrl: profile.avatar_url ?? undefined,
+    logoUrl: profile.logo_url ?? undefined,
     workspaceIds: Array.isArray(profile.workspace_ids) ? profile.workspace_ids : undefined,
     email: profile.email,
   });
