@@ -7,7 +7,6 @@ export function AppFooter() {
         <span>{productBrand.poweredBy}</span>
         <span>Version {productBrand.version}</span>
         <span>{productBrand.copyright}</span>
-        <span>Licensed to {productBrand.licensee}</span>
       </div>
     </footer>
   );

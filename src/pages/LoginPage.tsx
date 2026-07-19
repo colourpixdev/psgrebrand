@@ -116,8 +116,8 @@ export function LoginPage() {
             <p className="mt-1 font-medium text-white">{productBrand.workspace}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Licensed To</p>
-            <p className="mt-1 font-medium text-white">{productBrand.licensee}</p>
+            <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Client Workspace</p>
+            <p className="mt-1 font-medium text-white">{productBrand.customer}</p>
           </div>
         </div>
 
