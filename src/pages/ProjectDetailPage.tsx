@@ -403,6 +403,7 @@ export function ProjectDetailPage() {
           <div>Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>
           <div>Installation Date: <span className="text-white">{selectedProject.installationDate}</span></div>
           <div>Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>
+          <div className="md:col-span-4">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
         </div>
       </section>
 

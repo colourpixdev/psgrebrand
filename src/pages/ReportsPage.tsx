@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { FileText, Search, Shield } from 'lucide-react';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
@@ -425,9 +426,9 @@ export function ReportsPage() {
               {isLoading ? (
                 <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : filteredProjects.length > 0 ? filteredProjects.map((project) => (
-                <tr key={project.id} className="text-slate-300">
-                  <td className="px-5 py-4 text-white">{project.id}</td>
-                  <td className="px-5 py-4">{project.branch}</td>
+                <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
+                  <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-semibold text-sky-100 hover:text-sky-200">{project.id}</Link></td>
+                  <td className="px-5 py-4"><Link to={`/projects/${project.id}`} className="hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectTypeName}</td>
                   <td className="px-5 py-4">{project.town}, {project.province}</td>
                   <td className="px-5 py-4">{project.manager}</td>

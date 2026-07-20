@@ -50,6 +50,9 @@ export interface Project {
   deliveryPartnerLabel: string;
   province: string;
   town: string;
+  physicalAddress: string;
+  latitude: number | null;
+  longitude: number | null;
   branch: string;
   manager: string;
   managerEmail: string;

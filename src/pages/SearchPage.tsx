@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Mic2 } from 'lucide-react';
+import { FileText, Mic2 } from 'lucide-react';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
@@ -55,19 +55,25 @@ export function SearchPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         {filtered.length > 0 ? (
           filtered.map((project) => (
-            <Link key={project.id} to={`/projects/${project.id}#voice-note`} className="block rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft transition hover:border-sky-400/40 hover:bg-white/5">
-              <p className="text-lg font-semibold text-white">{project.branch}</p>
-              <p className="mt-1 text-sm text-slate-400">{project.id}</p>
-              <p className="mt-3 text-xs uppercase tracking-[0.2em] text-teal-200/80">{project.projectTypeName}</p>
-              <p className="mt-3 text-sm text-slate-300">{project.town}, {project.province}</p>
-              <p className="text-sm text-slate-300">{project.deliveryPartnerLabel}: {project.installer}</p>
-              <p className="text-sm text-slate-300">Stage: {project.currentStage}</p>
-              <p className="text-sm text-slate-300">Status: {project.status}</p>
-              <span className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-sky-400/25 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-100">
+            <article key={project.id} className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft transition hover:border-sky-400/40 hover:bg-white/5">
+              <Link to={`/projects/${project.id}`} className="block">
+                <p className="text-lg font-semibold text-white">{project.branch}</p>
+                <p className="mt-1 text-sm text-slate-400">{project.id}</p>
+                <p className="mt-3 text-xs uppercase tracking-[0.2em] text-teal-200/80">{project.projectTypeName}</p>
+                <p className="mt-3 text-sm text-slate-300">{project.town}, {project.province}</p>
+                <p className="text-sm text-slate-300">{project.deliveryPartnerLabel}: {project.installer}</p>
+                <p className="text-sm text-slate-300">Stage: {project.currentStage}</p>
+                <p className="text-sm text-slate-300">Status: {project.status}</p>
+                <span className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white">
+                  <FileText className="h-4 w-4" />
+                  Open project details
+                </span>
+              </Link>
+              <Link to={`/projects/${project.id}#voice-note`} className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-white/10">
                 <Mic2 className="h-4 w-4" />
-                Open voice note
-              </span>
-            </Link>
+                Add voice note
+              </Link>
+            </article>
           ))
         ) : (
           <div className="rounded-3xl border border-dashed border-white/15 bg-slate-950/40 p-6 text-sm text-slate-400 lg:col-span-2">

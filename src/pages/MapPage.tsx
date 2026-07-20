@@ -16,6 +16,20 @@ type ProjectLocation = {
 };
 
 const branchCoordinates: Record<string, LatLngTuple> = {
+  'PSG-004-CONSTANTIA': [-34.0314, 18.4189],
+  'PSG-007-JOHANNESBURG': [-26.1459, 28.0438],
+  'PSG-017-OLD-OAK': [-33.8756, 18.6417],
+  'PSG-018-PRETORIA': [-25.7757, 28.2807],
+  'PSG-020-PRETORIA': [-25.9131, 28.2293],
+  'PSG-021-PRETORIA': [-25.7684, 28.3647],
+  'PSG-024-PRETORIA': [-25.8239, 28.3186],
+  'PSG-025-CAPE-TOWN': [-33.9129, 18.4198],
+  'PSG-026-MALMESBURY': [-33.4597, 18.7271],
+  'PSG-027-JOHANNESBURG': [-26.1335, 28.0685],
+  'PSG-028-NEWLANDS': [-33.9706, 18.4643],
+  'PSG-029-JOHANNESBURG': [-26.1456, 27.9683],
+  'PSG-030-GEORGE': [-33.9648, 22.4617],
+  'PSG-031-PRETORIA': [-25.7863, 28.3155],
   'PSG-SAMPLE-BFN-005': [-29.0852, 26.1596],
   'PSG-SAMPLE-CTN-001': [-33.9035, 18.4207],
   'PSG-SAMPLE-DBN-004': [-29.7253, 31.0665],
@@ -47,6 +61,45 @@ const townCoordinates: Record<string, LatLngTuple> = {
   'windhoek|namibia': [-22.5609, 17.0658],
 };
 
+const townOnlyCoordinates: Record<string, LatLngTuple> = {
+  bellville: [-33.8943, 18.6294],
+  bloemfontein: [-29.0852, 26.1596],
+  bloemhof: [-27.6466, 25.6067],
+  bultfontein: [-28.2872, 26.1497],
+  'cape town': [-33.9249, 18.4241],
+  centurion: [-25.8603, 28.1894],
+  christiana: [-27.9133, 25.1627],
+  constantia: [-34.0314, 18.4189],
+  cradock: [-32.1642, 25.6192],
+  durban: [-29.8587, 31.0218],
+  'east london': [-33.0192, 27.8999],
+  george: [-33.9648, 22.4617],
+  hermanus: [-34.4092, 19.2504],
+  hilton: [-29.5597, 30.3005],
+  hoedspruit: [-24.3512, 30.9533],
+  'jeffreys bay': [-34.0507, 24.9211],
+  johannesburg: [-26.2041, 28.0473],
+  'louis trichardt': [-23.0439, 29.9032],
+  malmesbury: [-33.4597, 18.7271],
+  mbombela: [-25.4753, 30.9694],
+  middelburg: [-25.7751, 29.4648],
+  'mossel bay': [-34.1831, 22.1461],
+  newlands: [-33.9706, 18.4643],
+  'old oak': [-33.8756, 18.6417],
+  paarl: [-33.7342, 18.9621],
+  pietermaritzburg: [-29.6006, 30.3794],
+  polokwane: [-23.9045, 29.4689],
+  pretoria: [-25.7479, 28.2293],
+  rosebank: [-26.1466, 28.0415],
+  sandton: [-26.1076, 28.0567],
+  'somerset west': [-34.084, 18.8433],
+  umhlanga: [-29.7253, 31.0665],
+  'walvis bay': [-22.9576, 14.5053],
+  warmbad: [-24.8839, 28.2947],
+  windhoek: [-22.5609, 17.0658],
+  yzerfontein: [-33.3444, 18.1609],
+};
+
 const provinceCoordinates: Record<string, LatLngTuple> = {
   'eastern cape': [-32.2968, 26.4194],
   'free state': [-28.4541, 26.7968],
@@ -71,8 +124,16 @@ function coordinateKey(project: Project) {
   return `${project.town}|${project.province}`.toLowerCase();
 }
 
+function townKey(project: Project) {
+  return project.town.trim().toLowerCase();
+}
+
 function getProjectPosition(project: Project): LatLngTuple {
-  return branchCoordinates[project.id] ?? townCoordinates[coordinateKey(project)] ?? provinceCoordinates[project.province.toLowerCase()] ?? [-28.4793, 24.6727];
+  if (typeof project.latitude === 'number' && typeof project.longitude === 'number') {
+    return [project.latitude, project.longitude];
+  }
+
+  return branchCoordinates[project.id] ?? townCoordinates[coordinateKey(project)] ?? townOnlyCoordinates[townKey(project)] ?? provinceCoordinates[project.province.toLowerCase()] ?? [-28.4793, 24.6727];
 }
 
 function createProjectIcon(project: Project) {
@@ -161,11 +222,12 @@ export function MapPage() {
                   <div className="min-w-48 text-slate-900">
                     <p className="font-semibold">{project.branch}</p>
                     <p className="mt-1 text-xs text-slate-600">{project.town}, {project.province}</p>
+                    {project.physicalAddress ? <p className="mt-1 text-xs text-slate-600">{project.physicalAddress}</p> : null}
                     <p className="mt-2 text-xs"><strong>Stage:</strong> {project.currentStage}</p>
                     <p className="text-xs"><strong>Status:</strong> {statusStyles[project.status].label}</p>
                     <p className="text-xs"><strong>Installer:</strong> {project.installer}</p>
-                    <Link className="mt-3 inline-flex text-xs font-semibold text-sky-700" to={`/projects/${project.id}#voice-note`}>
-                      Open voice note
+                    <Link className="mt-3 inline-flex rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-500" to={`/projects/${project.id}`}>
+                      Open project details
                     </Link>
                   </div>
                 </Popup>
@@ -194,7 +256,7 @@ export function MapPage() {
             {locations.map(({ project, color }) => (
               <Link
                 key={project.id}
-                to={`/projects/${project.id}#voice-note`}
+                to={`/projects/${project.id}`}
                 className="block rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-sky-400/40 hover:bg-white/10"
               >
                 <div className="flex items-start gap-3">
@@ -202,7 +264,9 @@ export function MapPage() {
                   <div>
                     <p className="font-semibold text-white">{project.branch}</p>
                     <p className="mt-1 text-sm text-slate-400">{project.town}, {project.province}</p>
+                    {project.physicalAddress ? <p className="mt-1 text-xs text-slate-500">{project.physicalAddress}</p> : null}
                     <p className="mt-2 text-xs text-slate-300">{project.currentStage} · {statusStyles[project.status].label}</p>
+                    <p className="mt-3 text-xs font-semibold text-sky-200">Open project details</p>
                   </div>
                 </div>
               </Link>

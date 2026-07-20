@@ -4,6 +4,9 @@ create table if not exists public.projects (
   id text primary key,
   province text not null,
   town text not null,
+  physical_address text,
+  latitude double precision,
+  longitude double precision,
   branch text not null,
   manager text not null,
   manager_email text not null,
@@ -23,6 +26,20 @@ create table if not exists public.projects (
   comments jsonb not null default '[]'::jsonb,
   activity jsonb not null default '[]'::jsonb
 );
+
+alter table public.projects add column if not exists physical_address text;
+alter table public.projects add column if not exists latitude double precision;
+alter table public.projects add column if not exists longitude double precision;
+
+do $$ begin
+  alter table public.projects add constraint projects_latitude_range check (latitude is null or latitude between -90 and 90);
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter table public.projects add constraint projects_longitude_range check (longitude is null or longitude between -180 and 180);
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),

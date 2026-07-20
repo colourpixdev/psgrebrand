@@ -113,8 +113,11 @@ export function ProjectsPage() {
         <div className="mt-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
           {quickUpdateProjects.length > 0 ? quickUpdateProjects.map((project) => (
             <article key={project.id} className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
-              <p className="text-sm font-semibold text-white">{project.branch}</p>
-              <p className="mt-1 text-xs text-slate-400">{project.town}, {project.province} · {project.id}</p>
+              <Link to={`/projects/${project.id}`} className="block transition hover:text-sky-100">
+                <p className="text-sm font-semibold text-white">{project.branch}</p>
+                <p className="mt-1 text-xs text-slate-400">{project.town}, {project.province} · {project.id}</p>
+                <p className="mt-3 text-xs font-semibold text-sky-200">Open project details</p>
+              </Link>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link to={`/projects/${project.id}#project-note`} className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400">
                   <FileText className="h-4 w-4" />

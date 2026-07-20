@@ -19,6 +19,7 @@ const projectSchema = z.object({
   graphicsPartner: optionalText,
   province: optionalText,
   town: optionalText,
+  physicalAddress: z.string().trim().min(8, 'Exact physical address is required for map placement'),
   branch: z.string().trim().min(2, 'Site or project location is required'),
   manager: optionalText,
   managerEmail: optionalEmail,
@@ -53,6 +54,7 @@ export function ProjectCreateForm() {
       graphicsPartner: defaultGraphicsPartner,
       province: '',
       town: '',
+      physicalAddress: '',
       branch: '',
       manager: '',
       managerEmail: '',
@@ -81,6 +83,7 @@ export function ProjectCreateForm() {
         graphicsPartner: defaultGraphicsPartner,
         province: '',
         town: '',
+        physicalAddress: '',
         branch: '',
         manager: '',
         managerEmail: '',
@@ -165,6 +168,13 @@ export function ProjectCreateForm() {
           Town <span className="text-xs text-slate-500">Optional</span>
           <input {...register('town')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
           {errors.town ? <span className="text-xs text-red-300">{errors.town.message}</span> : null}
+        </label>
+
+        <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">
+          Exact physical address
+          <input {...register('physicalAddress')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" placeholder="Street number, street name, suburb, town, province, country" />
+          <span className="text-xs leading-5 text-slate-500">This address is geocoded before saving so the project pin appears at the correct map location.</span>
+          {errors.physicalAddress ? <span className="text-xs text-red-300">{errors.physicalAddress.message}</span> : null}
         </label>
 
         <label className="grid gap-2 text-sm text-slate-300">
@@ -252,7 +262,7 @@ export function ProjectCreateForm() {
         ) : null}
 
         <button type="submit" disabled={isSubmitting || mutation.isPending} className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2">
-          {isSubmitting || mutation.isPending ? 'Saving project...' : 'Add project'}
+          {isSubmitting || mutation.isPending ? 'Checking address and saving...' : 'Add project'}
         </button>
       </form>
     </section>

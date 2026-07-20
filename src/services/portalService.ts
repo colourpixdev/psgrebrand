@@ -21,6 +21,9 @@ type ProjectRow = {
   delivery_partner_label?: string | null;
   province: string;
   town: string;
+  physical_address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   branch: string;
   manager: string;
   manager_email: string;
@@ -177,6 +180,7 @@ export type CreateProjectInput = {
   projectType?: ProjectTemplateId;
   province?: string;
   town?: string;
+  physicalAddress: string;
   branch: string;
   manager?: string;
   managerEmail?: string;
@@ -204,6 +208,35 @@ function workspaceIdFromName(value: string) {
 
 function optionalProjectValue(value: string | undefined, fallback = 'Not captured') {
   return value?.trim() || fallback;
+}
+
+async function geocodePhysicalAddress(input: CreateProjectInput) {
+  const physicalAddress = input.physicalAddress.trim();
+  if (!physicalAddress) {
+    throw new Error('Exact physical address is required for map placement.');
+  }
+
+  const query = [physicalAddress, input.town, input.province]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(', ');
+  const response = await fetch(`https://nominatim.openstreetmap.org/search?${new URLSearchParams({ format: 'jsonv2', limit: '1', q: query }).toString()}`, {
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!response.ok) {
+    throw new Error('The address lookup service is unavailable. Try again before saving the project.');
+  }
+
+  const results = await response.json() as Array<{ lat?: string; lon?: string }>;
+  const latitude = Number(results[0]?.lat);
+  const longitude = Number(results[0]?.lon);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    throw new Error('The exact physical address could not be found on the map. Add a more complete street address, suburb, town, province, and country.');
+  }
+
+  return { physicalAddress, latitude, longitude };
 }
 
 function isVoiceNoteMessage(message: string) {
@@ -349,6 +382,9 @@ function mapProjectRow(row: ProjectRow): Project {
     deliveryPartnerLabel: row.delivery_partner_label ?? template.deliveryPartnerLabel,
     province: row.province,
     town: row.town,
+    physicalAddress: row.physical_address ?? '',
+    latitude: typeof row.latitude === 'number' ? row.latitude : null,
+    longitude: typeof row.longitude === 'number' ? row.longitude : null,
     branch: row.branch,
     manager: row.manager,
     managerEmail: row.manager_email,
@@ -462,10 +498,14 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   const clientCompany = input.clientCompany?.trim() || defaultWorkspace.clientCompany;
   const graphicsPartner = input.graphicsPartner?.trim() || defaultWorkspace.graphicsPartner;
   const template = input.projectType ? getProjectTemplate(input.projectType) : defaultProjectTemplate;
+  const location = await geocodePhysicalAddress(input);
   const basePayload = {
     id: input.id.trim(),
     province: optionalProjectValue(input.province),
     town: optionalProjectValue(input.town),
+    physical_address: location.physicalAddress,
+    latitude: location.latitude,
+    longitude: location.longitude,
     branch: input.branch.trim(),
     manager: optionalProjectValue(input.manager),
     manager_email: optionalProjectValue(input.managerEmail, ''),

@@ -113,7 +113,7 @@ export async function signOutSession() {
     return;
   }
 
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: 'local' });
 }
 
 export async function signInWithEmailPassword(email: string, password: string) {
