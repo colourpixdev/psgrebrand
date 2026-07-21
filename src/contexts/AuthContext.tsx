@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Role, UserRecord } from '../types/domain';
 import { loadSessionUser, sessionToUser, signInWithEmailPassword, signOutSession } from '../services/authService';
+import { updateOwnProfileIdentity } from '../services/userService';
 import { supabase } from '../lib/supabase';
 import { roleLabels } from '../constants/portal';
 import { enrichWorkspaceAccess, platformOwnerEmail } from '../constants/workspaces';
+import { saveProfileIdentity, type EditableProfileIdentity } from '../utils/profileIdentity';
 
 interface AuthContextValue {
   user: UserRecord | null;
@@ -11,6 +13,7 @@ interface AuthContextValue {
   roleLabel: string;
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
   signInAs: (role: Role) => void;
+  updateProfileIdentity: (identity: EditableProfileIdentity) => Promise<'supabase' | 'local'>;
   signOut: () => Promise<void>;
 }
 
@@ -67,6 +70,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role,
         email: role === 'colourpix_admin' ? platformOwnerEmail : '',
       }));
+    },
+    updateProfileIdentity: async (identity) => {
+      if (!user) {
+        return 'local';
+      }
+
+      saveProfileIdentity(user, identity);
+
+      if (!supabase) {
+        setUser(enrichWorkspaceAccess({
+          ...user,
+          name: identity.displayName.trim(),
+          company: identity.company.trim() || undefined,
+          profileTitle: identity.title.trim() || undefined,
+          avatarUrl: identity.avatarUrl.trim() || undefined,
+          logoUrl: identity.logoUrl.trim() || undefined,
+        }));
+        return 'local';
+      }
+
+      const updatedUser = await updateOwnProfileIdentity(user.email, identity);
+      saveProfileIdentity(updatedUser, identity);
+      setUser(updatedUser);
+      return 'supabase';
     },
     signOut: async () => {
       await signOutSession();

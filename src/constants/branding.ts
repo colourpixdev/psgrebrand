@@ -4,7 +4,7 @@ export const productBrand = {
   developer: 'RolloutHQ',
   licensee: 'Platform owner',
   customer: 'PSG Wealth Insure',
-  partner: 'Colourpix (Pty) Ltd',
+  partner: 'Colourpix CC',
   workspace: 'Colourpix / PSG Wealth Insure Workspace',
   licenseStatus: 'Licensed',
   version: import.meta.env.VITE_APP_VERSION ?? '0.0.0',

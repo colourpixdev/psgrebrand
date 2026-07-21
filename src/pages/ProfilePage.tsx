@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Building2, CheckCircle2, UserCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { defaultWorkspace } from '../constants/workspaces';
-import { getInitials, getProfileIdentity, saveProfileIdentity } from '../utils/profileIdentity';
+import { getInitials, getProfileIdentity } from '../utils/profileIdentity';
 
 const profileSchema = z.object({
   displayName: z.string().trim().min(2, 'Display name is required'),
@@ -18,7 +18,7 @@ const profileSchema = z.object({
 type ProfileValues = z.infer<typeof profileSchema>;
 
 export function ProfilePage() {
-  const { user, roleLabel } = useAuth();
+  const { user, roleLabel, updateProfileIdentity } = useAuth();
   const [notice, setNotice] = useState<string | null>(null);
   const identity = getProfileIdentity(user);
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<ProfileValues>({
@@ -34,15 +34,16 @@ export function ProfilePage() {
   const initials = getInitials(preview.displayName || user?.name);
   const companyInitials = getInitials(preview.company || user?.company || user?.branch || defaultWorkspace.clientCompany);
 
-  const onSubmit = handleSubmit((values) => {
-    saveProfileIdentity(user, {
+  const onSubmit = handleSubmit(async (values) => {
+    const saveTarget = await updateProfileIdentity({
       displayName: values.displayName,
       title: values.title ?? '',
       company: values.company ?? '',
       avatarUrl: values.avatarUrl,
       logoUrl: values.logoUrl,
     });
-    setNotice('Profile identity saved on this device. Supabase profile storage can use these same fields when the live profile schema is extended.');
+
+    setNotice(saveTarget === 'supabase' ? 'Profile identity saved to your account.' : 'Profile identity saved on this device.');
   });
 
   return (
@@ -103,7 +104,7 @@ export function ProfilePage() {
 
         <form onSubmit={onSubmit} className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-6 shadow-soft">
           <h3 className="text-lg font-semibold text-white">Edit profile identity</h3>
-          <p className="mt-1 text-sm leading-6 text-slate-400">These fields are saved locally for now and are structured for a future Supabase profile upgrade.</p>
+          <p className="mt-1 text-sm leading-6 text-slate-400">These fields are saved to your profile and cached on this device for offline preview.</p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <label className="grid gap-2 text-sm text-slate-300">

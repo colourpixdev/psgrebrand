@@ -1,5 +1,5 @@
 import type { Project, Role, UserRecord } from '../types/domain';
-import { isAccessControlAdmin } from '../constants/workspaces';
+import { isAccessControlAdmin, isPlatformOwnerEmail } from '../constants/workspaces';
 
 export type Permission =
   | 'create_project'
@@ -325,6 +325,10 @@ export function canManageAccessControls(user: UserRecord | null | undefined) {
   return isAccessControlAdmin(user?.email);
 }
 
+export function canViewSettings(user: UserRecord | null | undefined) {
+  return isPlatformOwnerEmail(user?.email);
+}
+
 export function canAccessRoute(user: UserRecord | null | undefined, path: string) {
   if (!user) {
     return false;
@@ -343,7 +347,7 @@ export function canAccessRoute(user: UserRecord | null | undefined, path: string
   }
 
   if (path.startsWith('/settings')) {
-    return can(user, 'view_settings');
+    return canViewSettings(user);
   }
 
   if (path.startsWith('/access-controls')) {

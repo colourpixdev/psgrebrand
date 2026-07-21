@@ -254,7 +254,7 @@ const projects = [...groups.values()]
       workspace_id: 'psg-national-signage-rollout',
       workspace_name: 'Colourpix / PSG Wealth Insure Workspace',
       client_company: 'PSG Wealth Insure',
-      graphics_partner: 'Colourpix (Pty) Ltd',
+      graphics_partner: 'Colourpix CC',
       project_type: 'signage_rollout',
       project_type_name: 'Signage rollout',
       site_label: 'Site / branch',

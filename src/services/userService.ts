@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import type { Role, UserRecord } from '../types/domain';
 import { enrichWorkspaceAccess } from '../constants/workspaces';
 import { sanitizePermissionOverrides } from '../utils/permissions';
+import type { EditableProfileIdentity } from '../utils/profileIdentity';
 
 type ProfileRow = {
   name: string;
@@ -126,6 +127,36 @@ export type UpdateUserAccessControlsInput = {
   role: Role;
   permissionOverrides?: Record<string, boolean>;
 };
+
+export async function updateOwnProfileIdentity(email: string, identity: EditableProfileIdentity): Promise<UserRecord> {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({
+      name: identity.displayName.trim(),
+      company: identity.company.trim() || null,
+      profile_title: identity.title.trim() || null,
+      avatar_url: identity.avatarUrl.trim() || null,
+      logo_url: identity.logoUrl.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('email', normalizedEmail)
+    .select('name, role, branch, email, company, profile_title, avatar_url, logo_url, workspace_ids, permission_overrides')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to update profile identity.');
+  }
+
+  return profileRowToUser(data as ProfileRow);
+}
 
 async function getFunctionErrorMessage(error: Error) {
   if (error.message.toLowerCase().includes('failed to send a request')) {

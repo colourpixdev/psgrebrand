@@ -41,6 +41,10 @@ export function isAccessControlAdmin(email: string | undefined) {
   return Boolean(email && accessControlAdminEmails.includes(email.trim().toLowerCase()));
 }
 
+export function isPlatformOwnerEmail(email: string | undefined) {
+  return Boolean(email && platformOwnerEmails.includes(email.trim().toLowerCase()));
+}
+
 export function enrichWorkspaceAccess(user: UserRecord): UserRecord {
   const normalizedEmail = user.email.trim().toLowerCase();
   const canAccessAllWorkspaces = isAllWorkspaceAdmin(normalizedEmail) || user.workspaceIds?.includes('*') === true;
@@ -50,6 +54,6 @@ export function enrichWorkspaceAccess(user: UserRecord): UserRecord {
     company: user.company ?? (user.role === 'sign_company' ? user.branch : undefined),
     workspaceIds: canAccessAllWorkspaces ? ['*'] : user.workspaceIds ?? [defaultWorkspace.id],
     canAccessAllWorkspaces,
-    isPlatformOwner: platformOwnerEmails.includes(normalizedEmail),
+    isPlatformOwner: isPlatformOwnerEmail(normalizedEmail),
   };
 }

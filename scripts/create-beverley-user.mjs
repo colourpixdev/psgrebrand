@@ -119,7 +119,7 @@ async function main() {
     email: user.email,
     role: user.role,
     branch: user.branch,
-    company: 'Colourpix (Pty) Ltd',
+    company: 'Colourpix CC',
     profile_title: 'Workspace Administrator',
     workspace_ids: user.workspace_ids,
     updated_at: new Date().toISOString(),

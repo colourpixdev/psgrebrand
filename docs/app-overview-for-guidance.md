@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-RolloutHQ™ is intended to be a secure, role-aware project workspace platform for managing repeatable work across separate client workspaces. The application is licensed software, with the first workspace configured for the PSG National Signage Rollout and Colourpix (Pty) Ltd positioned as the default service partner at this stage. PSG signage is the first proof-of-concept template, not the limit of the product. Its purpose is to replace scattered spreadsheets, WhatsApp messages, email threads, and manual status chasing with one shared project record for every site, location, customer request, rollout item, or delivery job.
+RolloutHQ™ is intended to be a secure, role-aware project workspace platform for managing repeatable work across separate client workspaces. The application is licensed software, with the first workspace configured for the PSG National Signage Rollout and Colourpix CC positioned as the default service partner at this stage. PSG signage is the first proof-of-concept template, not the limit of the product. Its purpose is to replace scattered spreadsheets, WhatsApp messages, email threads, and manual status chasing with one shared project record for every site, location, customer request, rollout item, or delivery job.
 
 The platform gives platform owners, workspace administrators, client administrators, site contacts, and delivery partners a controlled view of the project work relevant to them. It tracks each project from initial setup through information gathering, approvals, quotations, production or delivery, evidence, signoff, and completion.
 
@@ -40,7 +40,7 @@ The current default workspace is PSG National Signage Rollout. Future workspaces
 - Platform administrators
 - Project records and journal entries scoped to that workspace
 
-The platform owner and nominated senior workspace administrators should have all-workspace administrative access. Other users should belong only to the specific workspaces they are invited into. Colourpix (Pty) Ltd is currently the default service partner for all workspaces and should be presented as "in partnership with Colourpix (Pty) Ltd" rather than as the licence owner.
+The platform owner and nominated senior workspace administrators should have all-workspace administrative access. Other users should belong only to the specific workspaces they are invited into. Colourpix CC is currently the default service partner for all workspaces and should be presented as "in partnership with Colourpix CC" rather than as the licence owner.
 
 ## Project Templates and SaaS Direction
 

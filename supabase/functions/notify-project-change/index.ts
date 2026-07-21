@@ -23,7 +23,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const defaultRecipient = 'francois@colourpix.co.za';
+const defaultRecipient = 'rollout@colourpix.co.za';
 const validChangeTypes = new Set(['note', 'voice_note', 'voice_update']);
 
 function jsonResponse(body: unknown, status = 200) {
@@ -136,7 +136,7 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'PROJECT_NOTIFICATION_TO must be a valid email address.' }, 500);
   }
 
-  const from = Deno.env.get('PROJECT_NOTIFICATION_FROM') || 'RolloutHQ <notifications@rollouthq.app>';
+  const from = Deno.env.get('PROJECT_NOTIFICATION_FROM') || 'RolloutHQ <rollout@colourpix.co.za>';
   const subject = `RolloutHQ ${changeLabel(payload.changeType)}: ${payload.project.branch}`;
   const text = [
     `${payload.actor} left a ${changeLabel(payload.changeType)} on ${payload.project.branch}.`,
