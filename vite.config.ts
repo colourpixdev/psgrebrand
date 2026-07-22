@@ -6,7 +6,7 @@ const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.met
 
 export default defineConfig({
   root: 'src',
-  base: '/psg-rebrand/',
+  base: '/psgrebrand/',
   plugins: [react()],
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
