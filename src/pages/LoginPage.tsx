@@ -63,6 +63,23 @@ export function LoginPage() {
               <h2 className="mt-3 text-4xl font-semibold text-white">{productBrand.name}</h2>
               <p className="mt-2 text-base text-slate-200">Private workspace instance</p>
               <p className="mt-3 text-sm leading-6 text-slate-400">This sign-in page is for invited users working inside an active client workspace.</p>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <div className="rounded-2xl border border-white/10 bg-white px-3 py-1.5">
+                  <img
+                    src={`${import.meta.env.BASE_URL}brand/colourpix-logo.svg`}
+                    alt="Colourpix logo"
+                    className="h-6 w-auto"
+                  />
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100">
+                  <img
+                    src={`${import.meta.env.BASE_URL}brand/psg-flower-cyan.svg`}
+                    alt="PSG flower logo"
+                    className="h-5 w-5"
+                  />
+                  PSG participant
+                </div>
+              </div>
             </div>
           </div>
 

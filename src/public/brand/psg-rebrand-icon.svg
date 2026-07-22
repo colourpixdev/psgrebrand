@@ -1,11 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-  <title id="title">PSG Rebrand app icon</title>
-  <desc id="desc">Connected workflow nodes moving upward.</desc>
-  <rect width="512" height="512" rx="116" fill="#0B1220"/>
-  <path d="M135 316L241 210L313 282L392 203" fill="none" stroke="#14B8A6" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="135" cy="316" r="42" fill="#FFFFFF"/>
-  <circle cx="241" cy="210" r="42" fill="#14B8A6"/>
-  <circle cx="313" cy="282" r="42" fill="#FFFFFF"/>
-  <circle cx="392" cy="203" r="42" fill="#14B8A6"/>
-  <path d="M334 140H410V216" fill="none" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>
+  <title id="title">PSG flower app icon</title>
+  <desc id="desc">Cyan PSG flower mark on transparent background.</desc>
+  <g fill="#17A9E7">
+    <path d="M256 58c33 45 48 88 40 133-9 38-36 67-69 84 0-62 16-119 29-217Z"/>
+    <path d="M256 58c-33 45-48 88-40 133 9 38 36 67 69 84 0-62-16-119-29-217Z"/>
+    <path d="M224 275c15-23 32-31 32-31s17 8 32 31c17 28 21 56 14 84-8 21-24 39-46 62-22-23-38-41-46-62-8-28-3-56 14-84Z"/>
+    <path d="M223 282c-31-3-56-16-73-39-15-22-17-49-4-75 22-44 69-64 129-62-32 27-48 57-50 91-3 34 8 62 31 85-11 0-22 0-33 0Z"/>
+    <path d="M289 282c31-3 56-16 73-39 15-22 17-49 4-75-22-44-69-64-129-62 32 27 48 57 50 91 3 34-8 62-31 85 11 0 22 0 33 0Z"/>
+    <circle cx="256" cy="252" r="19"/>
+  </g>
 </svg>

@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">PSG flower mark</title>
+  <desc id="desc">Cyan fleur-inspired flower mark with transparent background.</desc>
   <g fill="#17A9E7">
     <path d="M64 16c8 11 11 22 9 33-2 9-9 16-17 20 0-16 4-30 8-53Z"/>
     <path d="M64 16c-8 11-11 22-9 33 2 9 9 16 17 20 0-16-4-30-8-53Z"/>
