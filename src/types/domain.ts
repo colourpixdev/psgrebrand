@@ -56,6 +56,7 @@ export interface Branch {
 export interface Project {
   id: string;
   branchId: string;
+  branch: string;
   workspaceId: string;
   workspaceName: string;
   clientCompany: string;
@@ -64,6 +65,11 @@ export interface Project {
   projectTypeName: string;
   siteLabel: string;
   deliveryPartnerLabel: string;
+  province: string;
+  town: string;
+  physicalAddress: string;
+  latitude: number | null;
+  longitude: number | null;
   manager: string;
   managerEmail: string;
   installer: string;

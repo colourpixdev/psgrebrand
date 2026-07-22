@@ -20,7 +20,13 @@ type ProjectRow = {
   project_type_name?: string | null;
   site_label?: string | null;
   delivery_partner_label?: string | null;
-  branch_id: string;
+  branch_id?: string | null;
+  branch?: string | null;
+  province?: string | null;
+  town?: string | null;
+  physical_address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   manager: string;
   manager_email: string;
   installer: string;
@@ -181,7 +187,11 @@ export type CreateProjectInput = {
   clientCompany?: string;
   graphicsPartner?: string;
   projectType?: ProjectTemplateId;
-  branchId: string;
+  branchId?: string;
+  branch: string;
+  province?: string;
+  town?: string;
+  physicalAddress: string;
   manager?: string;
   managerEmail?: string;
   installer?: string;
@@ -396,10 +406,13 @@ function createActivity(title: string, detail: string, type: ActivityItem['type'
 
 function mapProjectRow(row: ProjectRow): Project {
   const template = getProjectTemplate(row.project_type);
+  const mappedBranchId = row.branch_id ?? row.branch ?? 'unassigned';
+  const mappedBranch = row.branch ?? row.branch_id ?? 'Unassigned';
 
   return {
     id: row.id,
-    branchId: row.branch_id,
+    branchId: mappedBranchId,
+    branch: mappedBranch,
     workspaceId: row.workspace_id ?? defaultWorkspace.id,
     workspaceName: row.workspace_name ?? defaultWorkspace.name,
     clientCompany: row.client_company ?? defaultWorkspace.clientCompany,
@@ -408,6 +421,11 @@ function mapProjectRow(row: ProjectRow): Project {
     projectTypeName: row.project_type_name ?? template.name,
     siteLabel: row.site_label ?? template.siteLabel,
     deliveryPartnerLabel: row.delivery_partner_label ?? template.deliveryPartnerLabel,
+    province: row.province ?? 'Not captured',
+    town: row.town ?? 'Not captured',
+    physicalAddress: row.physical_address ?? '',
+    latitude: typeof row.latitude === 'number' ? row.latitude : null,
+    longitude: typeof row.longitude === 'number' ? row.longitude : null,
     manager: row.manager,
     managerEmail: row.manager_email,
     installer: row.installer,
@@ -520,9 +538,16 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   const clientCompany = input.clientCompany?.trim() || defaultWorkspace.clientCompany;
   const graphicsPartner = input.graphicsPartner?.trim() || defaultWorkspace.graphicsPartner;
   const template = input.projectType ? getProjectTemplate(input.projectType) : defaultProjectTemplate;
+  const resolvedBranchId = input.branchId?.trim() || input.branch.trim();
   const basePayload = {
     id: input.id.trim(),
-    branch_id: input.branchId.trim(),
+    branch_id: resolvedBranchId,
+    branch: input.branch.trim(),
+    province: optionalProjectValue(input.province),
+    town: optionalProjectValue(input.town),
+    physical_address: input.physicalAddress.trim(),
+    latitude: null,
+    longitude: null,
     manager: optionalProjectValue(input.manager),
     manager_email: optionalProjectValue(input.managerEmail, ''),
     installer: optionalProjectValue(input.installer),
