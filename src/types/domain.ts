@@ -49,6 +49,9 @@ export interface Branch {
   physicalAddress: string;
   latitude: number | null;
   longitude: number | null;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getAllBranches, createBranch, updateBranch, deleteBranch } from '../services/branchService';
 import type { Branch, Division } from '../types/domain';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,6 +14,8 @@ export function BranchesPage() {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
+  const [pendingDeleteBranch, setPendingDeleteBranch] = useState<Branch | null>(null);
+  const [deleteConfirmCount, setDeleteConfirmCount] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
     division: 'Wealth' as Division,
@@ -21,6 +24,9 @@ export function BranchesPage() {
     physicalAddress: '',
     latitude: '',
     longitude: '',
+    contactName: '',
+    contactEmail: '',
+    contactPhone: '',
   });
   const [editData, setEditData] = useState({
     name: '',
@@ -30,6 +36,9 @@ export function BranchesPage() {
     physicalAddress: '',
     latitude: '',
     longitude: '',
+    contactName: '',
+    contactEmail: '',
+    contactPhone: '',
   });
   const { user } = useAuth();
 
@@ -69,6 +78,9 @@ export function BranchesPage() {
         physicalAddress: formData.physicalAddress,
         latitude: formData.latitude ? parseFloat(formData.latitude) : null,
         longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+        contactName: formData.contactName.trim() || null,
+        contactEmail: formData.contactEmail.trim() || null,
+        contactPhone: formData.contactPhone.trim() || null,
       });
 
       setFormData({
@@ -79,6 +91,9 @@ export function BranchesPage() {
         physicalAddress: '',
         latitude: '',
         longitude: '',
+        contactName: '',
+        contactEmail: '',
+        contactPhone: '',
       });
       setShowForm(false);
       setError(null);
@@ -100,6 +115,9 @@ export function BranchesPage() {
       physicalAddress: branch.physicalAddress,
       latitude: branch.latitude?.toString() ?? '',
       longitude: branch.longitude?.toString() ?? '',
+      contactName: branch.contactName ?? '',
+      contactEmail: branch.contactEmail ?? '',
+      contactPhone: branch.contactPhone ?? '',
     });
     setError(null);
   }
@@ -114,6 +132,9 @@ export function BranchesPage() {
       physicalAddress: '',
       latitude: '',
       longitude: '',
+      contactName: '',
+      contactEmail: '',
+      contactPhone: '',
     });
   }
 
@@ -135,6 +156,9 @@ export function BranchesPage() {
         physicalAddress: editData.physicalAddress,
         latitude: editData.latitude ? parseFloat(editData.latitude) : null,
         longitude: editData.longitude ? parseFloat(editData.longitude) : null,
+        contactName: editData.contactName.trim() || null,
+        contactEmail: editData.contactEmail.trim() || null,
+        contactPhone: editData.contactPhone.trim() || null,
       });
 
       cancelEdit();
@@ -147,18 +171,41 @@ export function BranchesPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Are you sure you want to delete this branch?')) return;
-
+  async function executeDelete(id: string) {
     try {
       setSaving(true);
       await deleteBranch(id);
+      setPendingDeleteBranch(null);
+      setDeleteConfirmCount(1);
       await loadBranches();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete branch');
     } finally {
       setSaving(false);
     }
+  }
+
+  function requestDelete(branch: Branch) {
+    setPendingDeleteBranch(branch);
+    setDeleteConfirmCount(1);
+  }
+
+  function cancelDelete() {
+    setPendingDeleteBranch(null);
+    setDeleteConfirmCount(1);
+  }
+
+  async function confirmDeleteStep() {
+    if (!pendingDeleteBranch) {
+      return;
+    }
+
+    if (deleteConfirmCount < 3) {
+      setDeleteConfirmCount((count) => count + 1);
+      return;
+    }
+
+    await executeDelete(pendingDeleteBranch.id);
   }
 
   const filteredBranches = useMemo(() => {
@@ -293,6 +340,39 @@ export function BranchesPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Contact Name</label>
+                <input
+                  type="text"
+                  value={formData.contactName}
+                  onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Jane Doe"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Contact Email</label>
+                <input
+                  type="email"
+                  value={formData.contactEmail}
+                  onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="name@company.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Contact Phone</label>
+                <input
+                  type="text"
+                  value={formData.contactPhone}
+                  onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., +27 82 000 0000"
+                />
+              </div>
+            </div>
+
             <button
               type="submit"
               className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
@@ -403,6 +483,30 @@ export function BranchesPage() {
                       />
                     </div>
 
+                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <input
+                        type="text"
+                        value={editData.contactName}
+                        onChange={(e) => setEditData({ ...editData, contactName: e.target.value })}
+                        placeholder="Contact name"
+                        className="rounded-lg border border-slate-300 px-3 py-2"
+                      />
+                      <input
+                        type="email"
+                        value={editData.contactEmail}
+                        onChange={(e) => setEditData({ ...editData, contactEmail: e.target.value })}
+                        placeholder="Contact email"
+                        className="rounded-lg border border-slate-300 px-3 py-2"
+                      />
+                      <input
+                        type="text"
+                        value={editData.contactPhone}
+                        onChange={(e) => setEditData({ ...editData, contactPhone: e.target.value })}
+                        placeholder="Contact phone"
+                        className="rounded-lg border border-slate-300 px-3 py-2"
+                      />
+                    </div>
+
                     <div className="mt-4 flex gap-2">
                       <button
                         type="submit"
@@ -441,16 +545,20 @@ export function BranchesPage() {
                     </div>
 
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Coordinates</p>
-                      <p className="mt-1 text-sm font-mono text-slate-700">
-                        {branch.latitude !== null && branch.longitude !== null
-                          ? `${branch.latitude.toFixed(6)}, ${branch.longitude.toFixed(6)}`
-                          : 'Not set'}
-                      </p>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Contact</p>
+                      <p className="mt-1 text-sm text-slate-700">{branch.contactName || 'Not set'}</p>
+                      {branch.contactEmail ? <p className="text-xs text-slate-600">{branch.contactEmail}</p> : null}
+                      {branch.contactPhone ? <p className="text-xs text-slate-600">{branch.contactPhone}</p> : null}
                     </div>
 
                     {isAdmin ? (
                       <div className="flex gap-2 lg:justify-end">
+                        <Link
+                          to={`/projects?branchId=${encodeURIComponent(branch.id)}`}
+                          className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-100"
+                        >
+                          Add Project
+                        </Link>
                         <button
                           type="button"
                           onClick={() => beginEdit(branch)}
@@ -461,7 +569,7 @@ export function BranchesPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(branch.id)}
+                          onClick={() => requestDelete(branch)}
                           className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 hover:bg-red-100"
                           disabled={saving}
                         >
@@ -475,6 +583,40 @@ export function BranchesPage() {
             })}
           </div>
         )}
+
+        {pendingDeleteBranch ? (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/65 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-6 shadow-xl">
+              <h3 className="text-xl font-semibold text-slate-900">Confirm branch removal</h3>
+              <p className="mt-2 text-sm text-slate-700">
+                You are about to remove <span className="font-semibold">{pendingDeleteBranch.name}</span>.
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                To avoid accidental deletion, click <span className="font-semibold">Yes</span> three times.
+              </p>
+              <p className="mt-3 text-sm text-red-700">Confirmation step: {deleteConfirmCount} of 3</p>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={confirmDeleteStep}
+                  className="rounded-lg border border-red-300 bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
+                  disabled={saving}
+                >
+                  {saving ? 'Removing...' : `Yes (${deleteConfirmCount}/3)`}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelDelete}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50"
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -9,6 +9,9 @@ export interface CreateBranchInput {
   physicalAddress: string;
   latitude?: number | null;
   longitude?: number | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
 }
 
 type BranchRow = {
@@ -20,6 +23,9 @@ type BranchRow = {
   physical_address: string;
   latitude: number | null;
   longitude: number | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -34,6 +40,9 @@ function rowToBranch(row: BranchRow): Branch {
     physicalAddress: row.physical_address,
     latitude: row.latitude,
     longitude: row.longitude,
+    contactName: row.contact_name ?? undefined,
+    contactEmail: row.contact_email ?? undefined,
+    contactPhone: row.contact_phone ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -79,6 +88,9 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
         physical_address: input.physicalAddress,
         latitude: input.latitude ?? null,
         longitude: input.longitude ?? null,
+        contact_name: input.contactName ?? null,
+        contact_email: input.contactEmail ?? null,
+        contact_phone: input.contactPhone ?? null,
       },
     ])
     .select()
@@ -103,6 +115,9 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
   if (input.physicalAddress !== undefined) updates.physical_address = input.physicalAddress;
   if (input.latitude !== undefined) updates.latitude = input.latitude;
   if (input.longitude !== undefined) updates.longitude = input.longitude;
+  if (input.contactName !== undefined) updates.contact_name = input.contactName;
+  if (input.contactEmail !== undefined) updates.contact_email = input.contactEmail;
+  if (input.contactPhone !== undefined) updates.contact_phone = input.contactPhone;
 
   const { data, error } = await supabase.from('branches').update(updates).eq('id', id).select().single();
 

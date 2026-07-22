@@ -1,9 +1,11 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { createProject, type CreateProjectInput } from '../../services/portalService';
+import { getAllBranches } from '../../services/branchService';
 import { timelineStages } from '../../constants/portal';
 import { defaultGraphicsPartner, defaultWorkspace } from '../../constants/workspaces';
 import { defaultProjectTemplate, projectTemplateOptions } from '../../constants/projectTemplates';
@@ -17,10 +19,11 @@ const projectSchema = z.object({
   workspaceName: optionalText,
   clientCompany: optionalText,
   graphicsPartner: optionalText,
+  branchId: z.string().trim().min(1, 'Select an existing branch'),
   province: optionalText,
   town: optionalText,
   physicalAddress: z.string().trim().min(8, 'Exact physical address is required for map placement'),
-  branch: z.string().trim().min(2, 'Site or project location is required'),
+  branch: optionalText,
   manager: optionalText,
   managerEmail: optionalEmail,
   installer: optionalText,
@@ -43,8 +46,15 @@ function generateProjectId() {
 export function ProjectCreateForm() {
   const queryClient = useQueryClient();
   const defaultProjectId = useMemo(() => generateProjectId(), []);
+  const [searchParams] = useSearchParams();
+  const preselectedBranchId = searchParams.get('branchId') ?? '';
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ProjectFormValues>({
+  const { data: branches = [], isLoading: isLoadingBranches } = useQuery({
+    queryKey: ['branches'],
+    queryFn: getAllBranches,
+  });
+
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
       id: defaultProjectId,
@@ -52,6 +62,7 @@ export function ProjectCreateForm() {
       workspaceName: defaultWorkspace.name,
       clientCompany: defaultWorkspace.clientCompany,
       graphicsPartner: defaultGraphicsPartner,
+      branchId: '',
       province: '',
       town: '',
       physicalAddress: '',
@@ -81,6 +92,7 @@ export function ProjectCreateForm() {
         workspaceName: defaultWorkspace.name,
         clientCompany: defaultWorkspace.clientCompany,
         graphicsPartner: defaultGraphicsPartner,
+        branchId: '',
         province: '',
         town: '',
         physicalAddress: '',
@@ -100,8 +112,57 @@ export function ProjectCreateForm() {
     },
   });
 
+  const selectedBranchId = watch('branchId');
+
+  useEffect(() => {
+    if (!selectedBranchId) {
+      return;
+    }
+
+    const selectedBranch = branches.find((branch) => branch.id === selectedBranchId);
+
+    if (!selectedBranch) {
+      return;
+    }
+
+    setValue('branch', selectedBranch.name);
+    setValue('province', selectedBranch.province);
+    setValue('town', selectedBranch.town);
+    setValue('physicalAddress', selectedBranch.physicalAddress);
+  }, [branches, selectedBranchId, setValue]);
+
+  useEffect(() => {
+    if (!preselectedBranchId) {
+      return;
+    }
+
+    const selectedBranch = branches.find((branch) => branch.id === preselectedBranchId);
+
+    if (!selectedBranch) {
+      return;
+    }
+
+    setValue('branchId', selectedBranch.id);
+    setValue('branch', selectedBranch.name);
+    setValue('province', selectedBranch.province);
+    setValue('town', selectedBranch.town);
+    setValue('physicalAddress', selectedBranch.physicalAddress);
+  }, [branches, preselectedBranchId, setValue]);
+
   const onSubmit = handleSubmit(async (values) => {
-    await mutation.mutateAsync(values);
+    const selectedBranch = branches.find((branch) => branch.id === values.branchId);
+
+    if (!selectedBranch) {
+      throw new Error('Select a valid existing branch before saving the project.');
+    }
+
+    await mutation.mutateAsync({
+      ...values,
+      branch: selectedBranch.name,
+      province: selectedBranch.province,
+      town: selectedBranch.town,
+      physicalAddress: selectedBranch.physicalAddress,
+    });
   });
 
   const mutationError = mutation.error instanceof Error ? mutation.error.message : null;
@@ -153,10 +214,17 @@ export function ProjectCreateForm() {
         </label>
 
         <label className="grid gap-2 text-sm text-slate-300">
-          Site / location
-          <input {...register('branch')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
-          {errors.branch ? <span className="text-xs text-red-300">{errors.branch.message}</span> : null}
+          Branch
+          <select {...register('branchId')} disabled={isLoadingBranches} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none disabled:opacity-60">
+            <option value="">{isLoadingBranches ? 'Loading branches...' : 'Select a branch'}</option>
+            {branches.map((branch) => (
+              <option key={branch.id} value={branch.id}>{branch.name}</option>
+            ))}
+          </select>
+          {errors.branchId ? <span className="text-xs text-red-300">{errors.branchId.message}</span> : null}
         </label>
+
+        <input type="hidden" {...register('branch')} />
 
         <label className="grid gap-2 text-sm text-slate-300">
           Province <span className="text-xs text-slate-500">Optional</span>

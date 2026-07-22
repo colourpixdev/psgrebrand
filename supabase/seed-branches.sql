@@ -6,6 +6,9 @@ alter table public.branches add column if not exists town text;
 alter table public.branches add column if not exists physical_address text;
 alter table public.branches add column if not exists latitude double precision;
 alter table public.branches add column if not exists longitude double precision;
+alter table public.branches add column if not exists contact_name text;
+alter table public.branches add column if not exists contact_email text;
+alter table public.branches add column if not exists contact_phone text;
 alter table public.branches add column if not exists created_at timestamptz not null default now();
 alter table public.branches add column if not exists updated_at timestamptz not null default now();
 

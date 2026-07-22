@@ -9,9 +9,16 @@ create table if not exists public.branches (
   physical_address text not null,
   latitude double precision,
   longitude double precision,
+  contact_name text,
+  contact_email text,
+  contact_phone text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.branches add column if not exists contact_name text;
+alter table public.branches add column if not exists contact_email text;
+alter table public.branches add column if not exists contact_phone text;
 
 do $$ begin
   alter table public.branches add constraint branches_latitude_range check (latitude is null or latitude between -90 and 90);
