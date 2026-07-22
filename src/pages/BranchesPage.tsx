@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { getAllBranches, createBranch, deleteBranch } from '../services/branchService';
+import React, { useEffect, useMemo, useState } from 'react';
+import { getAllBranches, createBranch, updateBranch, deleteBranch } from '../services/branchService';
 import type { Branch, Division } from '../types/domain';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -8,9 +8,21 @@ const divisions: Division[] = ['Wealth', 'Insure', 'Wealth Insure', 'Asset', 'Tr
 export function BranchesPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
+    name: '',
+    division: 'Wealth' as Division,
+    province: '',
+    town: '',
+    physicalAddress: '',
+    latitude: '',
+    longitude: '',
+  });
+  const [editData, setEditData] = useState({
     name: '',
     division: 'Wealth' as Division,
     province: '',
@@ -48,6 +60,7 @@ export function BranchesPage() {
     }
 
     try {
+      setSaving(true);
       await createBranch({
         name: formData.name,
         division: formData.division,
@@ -72,6 +85,65 @@ export function BranchesPage() {
       await loadBranches();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create branch');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function beginEdit(branch: Branch) {
+    setEditingBranchId(branch.id);
+    setEditData({
+      name: branch.name,
+      division: branch.division,
+      province: branch.province,
+      town: branch.town,
+      physicalAddress: branch.physicalAddress,
+      latitude: branch.latitude?.toString() ?? '',
+      longitude: branch.longitude?.toString() ?? '',
+    });
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingBranchId(null);
+    setEditData({
+      name: '',
+      division: 'Wealth',
+      province: '',
+      town: '',
+      physicalAddress: '',
+      latitude: '',
+      longitude: '',
+    });
+  }
+
+  async function handleUpdate(id: string, e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!editData.name || !editData.province || !editData.town || !editData.physicalAddress) {
+      setError('Name, province, town, and physical address are required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await updateBranch(id, {
+        name: editData.name,
+        division: editData.division,
+        province: editData.province,
+        town: editData.town,
+        physicalAddress: editData.physicalAddress,
+        latitude: editData.latitude ? parseFloat(editData.latitude) : null,
+        longitude: editData.longitude ? parseFloat(editData.longitude) : null,
+      });
+
+      cancelEdit();
+      setError(null);
+      await loadBranches();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update branch');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -79,16 +151,33 @@ export function BranchesPage() {
     if (!confirm('Are you sure you want to delete this branch?')) return;
 
     try {
+      setSaving(true);
       await deleteBranch(id);
       await loadBranches();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete branch');
+    } finally {
+      setSaving(false);
     }
   }
 
+  const filteredBranches = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) {
+      return branches;
+    }
+
+    return branches.filter((branch) => {
+      return [branch.name, branch.division, branch.province, branch.town, branch.physicalAddress]
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [branches, searchTerm]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 md:p-8">
+      <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold text-slate-900 mb-2">Branches</h1>
@@ -97,7 +186,8 @@ export function BranchesPage() {
           {isAdmin && (
             <button
               onClick={() => setShowForm(!showForm)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              disabled={saving}
             >
               {showForm ? 'Cancel' : 'Add Branch'}
             </button>
@@ -203,11 +293,28 @@ export function BranchesPage() {
               </div>
             </div>
 
-            <button type="submit" className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-              Create Branch
+            <button
+              type="submit"
+              className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Create Branch'}
             </button>
           </form>
         )}
+
+        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name, division, province, town, or address"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-sm text-slate-600">Showing {filteredBranches.length} of {branches.length} branches</p>
+          </div>
+        </div>
 
         {loading ? (
           <div className="text-center py-12">
@@ -216,51 +323,156 @@ export function BranchesPage() {
             </div>
             <p className="mt-4 text-slate-600">Loading branches...</p>
           </div>
-        ) : branches.length === 0 ? (
+        ) : filteredBranches.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
-            <p className="text-slate-600">No branches yet. {isAdmin && 'Click "Add Branch" to create one.'}</p>
+            <p className="text-slate-600">No branches match your search.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {branches.map((branch) => (
-              <div key={branch.id} className="bg-white rounded-lg shadow-md border border-slate-200 overflow-hidden hover:shadow-lg transition">
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-xl font-bold text-slate-900">{branch.name}</h3>
-                    {isAdmin && (
-                      <button
-                        onClick={() => handleDelete(branch.id)}
-                        className="text-red-500 hover:text-red-700 transition"
+          <div className="space-y-4">
+            {filteredBranches.map((branch) => {
+              const isEditing = editingBranchId === branch.id;
+
+              if (isEditing && isAdmin) {
+                return (
+                  <form
+                    key={branch.id}
+                    onSubmit={(e) => handleUpdate(branch.id, e)}
+                    className="rounded-xl border border-blue-200 bg-blue-50/40 p-5"
+                  >
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <input
+                        type="text"
+                        value={editData.name}
+                        onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                        placeholder="Branch name"
+                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        required
+                      />
+                      <select
+                        value={editData.division}
+                        onChange={(e) => setEditData({ ...editData, division: e.target.value as Division })}
+                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        required
                       >
-                        ✕
+                        {divisions.map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={editData.province}
+                        onChange={(e) => setEditData({ ...editData, province: e.target.value })}
+                        placeholder="Province"
+                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        required
+                      />
+                      <input
+                        type="text"
+                        value={editData.town}
+                        onChange={(e) => setEditData({ ...editData, town: e.target.value })}
+                        placeholder="Town"
+                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        required
+                      />
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_180px_180px]">
+                      <input
+                        type="text"
+                        value={editData.physicalAddress}
+                        onChange={(e) => setEditData({ ...editData, physicalAddress: e.target.value })}
+                        placeholder="Physical address"
+                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        required
+                      />
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={editData.latitude}
+                        onChange={(e) => setEditData({ ...editData, latitude: e.target.value })}
+                        placeholder="Latitude"
+                        className="rounded-lg border border-slate-300 px-3 py-2"
+                      />
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={editData.longitude}
+                        onChange={(e) => setEditData({ ...editData, longitude: e.target.value })}
+                        placeholder="Longitude"
+                        className="rounded-lg border border-slate-300 px-3 py-2"
+                      />
+                    </div>
+
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+                        disabled={saving}
+                      >
+                        {saving ? 'Saving...' : 'Save Changes'}
                       </button>
-                    )}
-                  </div>
-                  <div className="mb-4">
-                    <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                      {branch.division}
-                    </span>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <p className="text-slate-600">Address</p>
-                      <p className="text-slate-900 font-medium">{branch.physicalAddress}</p>
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50"
+                        disabled={saving}
+                      >
+                        Cancel
+                      </button>
                     </div>
-                    {branch.latitude && branch.longitude && (
-                      <div>
-                        <p className="text-slate-600">Coordinates</p>
-                        <p className="text-slate-900 font-mono text-xs">
-                          {branch.latitude.toFixed(6)}, {branch.longitude.toFixed(6)}
-                        </p>
+                  </form>
+                );
+              }
+
+              return (
+                <div key={branch.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_1fr_auto] lg:items-start">
+                    <div>
+                      <p className="text-lg font-semibold text-slate-900">{branch.name}</p>
+                      <p className="mt-1 text-sm text-slate-600">{branch.town}, {branch.province}</p>
+                      <p className="mt-2 text-sm text-slate-700">{branch.physicalAddress}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Division</p>
+                      <span className="mt-1 inline-block rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
+                        {branch.division}
+                      </span>
+                    </div>
+
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Coordinates</p>
+                      <p className="mt-1 text-sm font-mono text-slate-700">
+                        {branch.latitude !== null && branch.longitude !== null
+                          ? `${branch.latitude.toFixed(6)}, ${branch.longitude.toFixed(6)}`
+                          : 'Not set'}
+                      </p>
+                    </div>
+
+                    {isAdmin ? (
+                      <div className="flex gap-2 lg:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => beginEdit(branch)}
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                          disabled={saving}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(branch.id)}
+                          className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 hover:bg-red-100"
+                          disabled={saving}
+                        >
+                          Remove
+                        </button>
                       </div>
-                    )}
-                    <div>
-                      <p className="text-slate-600 text-xs">Created {new Date(branch.createdAt).toLocaleDateString()}</p>
-                    </div>
+                    ) : null}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
