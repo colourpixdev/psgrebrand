@@ -43,7 +43,7 @@ const requestTypeLabels: Record<SupportRequestType, string> = {
 const requestTypeDescriptions: Record<SupportRequestType, string> = {
   project_help: 'Ask the workspace administrator for project status, corrections, files, or next steps.',
   workspace_access: 'Ask the workspace administrator about access, visibility, user roles, or workspace data.',
-  feature_request: 'Send a product request to RolloutHQ support for approval and review.',
+  feature_request: 'Send a product request to PSG Rebrand support for approval and review.',
   report_customization: 'Request a new report, export, filter, dashboard view, or management format.',
   workflow_template: 'Suggest project stages, labels, templates, or role changes for this workspace.',
   technical_issue: 'Report a broken screen, sign-in issue, upload problem, or unexpected behaviour.',
@@ -89,8 +89,8 @@ export function SupportPage() {
     const cc = joinEmails(secondaryContact.emails);
     const subject = `${productBrand.name} ${requestLabel} - ${values.subject}`;
     const approvalNote = goesToRolloutSupport
-      ? 'Approval required: this request should be reviewed by the workspace administrator and client administrator before RolloutHQ implements configuration, report, workflow, or feature changes.'
-      : 'Workspace administrator request: RolloutHQ support is copied so recurring needs, support patterns, and possible platform improvements can be tracked.';
+      ? 'Approval required: this request should be reviewed by the workspace administrator and client administrator before PSG Rebrand implements configuration, report, workflow, or feature changes.'
+      : 'Workspace administrator request: PSG Rebrand support is copied so recurring needs, support patterns, and possible platform improvements can be tracked.';
 
     const body = [
       `Request type: ${requestLabel}`,
@@ -103,7 +103,7 @@ export function SupportPage() {
       '',
       `Workspace: ${selectedProject?.workspaceName ?? defaultWorkspace.name}`,
       `Workspace administrator: ${workspaceAdminContact.name} (${workspaceAdminContact.company})`,
-      `RolloutHQ support: ${rolloutSupportContact.name}`,
+      `PSG Rebrand support: ${rolloutSupportContact.name}`,
       selectedProject ? `Project: ${selectedProject.id} - ${selectedProject.branch} (${selectedProject.projectTypeName})` : 'Project: Not linked to a specific project',
       '',
       'Request details:',
@@ -125,7 +125,7 @@ export function SupportPage() {
         <p className="text-sm uppercase tracking-[0.32em] text-teal-200/80">Support</p>
         <h2 className="mt-3 text-3xl font-semibold text-white">Contact the right team without leaving the workspace.</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-          Project questions go to the workspace administrator. Product ideas, report changes, workflow changes, and technical issues go to RolloutHQ support and include the approval context needed before changes are made.
+          Project questions go to the workspace administrator. Product ideas, report changes, workflow changes, and technical issues go to PSG Rebrand support and include the approval context needed before changes are made.
         </p>
       </section>
 
@@ -138,7 +138,7 @@ export function SupportPage() {
         </article>
         <article className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft">
           <LifeBuoy className="h-6 w-6 text-sky-200" />
-          <p className="mt-4 text-sm uppercase tracking-[0.24em] text-slate-500">RolloutHQ support</p>
+          <p className="mt-4 text-sm uppercase tracking-[0.24em] text-slate-500">PSG Rebrand support</p>
           <h3 className="mt-2 text-lg font-semibold text-white">{rolloutSupportContact.name}</h3>
           <p className="mt-2 text-sm leading-6 text-slate-400">Use this channel for functionality requests, report ideas, workflow/template changes, and support issues that may improve the platform.</p>
         </article>
@@ -158,7 +158,7 @@ export function SupportPage() {
           </div>
           <span className="inline-flex w-fit items-center gap-2 rounded-full border border-teal-300/25 bg-teal-300/10 px-3 py-1 text-xs font-semibold text-teal-100">
             <Mail className="h-3.5 w-3.5" />
-            {goesToRolloutSupport ? 'RolloutHQ support' : 'Workspace administrator'}
+            {goesToRolloutSupport ? 'PSG Rebrand support' : 'Workspace administrator'}
           </span>
         </div>
 

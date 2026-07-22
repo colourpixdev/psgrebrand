@@ -9,7 +9,7 @@ export type EditableProfileIdentity = {
 };
 
 function storageKey(user: UserRecord | null | undefined) {
-  return user?.email ? `rollouthq:profile-identity:${user.email.trim().toLowerCase()}` : null;
+  return user?.email ? `psg-rebrand:profile-identity:${user.email.trim().toLowerCase()}` : null;
 }
 
 export function getInitials(value: string | undefined) {

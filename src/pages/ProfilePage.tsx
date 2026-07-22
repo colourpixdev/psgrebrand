@@ -97,7 +97,7 @@ export function ProfilePage() {
             </div>
             <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/45 p-4">
               <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-200" />
-              <p>RolloutHQ owners should retain platform-level control over roles, workspace creation, and global support routing.</p>
+              <p>PSG Rebrand owners should retain platform-level control over roles, workspace creation, and global support routing.</p>
             </div>
           </div>
         </div>

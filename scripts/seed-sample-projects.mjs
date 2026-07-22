@@ -334,7 +334,7 @@ endobj
 4 0 obj
 << /Length 87 >>
 stream
-BT /F1 18 Tf 72 720 Td (${text}) Tj 0 -28 Td (Sample project file for RolloutHQ preview.) Tj ET
+BT /F1 18 Tf 72 720 Td (${text}) Tj 0 -28 Td (Sample project file for PSG Rebrand preview.) Tj ET
 endstream
 endobj
 5 0 obj

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 96" role="img" aria-labelledby="title desc">
-  <title id="title">RolloutHQ logo</title>
-  <desc id="desc">A connected workflow mark with RolloutHQ wordmark.</desc>
+  <title id="title">PSG Rebrand logo</title>
+  <desc id="desc">A connected workflow mark with PSG Rebrand wordmark.</desc>
   <rect width="320" height="96" rx="24" fill="#fffdf8"/>
   <g transform="translate(24 24)">
     <rect width="48" height="48" rx="14" fill="#12382d"/>
@@ -11,6 +11,6 @@
     <circle cx="38" cy="19" r="4.4" fill="#8dcbd1"/>
     <path d="M31 12H39V20" fill="none" stroke="#fffdf8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
   </g>
-  <text x="88" y="44" fill="#12382d" font-family="Trebuchet MS, Verdana, sans-serif" font-size="28" font-weight="800">RolloutHQ™</text>
+  <text x="88" y="44" fill="#12382d" font-family="Trebuchet MS, Verdana, sans-serif" font-size="28" font-weight="800">PSG Rebrand</text>
   <text x="90" y="67" fill="#5c6b65" font-family="Trebuchet MS, Verdana, sans-serif" font-size="12" font-weight="800">PROJECT WORKSPACES</text>
 </svg>

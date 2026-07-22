@@ -1,8 +1,8 @@
-# RolloutHQ™: Product Overview for Guidance
+# PSG Rebrand: Product Overview for Guidance
 
 ## Executive Summary
 
-RolloutHQ™ is intended to be a secure, role-aware project workspace platform for managing repeatable work across separate client workspaces. The application is licensed software, with the first workspace configured for the PSG National Signage Rollout and Colourpix CC positioned as the default service partner at this stage. PSG signage is the first proof-of-concept template, not the limit of the product. Its purpose is to replace scattered spreadsheets, WhatsApp messages, email threads, and manual status chasing with one shared project record for every site, location, customer request, rollout item, or delivery job.
+PSG Rebrand is intended to be a secure, role-aware project workspace platform for managing repeatable work across separate client workspaces. The application is licensed software, with the first workspace configured for the PSG National Signage Rollout and Colourpix CC positioned as the default service partner at this stage. PSG signage is the first proof-of-concept template, not the limit of the product. Its purpose is to replace scattered spreadsheets, WhatsApp messages, email threads, and manual status chasing with one shared project record for every site, location, customer request, rollout item, or delivery job.
 
 The platform gives platform owners, workspace administrators, client administrators, site contacts, and delivery partners a controlled view of the project work relevant to them. It tracks each project from initial setup through information gathering, approvals, quotations, production or delivery, evidence, signoff, and completion.
 
@@ -25,11 +25,11 @@ It should help the business answer questions such as:
 
 The authenticated workspace is not meant to be a public website. It is an internal operational tool for managing project delivery and communicating status clearly between clients, workspace administrators, service partners, and suppliers. The public landing page may collect quote, access, and new-workspace requests, which can then be reviewed before users are invited.
 
-Every signed-in user should also have a clear support channel. Project or workspace questions should go to the workspace administrator. Product support, functionality requests, report customization requests, workflow/template suggestions, and technical issues should go to RolloutHQ support with the workspace administrator copied so requests can be approved before implementation.
+Every signed-in user should also have a clear support channel. Project or workspace questions should go to the workspace administrator. Product support, functionality requests, report customization requests, workflow/template suggestions, and technical issues should go to PSG Rebrand support with the workspace administrator copied so requests can be approved before implementation.
 
 ## Workspace Model
 
-RolloutHQ™ should support separate client workspaces so users only see the projects they are meant to see. A workspace can represent a national client rollout, a regional programme, a public works programme, a signage deployment, a service-delivery queue, or a dedicated customer environment.
+PSG Rebrand should support separate client workspaces so users only see the projects they are meant to see. A workspace can represent a national client rollout, a regional programme, a public works programme, a signage deployment, a service-delivery queue, or a dedicated customer environment.
 
 The current default workspace is PSG National Signage Rollout. Future workspaces should carry at least:
 
@@ -44,7 +44,7 @@ The platform owner and nominated senior workspace administrators should have all
 
 ## Project Templates and SaaS Direction
 
-RolloutHQ™ should be treated as a configurable service that can be sold or resold to companies that need controlled project workspaces. The platform should support project templates so each workspace can use language and workflows that match the work being managed.
+PSG Rebrand should be treated as a configurable service that can be sold or resold to companies that need controlled project workspaces. The platform should support project templates so each workspace can use language and workflows that match the work being managed.
 
 Current template direction:
 
@@ -56,7 +56,7 @@ The code should continue to preserve legacy database field names such as branch 
 
 ## Recommended Product Direction: One Project Journal
 
-The strongest long-term direction for RolloutHQ™ is to treat every project as a chronological Project Journal.
+The strongest long-term direction for PSG Rebrand is to treat every project as a chronological Project Journal.
 
 Instead of thinking of Comments, Questions, Notes, Activity, Files, Tasks, Voice Updates, and Timeline as separate modules, the platform should increasingly treat them as different types of entries in one living project feed.
 
@@ -686,7 +686,7 @@ The app is designed with:
 
 ### 16. Support and Customization Requests
 
-The Support page gives all signed-in roles a structured way to contact either the workspace administrator or RolloutHQ support.
+The Support page gives all signed-in roles a structured way to contact either the workspace administrator or PSG Rebrand support.
 
 Current support request types include:
 
@@ -697,9 +697,9 @@ Current support request types include:
 - Workflow or template changes
 - Technical issues
 
-The page routes project/workspace help to the workspace administrator and copies RolloutHQ support so repeated needs can be tracked. Product, report, workflow, template, and technical requests route to RolloutHQ support and copy the workspace administrator. The email body includes the user, role, workspace, related project, request type, urgency, details, expected outcome, and an approval note.
+The page routes project/workspace help to the workspace administrator and copies PSG Rebrand support so repeated needs can be tracked. Product, report, workflow, template, and technical requests route to PSG Rebrand support and copy the workspace administrator. The email body includes the user, role, workspace, related project, request type, urgency, details, expected outcome, and an approval note.
 
-The long-term product direction should store these requests as structured support records so RolloutHQ can measure demand, discover customization opportunities, and identify reusable features across workspaces.
+The long-term product direction should store these requests as structured support records so PSG Rebrand can measure demand, discover customization opportunities, and identify reusable features across workspaces.
 
 ### 17. Profile and Workspace Branding
 
@@ -707,12 +707,12 @@ Users should be able to control how they appear inside a workspace without recei
 
 Recommended administration boundaries:
 
-- RolloutHQ platform owner: controls platform-level roles, workspace creation, global support routing, product configuration, and reusable features.
+- PSG Rebrand platform owner: controls platform-level roles, workspace creation, global support routing, product configuration, and reusable features.
 - Workspace administrator: manages workspace branding, client/project records, delivery partners, and user membership for that workspace.
 - Client administrator: approves client-side users, report needs, workflow changes, and feature requests inside their workspace.
 - Site contact and delivery partner: maintain their own avatar/profile identity and request changes through Support.
 
-Workspace branding should support a client logo and a workspace administrator/service partner logo. The PSG/Colourpix workspace is the first example; future workspaces should be able to replace those marks without changing RolloutHQ platform branding.
+Workspace branding should support a client logo and a workspace administrator/service partner logo. The PSG/Colourpix workspace is the first example; future workspaces should be able to replace those marks without changing PSG Rebrand platform branding.
 
 ## Current Technical Foundation
 
@@ -910,7 +910,7 @@ During the pilot, test:
 
 ## Summary
 
-RolloutHQ™ is intended to become the shared operational control room for the current PSG workspace and future enterprise project workspaces. It already covers the core workflows needed to manage projects, communicate updates, store files, track status, report progress, and notify client users when the workspace team responds to their project questions.
+PSG Rebrand is intended to become the shared operational control room for the current PSG workspace and future enterprise project workspaces. It already covers the core workflows needed to manage projects, communicate updates, store files, track status, report progress, and notify client users when the workspace team responds to their project questions.
 
 The most important product recommendation is to evolve the project detail record into a unified Project Journal. Instead of treating comments, questions, tasks, files, voice notes, and activity as separate modules, every significant project event should become a structured, searchable, permission-aware timeline entry.
 

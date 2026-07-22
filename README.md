@@ -1,4 +1,4 @@
-# RolloutHQ™
+# PSG Rebrand
 
 Configurable project workspace platform for managed client delivery, rollout operations, requests, reports, and support workflows.
 

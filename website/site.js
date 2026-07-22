@@ -14,7 +14,7 @@ requestForm?.addEventListener('submit', (event) => {
   const project = String(formData.get('project') || '').trim();
   const brief = String(formData.get('brief') || '').trim();
 
-  const subject = `RolloutHQ ${requestType}: ${organisation || 'New enquiry'}`;
+  const subject = `PSG Rebrand ${requestType}: ${organisation || 'New enquiry'}`;
   const body = [
     `Request type: ${requestType}`,
     `Name: ${name}`,
@@ -25,7 +25,7 @@ requestForm?.addEventListener('submit', (event) => {
     'Brief:',
     brief,
     '',
-    'Source: RolloutHQ public website',
+    'Source: PSG Rebrand public website',
   ].join('\n');
 
   window.location.href = `mailto:${encodeURIComponent(privateInbox)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

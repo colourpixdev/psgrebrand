@@ -1,4 +1,4 @@
-# RolloutHQ Access Control Audit
+# PSG Rebrand Access Control Audit
 
 This document audits the current app functionality and explains which user roles can be assigned, what each role can do by default, and which capabilities Francois and Beverley can enable or disable per user from the restricted Access Controls page.
 

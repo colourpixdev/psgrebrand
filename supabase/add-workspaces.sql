@@ -1,4 +1,4 @@
--- RolloutHQ workspace metadata upgrade.
+-- PSG Rebrand workspace metadata upgrade.
 -- Run this in the Supabase SQL Editor when you are ready to persist multiple workspaces.
 
 alter table public.projects

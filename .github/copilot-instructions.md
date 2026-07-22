@@ -1,6 +1,6 @@
-# Workspace Instructions
+﻿# Workspace Instructions
 
-This workspace contains a production-oriented scaffold for RolloutHQ™, an Enterprise Rollout Management Platform.
+This workspace contains a production-oriented scaffold for PSG Rebrand, an Enterprise Rollout Management Platform.
 
 ## Goals
 

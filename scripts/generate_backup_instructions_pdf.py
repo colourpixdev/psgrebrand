@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from html import escape
 from pathlib import Path
@@ -12,7 +12,7 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "artifacts" / "RolloutHQ-Backup-Instructions.pdf"
+OUTPUT = ROOT / "artifacts" / "PSG Rebrand-Backup-Instructions.pdf"
 
 
 def add_page_number(canvas, doc):
@@ -48,7 +48,7 @@ def build_pdf() -> None:
         leftMargin=1.5 * cm,
         topMargin=1.5 * cm,
         bottomMargin=1.5 * cm,
-        title="RolloutHQ Backup Instructions",
+        title="PSG Rebrand Backup Instructions",
         author="GitHub Copilot",
     )
 
@@ -119,9 +119,9 @@ def build_pdf() -> None:
     )
 
     story: list = []
-    story.append(paragraph("RolloutHQ Backup Instructions", title_style))
+    story.append(paragraph("PSG Rebrand Backup Instructions", title_style))
     story.append(paragraph("GitHub Pages, Supabase database, user records, images, documents, and app email routing", subtitle_style))
-    story.append(paragraph("Use this guide to create restorable backups for the RolloutHQ workspace. Keep backup files in an encrypted location such as a protected external drive, company SharePoint, or a password-managed cloud vault. Do not store service-role keys, database passwords, API keys, or exported user data in a public repository.", note_style))
+    story.append(paragraph("Use this guide to create restorable backups for the PSG Rebrand workspace. Keep backup files in an encrypted location such as a protected external drive, company SharePoint, or a password-managed cloud vault. Do not store service-role keys, database passwords, API keys, or exported user data in a public repository.", note_style))
 
     add_section(story, "1. What Must Be Backed Up", [
         "- GitHub repository: source code, Supabase SQL files, Edge Functions, scripts, Vite configuration, website files, and GitHub Pages deployment settings.",
@@ -129,7 +129,7 @@ def build_pdf() -> None:
         "- Supabase Auth: user accounts are managed by Supabase Auth; profiles are mirrored in public.profiles. Back up profiles with the database export and keep an admin list of Auth users separately.",
         "- Supabase Storage: project-files contains uploaded documents and images; voice-updates contains uploaded voice notes.",
         "- Edge Functions and secrets: invite-user, notify-project-change, transcribe-voice-update, plus configured secrets such as RESEND_API_KEY, PROJECT_NOTIFICATION_TO, PROJECT_NOTIFICATION_FROM, and transcription provider keys.",
-        "- App email: RolloutHQ user-facing mail now routes through rollout@colourpix.co.za for sending and receiving user communication.",
+        "- App email: PSG Rebrand user-facing mail now routes through rollout@colourpix.co.za for sending and receiving user communication.",
     ], section_style, body_style)
 
     add_section(story, "2. GitHub Pages and Repository Backup", [
@@ -149,9 +149,9 @@ def build_pdf() -> None:
         "- Use Supabase CLI for a repeatable SQL dump. The command below was checked against the installed CLI in this workspace.",
         "- Run the command from the project folder after logging in to Supabase CLI and linking the project, or provide the database password when prompted.",
     ], section_style, body_style)
-    story.append(command("npx supabase db dump --linked --file backups/supabase/rollouthq-full-YYYY-MM-DD.sql", code_style))
-    story.append(command("npx supabase db dump --linked --data-only --use-copy --file backups/supabase/rollouthq-data-YYYY-MM-DD.sql", code_style))
-    story.append(command("npx supabase db dump --linked --schema public --file backups/supabase/rollouthq-public-schema-YYYY-MM-DD.sql", code_style))
+    story.append(command("npx supabase db dump --linked --file backups/supabase/psg-rebrand-full-YYYY-MM-DD.sql", code_style))
+    story.append(command("npx supabase db dump --linked --data-only --use-copy --file backups/supabase/psg-rebrand-data-YYYY-MM-DD.sql", code_style))
+    story.append(command("npx supabase db dump --linked --schema public --file backups/supabase/psg-rebrand-public-schema-YYYY-MM-DD.sql", code_style))
     add_section(story, "Database Restore Check", [
         "- At least monthly, restore the dump into a separate local or staging Supabase project and confirm the app can read projects, profiles, tasks, comments, and files metadata.",
         "- Never test restore into the production Supabase project unless you intentionally want to replace live data.",
@@ -179,11 +179,11 @@ def build_pdf() -> None:
     add_section(story, "6. Edge Functions, Email, and Secrets", [
         "- Edge Function source is stored in supabase/functions and is covered by the GitHub repository backup.",
         "- Secret values are not readable after they are set. Record current values in a password manager, not in GitHub and not in the PDF.",
-        "- The project notification function should use PROJECT_NOTIFICATION_TO=rollout@colourpix.co.za and PROJECT_NOTIFICATION_FROM=RolloutHQ <rollout@colourpix.co.za>.",
+        "- The project notification function should use PROJECT_NOTIFICATION_TO=rollout@colourpix.co.za and PROJECT_NOTIFICATION_FROM=PSG Rebrand <rollout@colourpix.co.za>.",
         "- The email address rollout@colourpix.co.za must exist as a mailbox or alias that can receive replies from users.",
         "- For sending through Resend, verify colourpix.co.za or the exact sender address in Resend. If sender verification is missing, outbound email may fail even when the app code is correct.",
     ], section_style, body_style)
-    story.append(command("npx supabase secrets set PROJECT_NOTIFICATION_TO=rollout@colourpix.co.za \"PROJECT_NOTIFICATION_FROM=RolloutHQ <rollout@colourpix.co.za>\" --project-ref plqrjfylolaukazldnuz", code_style))
+    story.append(command("npx supabase secrets set PROJECT_NOTIFICATION_TO=rollout@colourpix.co.za \"PROJECT_NOTIFICATION_FROM=PSG Rebrand <rollout@colourpix.co.za>\" --project-ref plqrjfylolaukazldnuz", code_style))
 
     add_section(story, "7. Recommended Backup Schedule", [
         "- Daily: Supabase database dump and Storage copy for project-files.",

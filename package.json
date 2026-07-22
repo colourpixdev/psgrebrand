@@ -2,7 +2,7 @@
   "name": "rebrandreport",
   "private": true,
   "version": "1.0",
-  "description": "RolloutHQ Enterprise Rollout Management Platform with Supabase-backed workflows.",
+  "description": "PSG Rebrand Enterprise Rollout Management Platform with Supabase-backed workflows.",
   "type": "module",
   "repository": {
     "type": "git",

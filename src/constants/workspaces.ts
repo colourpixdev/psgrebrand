@@ -15,8 +15,8 @@ export const workspaceAdminContact = {
 } as const;
 
 export const rolloutSupportContact = {
-  name: 'RolloutHQ support',
-  company: 'RolloutHQ',
+  name: 'PSG Rebrand support',
+  company: 'PSG Rebrand',
   emails: [privateRolloutRequestInbox],
 } as const;
 

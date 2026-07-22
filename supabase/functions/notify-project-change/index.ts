@@ -136,8 +136,8 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'PROJECT_NOTIFICATION_TO must be a valid email address.' }, 500);
   }
 
-  const from = Deno.env.get('PROJECT_NOTIFICATION_FROM') || 'RolloutHQ <rollout@colourpix.co.za>';
-  const subject = `RolloutHQ ${changeLabel(payload.changeType)}: ${payload.project.branch}`;
+  const from = Deno.env.get('PROJECT_NOTIFICATION_FROM') || 'PSG Rebrand <rollout@colourpix.co.za>';
+  const subject = `PSG Rebrand ${changeLabel(payload.changeType)}: ${payload.project.branch}`;
   const text = [
     `${payload.actor} left a ${changeLabel(payload.changeType)} on ${payload.project.branch}.`,
     '',

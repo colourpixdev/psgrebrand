@@ -3,7 +3,7 @@ import { productBrand } from '../constants/branding';
 const sections = [
   {
     title: 'Software Ownership',
-    body: 'RolloutHQ™, including all source code, user interface design, database structure, workflow logic, documentation, reports, AI functionality, branding and supporting software remains the intellectual property of the platform owner unless transferred by written agreement.',
+    body: 'PSG Rebrand, including all source code, user interface design, database structure, workflow logic, documentation, reports, AI functionality, branding and supporting software remains the intellectual property of the platform owner unless transferred by written agreement.',
   },
   {
     title: 'License',
@@ -15,7 +15,7 @@ const sections = [
   },
   {
     title: 'Project Data Retention',
-    body: 'RolloutHQ™ is an operational workspace and project database, but it is not guaranteed to be a permanent archive after a project is marked completed by the workspace owner, service partner, or RolloutHQ. Completed records, files, communications, and related project data may be archived, exported, or removed as part of operational cleanup. Users remain responsible for keeping independent copies of documents they are legally, financially, or operationally required to retain.',
+    body: 'PSG Rebrand is an operational workspace and project database, but it is not guaranteed to be a permanent archive after a project is marked completed by the workspace owner, service partner, or PSG Rebrand. Completed records, files, communications, and related project data may be archived, exported, or removed as part of operational cleanup. Users remain responsible for keeping independent copies of documents they are legally, financially, or operationally required to retain.',
   },
   {
     title: 'AI Disclaimer',

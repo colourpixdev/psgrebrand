@@ -5,7 +5,7 @@ import type { UserRecord } from '../../types/domain';
 const agreementVersion = '2026-02';
 
 function agreementKey(user: UserRecord) {
-  return `rollouthq:user-agreement:${agreementVersion}:${user.email || user.role}`;
+  return `psg-rebrand:user-agreement:${agreementVersion}:${user.email || user.role}`;
 }
 
 export function UserAgreementDialog({ user }: { user: UserRecord | null }) {
