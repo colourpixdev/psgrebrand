@@ -63,3 +63,25 @@ a {
   height: 12px;
   width: 12px;
 }
+
+.branch-map-marker {
+  align-items: center;
+  background: color-mix(in srgb, var(--marker-color) 24%, transparent);
+  border: 2px solid color-mix(in srgb, var(--marker-color) 72%, white);
+  border-radius: 999px 999px 999px 0;
+  box-shadow: 0 16px 34px rgb(2 6 23 / 0.36);
+  display: flex;
+  height: 30px;
+  justify-content: center;
+  transform: rotate(-45deg);
+  width: 30px;
+}
+
+.branch-map-marker span {
+  background: var(--marker-color);
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  display: block;
+  height: 14px;
+  width: 14px;
+}

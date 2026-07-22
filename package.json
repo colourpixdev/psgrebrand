@@ -21,6 +21,7 @@
     "seed:auth": "node scripts/seed-auth.mjs",
     "seed:profiles": "node scripts/seed-profiles.mjs",
     "seed:sample-projects": "node scripts/seed-sample-projects.mjs",
+    "seed:branches": "node scripts/seed-branches.mjs",
     "apply:access-controls": "node scripts/apply-access-control-schema.mjs",
     "apply:profiles": "node scripts/apply-profiles-schema.mjs",
     "verify:access-controls": "node scripts/verify-access-control-schema.mjs",

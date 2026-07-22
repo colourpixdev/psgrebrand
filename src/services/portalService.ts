@@ -20,12 +20,7 @@ type ProjectRow = {
   project_type_name?: string | null;
   site_label?: string | null;
   delivery_partner_label?: string | null;
-  province: string;
-  town: string;
-  physical_address?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  branch: string;
+  branch_id: string;
   manager: string;
   manager_email: string;
   installer: string;
@@ -186,10 +181,7 @@ export type CreateProjectInput = {
   clientCompany?: string;
   graphicsPartner?: string;
   projectType?: ProjectTemplateId;
-  province?: string;
-  town?: string;
-  physicalAddress: string;
-  branch: string;
+  branchId: string;
   manager?: string;
   managerEmail?: string;
   installer?: string;
@@ -267,9 +259,7 @@ async function notifyProjectChange(input: ProjectChangeNotificationInput) {
         message: input.message,
         project: {
           id: input.project.id,
-          branch: input.project.branch,
-          town: input.project.town,
-          province: input.project.province,
+          branchId: input.project.branchId,
           currentStage: input.project.currentStage,
           status: input.project.status,
         },
@@ -409,6 +399,7 @@ function mapProjectRow(row: ProjectRow): Project {
 
   return {
     id: row.id,
+    branchId: row.branch_id,
     workspaceId: row.workspace_id ?? defaultWorkspace.id,
     workspaceName: row.workspace_name ?? defaultWorkspace.name,
     clientCompany: row.client_company ?? defaultWorkspace.clientCompany,
@@ -417,12 +408,6 @@ function mapProjectRow(row: ProjectRow): Project {
     projectTypeName: row.project_type_name ?? template.name,
     siteLabel: row.site_label ?? template.siteLabel,
     deliveryPartnerLabel: row.delivery_partner_label ?? template.deliveryPartnerLabel,
-    province: row.province,
-    town: row.town,
-    physicalAddress: row.physical_address ?? '',
-    latitude: typeof row.latitude === 'number' ? row.latitude : null,
-    longitude: typeof row.longitude === 'number' ? row.longitude : null,
-    branch: row.branch,
     manager: row.manager,
     managerEmail: row.manager_email,
     installer: row.installer,
@@ -535,15 +520,9 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   const clientCompany = input.clientCompany?.trim() || defaultWorkspace.clientCompany;
   const graphicsPartner = input.graphicsPartner?.trim() || defaultWorkspace.graphicsPartner;
   const template = input.projectType ? getProjectTemplate(input.projectType) : defaultProjectTemplate;
-  const location = await geocodePhysicalAddress(input);
   const basePayload = {
     id: input.id.trim(),
-    province: optionalProjectValue(input.province),
-    town: optionalProjectValue(input.town),
-    physical_address: location.physicalAddress,
-    latitude: location.latitude,
-    longitude: location.longitude,
-    branch: input.branch.trim(),
+    branch_id: input.branchId.trim(),
     manager: optionalProjectValue(input.manager),
     manager_email: optionalProjectValue(input.managerEmail, ''),
     installer: optionalProjectValue(input.installer),

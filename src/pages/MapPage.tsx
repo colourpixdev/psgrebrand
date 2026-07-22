@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { divIcon, type LatLngTuple } from 'leaflet';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import { getProjects } from '../services/portalService';
+import { getAllBranches } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
-import type { Project } from '../types/domain';
+import type { Project, Branch } from '../types/domain';
 import 'leaflet/dist/leaflet.css';
 
 type ProjectLocation = {
@@ -149,6 +150,16 @@ function createProjectIcon(project: Project) {
   });
 }
 
+function createBranchIcon() {
+  return divIcon({
+    className: '',
+    html: `<span class="branch-map-marker" style="--marker-color: #3b82f6"><span></span></span>`,
+    iconAnchor: [15, 35],
+    iconSize: [30, 35],
+    popupAnchor: [0, -30],
+  });
+}
+
 function FitProjectBounds({ locations }: { locations: ProjectLocation[] }) {
   const map = useMap();
 
@@ -173,10 +184,27 @@ function FitProjectBounds({ locations }: { locations: ProjectLocation[] }) {
 
 export function MapPage() {
   const { user } = useAuth();
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(true);
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: getProjects,
   });
+
+  useEffect(() => {
+    async function loadBranches() {
+      setLoadingBranches(true);
+      try {
+        const data = await getAllBranches();
+        setBranches(data);
+      } catch (error) {
+        console.error('Failed to load branches:', error);
+      } finally {
+        setLoadingBranches(false);
+      }
+    }
+    loadBranches();
+  }, []);
 
   const scopedProjects = filterProjectsForUser(projects, user);
   const locations = scopedProjects.map((project) => ({
@@ -184,6 +212,17 @@ export function MapPage() {
     position: getProjectPosition(project),
     color: statusStyles[project.status].color,
   }));
+  
+  // Group projects by branch
+  const projectsByBranch = scopedProjects.reduce<Record<string, Project[]>>((acc, project) => {
+    const branchName = project.branch || 'Unassigned';
+    if (!acc[branchName]) {
+      acc[branchName] = [];
+    }
+    acc[branchName].push(project);
+    return acc;
+  }, {});
+
   const statusCounts = locations.reduce<Record<Project['status'], number>>((counts, { project }) => {
     counts[project.status] += 1;
     return counts;
@@ -217,6 +256,39 @@ export function MapPage() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <FitProjectBounds locations={locations} />
+            {branches.map((branch) => {
+              if (!branch.latitude || !branch.longitude) return null;
+              const branchProjects = projectsByBranch[branch.name] || [];
+              return (
+                <Marker key={`branch-${branch.id}`} position={[branch.latitude, branch.longitude]} icon={createBranchIcon()}>
+                  <Popup>
+                    <div className="min-w-64 text-slate-900">
+                      <p className="text-lg font-bold">{branch.name}</p>
+                      <p className="mt-1 text-xs text-slate-600">{branch.division}</p>
+                      <p className="mt-1 text-xs text-slate-600">{branch.physicalAddress}</p>
+                      <div className="mt-3 border-t border-slate-300 pt-3">
+                        <p className="font-semibold">Associated Projects ({branchProjects.length})</p>
+                        <div className="mt-2 max-h-48 space-y-2 overflow-y-auto text-xs">
+                          {branchProjects.length > 0 ? (
+                            branchProjects.map((project) => (
+                              <Link
+                                key={project.id}
+                                to={`/projects/${project.id}`}
+                                className="block rounded px-2 py-1 text-blue-600 hover:bg-blue-50"
+                              >
+                                {project.branch} · {project.currentStage}
+                              </Link>
+                            ))
+                          ) : (
+                            <p className="text-slate-500">No projects assigned</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
             {locations.map(({ project, position }) => (
               <Marker key={project.id} position={position} icon={createProjectIcon(project)}>
                 <Popup>

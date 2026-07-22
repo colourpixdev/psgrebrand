@@ -1,13 +1,31 @@
 create extension if not exists pgcrypto;
 
-create table if not exists public.projects (
+create table if not exists public.branches (
   id text primary key,
+  name text not null,
+  division text not null,
   province text not null,
   town text not null,
-  physical_address text,
+  physical_address text not null,
   latitude double precision,
   longitude double precision,
-  branch text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+do $$ begin
+  alter table public.branches add constraint branches_latitude_range check (latitude is null or latitude between -90 and 90);
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter table public.branches add constraint branches_longitude_range check (longitude is null or longitude between -180 and 180);
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists public.projects (
+  id text primary key,
+  branch_id text not null references public.branches(id) on delete restrict,
   manager text not null,
   manager_email text not null,
   installer text not null,
@@ -24,22 +42,16 @@ create table if not exists public.projects (
   files jsonb not null default '[]'::jsonb,
   tasks jsonb not null default '[]'::jsonb,
   comments jsonb not null default '[]'::jsonb,
-  activity jsonb not null default '[]'::jsonb
+  activity jsonb not null default '[]'::jsonb,
+  workspace_id text,
+  workspace_name text,
+  client_company text,
+  graphics_partner text,
+  project_type text,
+  project_type_name text,
+  site_label text,
+  delivery_partner_label text
 );
-
-alter table public.projects add column if not exists physical_address text;
-alter table public.projects add column if not exists latitude double precision;
-alter table public.projects add column if not exists longitude double precision;
-
-do $$ begin
-  alter table public.projects add constraint projects_latitude_range check (latitude is null or latitude between -90 and 90);
-exception when duplicate_object then null;
-end $$;
-
-do $$ begin
-  alter table public.projects add constraint projects_longitude_range check (longitude is null or longitude between -180 and 180);
-exception when duplicate_object then null;
-end $$;
 
 create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
@@ -129,7 +141,7 @@ as $$
   limit 1;
 $$;
 
-create or replace function private.can_view_project(project_branch text, project_installer text)
+create or replace function private.can_view_project(project_branch_id text, project_installer text)
 returns boolean
 language sql
 stable
@@ -140,7 +152,11 @@ as $$
     when (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office') then true
     when (select private.current_profile_role()) = 'psg_branch_manager' then
       (select private.current_profile_branch()) is null
-      or lower(project_branch) = lower((select private.current_profile_branch()))
+      or exists (
+        select 1 from public.branches
+        where id = project_branch_id
+        and lower(name) = lower((select private.current_profile_branch()))
+      )
     when (select private.current_profile_role()) = 'sign_company' then
       lower(project_installer) = lower(coalesce((select private.current_profile_name()), ''))
       or lower(project_installer) = lower(coalesce((select private.current_profile_branch()), ''))

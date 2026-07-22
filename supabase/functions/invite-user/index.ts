@@ -102,7 +102,9 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: error instanceof Error ? error.message : 'Invalid request payload.' }, 400);
   }
 
-  const redirectTo = Deno.env.get('SITE_URL') || undefined;
+  const redirectTo = Deno.env.get('SITE_URL') 
+    ? `${Deno.env.get('SITE_URL')}/auth/callback`
+    : undefined;
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(payload.email, {
     data: {
       name: payload.name,

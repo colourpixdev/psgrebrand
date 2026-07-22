@@ -38,8 +38,24 @@ export type ProjectStage =
 
 export type ProjectStatus = 'completed' | 'busy' | 'in_progress' | 'awaiting_approval' | 'delayed' | 'on_hold' | 'cancelled';
 
+export type Division = 'Wealth' | 'Insure' | 'Wealth Insure' | 'Asset' | 'Trust';
+
+export interface Branch {
+  id: string;
+  name: string;
+  division: Division;
+  province: string;
+  town: string;
+  physicalAddress: string;
+  latitude: number | null;
+  longitude: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Project {
   id: string;
+  branchId: string;
   workspaceId: string;
   workspaceName: string;
   clientCompany: string;
@@ -48,12 +64,6 @@ export interface Project {
   projectTypeName: string;
   siteLabel: string;
   deliveryPartnerLabel: string;
-  province: string;
-  town: string;
-  physicalAddress: string;
-  latitude: number | null;
-  longitude: number | null;
-  branch: string;
   manager: string;
   managerEmail: string;
   installer: string;

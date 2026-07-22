@@ -21,10 +21,13 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage').then((module) => ({
 const AboutPage = lazy(() => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const LegalPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.LegalPage })));
 const AccessControlsPage = lazy(() => import('./pages/AccessControlsPage').then((module) => ({ default: module.AccessControlsPage })));
+const BranchesPage = lazy(() => import('./pages/BranchesPage').then((module) => ({ default: module.BranchesPage })));
+const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then((module) => ({ default: module.AuthCallbackPage })));
 
 const navigation = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/projects', label: 'Projects', icon: KanbanSquare },
+  { to: '/branches', label: 'Branches', icon: MapPinned },
   { to: '/search', label: 'Search', icon: Search },
   { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/map', label: 'Map', icon: MapPinned },
@@ -40,6 +43,7 @@ const navigation = [
 const routeTitles: Record<string, string> = {
   '/': 'Dashboard',
   '/projects': 'Projects',
+  '/branches': 'Branches',
   '/reports': 'Reports',
   '/users': 'Users',
   '/access-controls': 'Access Controls',
@@ -51,6 +55,7 @@ const routeTitles: Record<string, string> = {
   '/about': 'About',
   '/legal': 'Legal',
   '/login': 'Sign in',
+  '/auth/callback': 'Authenticating...',
 };
 
 function RouteLoading() {
@@ -138,6 +143,10 @@ function AppRoutes() {
     return <LoginPage />;
   }
 
+  if (location.pathname === '/auth/callback') {
+    return <AuthCallbackPage />;
+  }
+
   if (!canAccessRoute(user, location.pathname)) {
     return <Navigate to="/" replace />;
   }
@@ -158,9 +167,11 @@ function AppRoutes() {
       <Suspense fallback={<RouteLoading />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/" element={<DashboardPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+          <Route path="/branches" element={<BranchesPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/access-controls" element={<AccessControlsPage />} />
