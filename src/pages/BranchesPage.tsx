@@ -295,17 +295,17 @@ export function BranchesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 md:p-8">
+    <div className="min-h-screen p-6 md:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-2">Branches</h1>
-            <p className="text-slate-600">Manage divisions and branch locations</p>
+            <h1 className="text-4xl font-bold text-white mb-2">Branches</h1>
+            <p className="text-slate-400">Manage divisions and branch locations</p>
           </div>
           {isAdmin && (
             <button
               onClick={() => setShowForm(!showForm)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              className="rounded-2xl bg-sky-500 px-6 py-3 text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={saving}
             >
               {showForm ? 'Cancel' : 'Add Branch'}
@@ -314,37 +314,37 @@ export function BranchesPage() {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          <div className="mb-6 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-red-100">
             {error}
           </div>
         )}
 
         {successMessage && (
-          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg">
+          <div className="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-emerald-100">
             {successMessage}
           </div>
         )}
 
         {showForm && isAdmin && (
-          <form onSubmit={handleSubmit} className="mb-8 bg-white p-6 rounded-lg shadow-md border border-slate-200">
+          <form onSubmit={handleSubmit} className="mb-8 rounded-3xl border border-white/10 bg-slate-950/50 p-6 shadow-soft">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Branch Name *</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">Branch Name *</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
                   placeholder="e.g., Johannesburg Branch"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Division *</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">Division *</label>
                 <select
                   value={formData.division}
                   onChange={(e) => setFormData({ ...formData, division: e.target.value as Division })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
                   required
                 >
                   {divisions.map((d) => (
@@ -358,23 +358,23 @@ export function BranchesPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Province *</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">Province *</label>
                 <input
                   type="text"
                   value={formData.province}
                   onChange={(e) => setFormData({ ...formData, province: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
                   placeholder="e.g., Gauteng"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Town *</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">Town *</label>
                 <input
                   type="text"
                   value={formData.town}
                   onChange={(e) => setFormData({ ...formData, town: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
                   placeholder="e.g., Johannesburg"
                   required
                 />
@@ -382,12 +382,12 @@ export function BranchesPage() {
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Physical Address *</label>
+              <label className="mb-1 block text-sm font-medium text-slate-300">Physical Address *</label>
               <input
                 type="text"
                 value={formData.physicalAddress}
                 onChange={(e) => setFormData({ ...formData, physicalAddress: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
                 placeholder="Full address for map location"
                 required
               />
@@ -395,24 +395,24 @@ export function BranchesPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Latitude</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">Latitude</label>
                 <input
                   type="number"
                   step="0.000001"
                   value={formData.latitude}
                   onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
                   placeholder="-90 to 90"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Longitude</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">Longitude</label>
                 <input
                   type="number"
                   step="0.000001"
                   value={formData.longitude}
                   onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
                   placeholder="-180 to 180"
                 />
               </div>
@@ -420,32 +420,32 @@ export function BranchesPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Contact Name</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">Contact Name</label>
                 <input
                   type="text"
                   value={formData.contactName}
                   onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
                   placeholder="e.g., Jane Doe"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Contact Email</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">Contact Email</label>
                 <input
                   type="email"
                   value={formData.contactEmail}
                   onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
                   placeholder="name@company.com"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Contact Phone</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">Contact Phone</label>
                 <input
                   type="text"
                   value={formData.contactPhone}
                   onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
                   placeholder="e.g., +27 82 000 0000"
                 />
               </div>
@@ -453,7 +453,7 @@ export function BranchesPage() {
 
             <button
               type="submit"
-              className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+              className="w-full rounded-2xl bg-emerald-500 px-4 py-2 text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={saving}
             >
               {saving ? 'Saving...' : 'Create Branch'}
@@ -461,16 +461,16 @@ export function BranchesPage() {
           </form>
         )}
 
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="mb-6 rounded-3xl border border-white/10 bg-slate-950/50 p-4 shadow-soft">
           <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name, division, province, town, or address"
-              className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white placeholder:text-slate-500 outline-none focus:border-sky-400/50"
             />
-            <p className="text-sm text-slate-600">Showing {filteredBranches.length} of {branches.length} branches</p>
+            <p className="text-sm text-slate-400">Showing {filteredBranches.length} of {branches.length} branches</p>
           </div>
         </div>
 
@@ -479,11 +479,11 @@ export function BranchesPage() {
             <div className="inline-block animate-spin">
               <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full"></div>
             </div>
-            <p className="mt-4 text-slate-600">Loading branches...</p>
+            <p className="mt-4 text-slate-400">Loading branches...</p>
           </div>
         ) : filteredBranches.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
-            <p className="text-slate-600">No branches match your search.</p>
+          <div className="rounded-3xl border border-white/10 bg-slate-950/50 py-12 text-center">
+            <p className="text-slate-400">No branches match your search.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -496,7 +496,7 @@ export function BranchesPage() {
                   <form
                     key={branch.id}
                     onSubmit={(e) => handleUpdate(branch.id, e)}
-                    className="rounded-xl border border-blue-200 bg-blue-50/40 p-5"
+                    className="rounded-3xl border border-sky-400/25 bg-sky-500/10 p-5"
                   >
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                       <input
@@ -504,13 +504,13 @@ export function BranchesPage() {
                         value={editData.name}
                         onChange={(e) => setEditData({ ...editData, name: e.target.value })}
                         placeholder="Branch name"
-                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                         required
                       />
                       <select
                         value={editData.division}
                         onChange={(e) => setEditData({ ...editData, division: e.target.value as Division })}
-                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                         required
                       >
                         {divisions.map((d) => (
@@ -522,7 +522,7 @@ export function BranchesPage() {
                         value={editData.province}
                         onChange={(e) => setEditData({ ...editData, province: e.target.value })}
                         placeholder="Province"
-                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                         required
                       />
                       <input
@@ -530,7 +530,7 @@ export function BranchesPage() {
                         value={editData.town}
                         onChange={(e) => setEditData({ ...editData, town: e.target.value })}
                         placeholder="Town"
-                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                         required
                       />
                     </div>
@@ -541,7 +541,7 @@ export function BranchesPage() {
                         value={editData.physicalAddress}
                         onChange={(e) => setEditData({ ...editData, physicalAddress: e.target.value })}
                         placeholder="Physical address"
-                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                         required
                       />
                       <input
@@ -550,7 +550,7 @@ export function BranchesPage() {
                         value={editData.latitude}
                         onChange={(e) => setEditData({ ...editData, latitude: e.target.value })}
                         placeholder="Latitude"
-                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                       />
                       <input
                         type="number"
@@ -558,7 +558,7 @@ export function BranchesPage() {
                         value={editData.longitude}
                         onChange={(e) => setEditData({ ...editData, longitude: e.target.value })}
                         placeholder="Longitude"
-                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                       />
                     </div>
 
@@ -568,7 +568,7 @@ export function BranchesPage() {
                         value={editData.contactName}
                         onChange={(e) => setEditData({ ...editData, contactName: e.target.value })}
                         placeholder="Contact name"
-                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                       />
                       <input
                         type="email"
@@ -589,7 +589,7 @@ export function BranchesPage() {
                     <div className="mt-4 flex gap-2">
                       <button
                         type="submit"
-                        className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+                        className="rounded-xl bg-sky-500 px-4 py-2 text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={saving}
                       >
                         {saving ? 'Saving...' : 'Save Changes'}
@@ -597,7 +597,7 @@ export function BranchesPage() {
                       <button
                         type="button"
                         onClick={cancelEdit}
-                        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50"
+                        className="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-slate-200 transition hover:bg-slate-900"
                         disabled={saving}
                       >
                         Cancel
@@ -608,40 +608,40 @@ export function BranchesPage() {
               }
 
               return (
-                <div key={branch.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div key={branch.id} className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft">
                   <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_1fr_auto] lg:items-start">
                     <div>
-                      <p className="text-lg font-semibold text-slate-900">{branch.name}</p>
-                      <p className="mt-1 text-sm text-slate-600">{branch.town}, {branch.province}</p>
-                      <p className="mt-2 text-sm text-slate-700">{branch.physicalAddress}</p>
+                      <p className="text-lg font-semibold text-white">{branch.name}</p>
+                      <p className="mt-1 text-sm text-slate-400">{branch.town}, {branch.province}</p>
+                      <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
                     </div>
 
                     <div>
                       <p className="text-xs uppercase tracking-wide text-slate-500">Division</p>
-                      <span className="mt-1 inline-block rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
+                      <span className="mt-1 inline-block rounded-full bg-sky-400/20 px-3 py-1 text-sm font-medium text-sky-200 ring-1 ring-sky-300/20">
                         {branch.division}
                       </span>
                     </div>
 
                     <div>
                       <p className="text-xs uppercase tracking-wide text-slate-500">Contact</p>
-                      <p className="mt-1 text-sm text-slate-700">{branch.contactName || 'Not set'}</p>
-                      {branch.contactEmail ? <p className="text-xs text-slate-600">{branch.contactEmail}</p> : null}
-                      {branch.contactPhone ? <p className="text-xs text-slate-600">{branch.contactPhone}</p> : null}
+                      <p className="mt-1 text-sm text-slate-300">{branch.contactName || 'Not set'}</p>
+                      {branch.contactEmail ? <p className="text-xs text-slate-400">{branch.contactEmail}</p> : null}
+                      {branch.contactPhone ? <p className="text-xs text-slate-400">{branch.contactPhone}</p> : null}
                     </div>
 
                     {isAdmin ? (
                       <div className="flex gap-2 lg:justify-end">
                         <Link
                           to={`/projects?branchId=${encodeURIComponent(branch.id)}`}
-                          className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-100"
+                          className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200 transition hover:bg-emerald-500/20"
                         >
                           Add Project
                         </Link>
                         <button
                           type="button"
                           onClick={() => beginEdit(branch)}
-                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                          className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-900"
                           disabled={saving}
                         >
                           Edit
@@ -649,7 +649,7 @@ export function BranchesPage() {
                         <button
                           type="button"
                           onClick={() => requestDelete(branch)}
-                          className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 hover:bg-red-100"
+                          className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200 transition hover:bg-red-500/20"
                           disabled={saving}
                         >
                           Remove
@@ -659,10 +659,10 @@ export function BranchesPage() {
                   </div>
 
                   {openProjects.length > 0 ? (
-                    <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-xs uppercase tracking-wide text-slate-500">Open Projects</p>
-                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                        <span className="rounded-full bg-slate-900/70 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
                           {openProjects.length}
                         </span>
                       </div>
@@ -672,16 +672,16 @@ export function BranchesPage() {
                           <Link
                             key={project.id}
                             to={`/projects/${project.id}`}
-                            className="block rounded-lg border border-slate-200 bg-white px-3 py-2 transition hover:border-sky-300 hover:bg-sky-50"
+                            className="block rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 transition hover:border-sky-300/40 hover:bg-slate-900"
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-slate-900">{project.id}</p>
-                                <p className="truncate text-xs text-slate-600">
+                                <p className="truncate text-sm font-semibold text-white">{project.id}</p>
+                                <p className="truncate text-xs text-slate-400">
                                   {project.currentStage} · {project.town}, {project.province}
                                 </p>
                               </div>
-                              <span className="shrink-0 rounded-full bg-sky-100 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-sky-700">
+                              <span className="shrink-0 rounded-full bg-sky-400/20 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-sky-200 ring-1 ring-sky-300/20">
                                 {project.status.replace('_', ' ')}
                               </span>
                             </div>
@@ -698,21 +698,21 @@ export function BranchesPage() {
 
         {pendingDeleteBranch ? (
           <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/65 p-4">
-            <div className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-6 shadow-xl">
-              <h3 className="text-xl font-semibold text-slate-900">Confirm branch removal</h3>
-              <p className="mt-2 text-sm text-slate-700">
+            <div className="w-full max-w-lg rounded-3xl border border-red-400/25 bg-slate-950 p-6 shadow-xl">
+              <h3 className="text-xl font-semibold text-white">Confirm branch removal</h3>
+              <p className="mt-2 text-sm text-slate-300">
                 You are about to remove <span className="font-semibold">{pendingDeleteBranch.name}</span>.
               </p>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-slate-400">
                 To avoid accidental deletion, click <span className="font-semibold">Yes</span> three times.
               </p>
-              <p className="mt-3 text-sm text-red-700">Confirmation step: {deleteConfirmCount} of 3</p>
+              <p className="mt-3 text-sm text-red-300">Confirmation step: {deleteConfirmCount} of 3</p>
 
               <div className="mt-6 flex gap-3">
                 <button
                   type="button"
                   onClick={confirmDeleteStep}
-                  className="rounded-lg border border-red-300 bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
+                  className="rounded-xl border border-red-400/30 bg-red-600 px-4 py-2 text-white transition hover:bg-red-500 disabled:opacity-50"
                   disabled={saving}
                 >
                   {saving ? 'Removing...' : `Yes (${deleteConfirmCount}/3)`}
@@ -720,7 +720,7 @@ export function BranchesPage() {
                 <button
                   type="button"
                   onClick={cancelDelete}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50"
+                  className="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-slate-200 transition hover:bg-slate-900"
                   disabled={saving}
                 >
                   Cancel
