@@ -7,7 +7,7 @@ import { X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { roleLabels } from '../constants/portal';
 import type { Role } from '../types/domain';
-import { productBrand } from '../constants/branding';
+import { productBrand, psgPrimaryLogoUrl } from '../constants/branding';
 import { RolloutLogo } from '../components/brand/RolloutLogo';
 
 const roles: Role[] = ['colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'];
@@ -73,8 +73,8 @@ export function LoginPage() {
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-100">
                   <img
-                    src={`${import.meta.env.BASE_URL}brand/psg-flower-cyan.svg`}
-                    alt="PSG flower logo"
+                    src={psgPrimaryLogoUrl}
+                    alt="PSG logo"
                     className="h-5 w-5"
                   />
                   PSG participant

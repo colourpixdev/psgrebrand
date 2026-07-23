@@ -1,5 +1,6 @@
 import type { Workspace } from '../../types/domain';
 import { getInitials } from '../../utils/profileIdentity';
+import { psgPrimaryLogoUrl } from '../../constants/branding';
 
 function ColourpixFallbackMark() {
   return (
@@ -12,7 +13,7 @@ function ColourpixFallbackMark() {
 function PsgFlowerFallbackMark() {
   return (
     <div className="grid h-12 w-12 place-items-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 p-1.5">
-      <img src={`${import.meta.env.BASE_URL}brand/psg-flower-cyan.svg`} alt="PSG flower logo" className="h-8 w-8 object-contain" />
+      <img src={psgPrimaryLogoUrl} alt="PSG logo" className="h-8 w-8 object-contain" />
     </div>
   );
 }

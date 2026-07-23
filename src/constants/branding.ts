@@ -12,6 +12,8 @@
   copyright: '(c) 2026 PSG Rebrand',
 } as const;
 
+export const psgPrimaryLogoUrl = 'https://www.moneymarketing.co.za/wp-content/uploads/2026/04/PSG-Logos_rebrand-03-scaled.jpg';
+
 export const userAgreementPoints = [
   'Project activity is recorded.',
   'Communications may be retained.',
