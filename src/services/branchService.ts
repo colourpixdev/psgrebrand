@@ -100,6 +100,39 @@ function shouldFallbackToLocal(errorMessage: string | undefined) {
   ].some((token) => normalizedMessage.includes(token));
 }
 
+function isMissingBranchColumnError(errorMessage: string | undefined) {
+  if (!errorMessage) {
+    return false;
+  }
+
+  const normalizedMessage = errorMessage.toLowerCase();
+  return [
+    'contact_name',
+    'contact_email',
+    'contact_phone',
+  ].some((column) => normalizedMessage.includes(column));
+}
+
+function buildBranchInsertPayload(input: CreateBranchInput) {
+  return {
+    name: input.name,
+    division: input.division,
+    province: input.province,
+    town: input.town,
+    physical_address: input.physicalAddress,
+    latitude: input.latitude ?? null,
+    longitude: input.longitude ?? null,
+    contact_name: input.contactName ?? null,
+    contact_email: input.contactEmail ?? null,
+    contact_phone: input.contactPhone ?? null,
+  };
+}
+
+function stripLegacyBranchColumns<T extends Record<string, unknown>>(payload: T) {
+  const { contact_name, contact_email, contact_phone, ...legacyPayload } = payload;
+  return legacyPayload;
+}
+
 export async function getAllBranches(): Promise<Branch[]> {
   if (!supabase) {
     return readLocalBranches().sort((a, b) => a.name.localeCompare(b.name));
@@ -156,24 +189,24 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
     return nextBranch;
   }
 
-  const { data, error } = await supabase
+  const insertPayload = buildBranchInsertPayload(input);
+
+  let { data, error } = await supabase
     .from('branches')
-    .insert([
-      {
-        name: input.name,
-        division: input.division,
-        province: input.province,
-        town: input.town,
-        physical_address: input.physicalAddress,
-        latitude: input.latitude ?? null,
-        longitude: input.longitude ?? null,
-        contact_name: input.contactName ?? null,
-        contact_email: input.contactEmail ?? null,
-        contact_phone: input.contactPhone ?? null,
-      },
-    ])
+    .insert([insertPayload])
     .select()
     .single();
+
+  if (error && isMissingBranchColumnError(error.message)) {
+    const fallbackResult = await supabase
+      .from('branches')
+      .insert([stripLegacyBranchColumns(insertPayload)])
+      .select()
+      .single();
+
+    data = fallbackResult.data;
+    error = fallbackResult.error;
+  }
 
   if (error) {
     console.error('Failed to create branch:', error);
@@ -248,7 +281,19 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
   if (input.contactEmail !== undefined) updates.contact_email = input.contactEmail;
   if (input.contactPhone !== undefined) updates.contact_phone = input.contactPhone;
 
-  const { data, error } = await supabase.from('branches').update(updates).eq('id', id).select().single();
+  let { data, error } = await supabase.from('branches').update(updates).eq('id', id).select().single();
+
+  if (error && isMissingBranchColumnError(error.message)) {
+    const fallbackResult = await supabase
+      .from('branches')
+      .update(stripLegacyBranchColumns(updates))
+      .eq('id', id)
+      .select()
+      .single();
+
+    data = fallbackResult.data;
+    error = fallbackResult.error;
+  }
 
   if (error) {
     console.error('Failed to update branch:', error);
