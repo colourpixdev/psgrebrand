@@ -151,26 +151,44 @@ function buildReportTable(projects: Project[], reportName: string) {
   `;
 }
 
+function toCsvCell(value: string | number) {
+  const normalized = String(value ?? '').replace(/\r?\n|\r/g, ' ');
+  return `"${normalized.replace(/"/g, '""')}"`;
+}
+
 function downloadExcel(projects: Project[], reportName: string) {
-  const table = buildReportTable(projects, reportName);
-  const workbook = `<!doctype html><html><head><meta charset="utf-8" /></head><body>${table}</body></html>`;
-  const blob = new Blob([workbook], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  const headers = ['Project ID', 'Site', 'Project Type', 'Town', 'Province', 'Manager', 'Delivery Partner', 'Stage', 'Status', 'Progress', 'Target', 'Delivery', 'Completed', 'Updated'];
+  const rows = projects.map((project) => [
+    project.id,
+    project.branch,
+    project.projectTypeName,
+    project.town,
+    project.province,
+    project.manager,
+    project.installer,
+    project.currentStage,
+    statusLabels[project.status],
+    `${project.progress}%`,
+    project.targetDate,
+    project.installationDate,
+    project.completionDate,
+    project.updatedAt,
+  ]);
+
+  // UTF-8 BOM helps Excel recognize encoding on Windows and avoids mojibake.
+  const csv = ['\uFEFF', headers.map(toCsvCell).join(','), ...rows.map((row) => row.map(toCsvCell).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
 
   link.href = url;
-  link.download = `${formatFileName(reportName)}.xls`;
+  link.download = `${formatFileName(reportName)}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
 
 function openPdfReport(projects: Project[], reportName: string) {
-  const reportWindow = window.open('', '_blank', 'noopener,noreferrer');
-  if (!reportWindow) {
-    return;
-  }
-
-  reportWindow.document.write(`
+  const html = `
     <!doctype html>
     <html>
       <head>
@@ -190,11 +208,20 @@ function openPdfReport(projects: Project[], reportName: string) {
         <h1>${escapeHtml(reportName)}</h1>
         <p>${projects.length} project${projects.length === 1 ? '' : 's'} exported on ${new Date().toLocaleDateString()}</p>
         ${buildReportTable(projects, reportName)}
-        <script>window.addEventListener('load', () => window.print());</script>
+        <script>
+          window.addEventListener('load', () => {
+            setTimeout(() => window.print(), 150);
+          });
+        </script>
       </body>
     </html>
-  `);
-  reportWindow.document.close();
+  `;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  // Revoke shortly after open so the new tab has time to load.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export function ReportsPage() {
