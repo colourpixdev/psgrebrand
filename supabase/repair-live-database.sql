@@ -1,8 +1,122 @@
 -- Repair live Supabase setup for the PSG Signage Rollout Portal.
--- Run in Supabase Dashboard -> SQL Editor for project plqrjfylolaukazldnuz.
+-- Run in Supabase Dashboard -> SQL Editor for project nfwbpyxmbjagzgsullyn.
 -- Run the whole file. This version avoids do $$ blocks so partial selections are less brittle.
 
 create extension if not exists pgcrypto;
+
+create table if not exists public.branches (
+  id text primary key default (gen_random_uuid()::text),
+  name text not null,
+  division text not null,
+  province text not null,
+  town text not null,
+  physical_address text not null,
+  latitude double precision,
+  longitude double precision,
+  contact_name text,
+  contact_email text,
+  contact_phone text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.branches alter column id type text using id::text;
+alter table public.branches alter column id set default (gen_random_uuid()::text);
+alter table public.branches add column if not exists province text;
+alter table public.branches add column if not exists town text;
+alter table public.branches add column if not exists physical_address text;
+alter table public.branches add column if not exists latitude double precision;
+alter table public.branches add column if not exists longitude double precision;
+alter table public.branches add column if not exists contact_name text;
+alter table public.branches add column if not exists contact_email text;
+alter table public.branches add column if not exists contact_phone text;
+alter table public.branches add column if not exists created_at timestamptz not null default now();
+alter table public.branches add column if not exists updated_at timestamptz not null default now();
+
+alter table public.branches drop constraint if exists branches_latitude_range;
+alter table public.branches add constraint branches_latitude_range
+  check (latitude is null or latitude between -90 and 90);
+
+alter table public.branches drop constraint if exists branches_longitude_range;
+alter table public.branches add constraint branches_longitude_range
+  check (longitude is null or longitude between -180 and 180);
+
+create table if not exists public.projects (
+  id text primary key,
+  branch_id text,
+  branch text,
+  province text,
+  town text,
+  physical_address text,
+  latitude double precision,
+  longitude double precision,
+  manager text not null default 'Not captured',
+  manager_email text not null default '',
+  installer text not null default 'Not captured',
+  designer text not null default 'Not captured',
+  current_stage text not null default 'New Project',
+  status text not null default 'in_progress',
+  target_date text not null default '',
+  installation_date text not null default '',
+  completion_date text not null default '',
+  updated_at timestamptz not null default now(),
+  progress integer not null default 0,
+  branch_manager_view_only boolean not null default false,
+  notes text not null default '',
+  files jsonb not null default '[]'::jsonb,
+  tasks jsonb not null default '[]'::jsonb,
+  comments jsonb not null default '[]'::jsonb,
+  activity jsonb not null default '[]'::jsonb,
+  workspace_id text,
+  workspace_name text,
+  client_company text,
+  graphics_partner text,
+  project_type text,
+  project_type_name text,
+  site_label text,
+  delivery_partner_label text
+);
+
+alter table public.projects add column if not exists branch_id text;
+alter table public.projects add column if not exists branch text;
+alter table public.projects add column if not exists province text;
+alter table public.projects add column if not exists town text;
+alter table public.projects add column if not exists physical_address text;
+alter table public.projects add column if not exists latitude double precision;
+alter table public.projects add column if not exists longitude double precision;
+alter table public.projects add column if not exists workspace_id text;
+alter table public.projects add column if not exists workspace_name text;
+alter table public.projects add column if not exists client_company text;
+alter table public.projects add column if not exists graphics_partner text;
+alter table public.projects add column if not exists project_type text;
+alter table public.projects add column if not exists project_type_name text;
+alter table public.projects add column if not exists site_label text;
+alter table public.projects add column if not exists delivery_partner_label text;
+
+update public.projects
+set branch = coalesce(branch, branch_id)
+where branch is null and branch_id is not null;
+
+alter table public.projects drop constraint if exists projects_branch_id_fkey;
+alter table public.projects
+  add constraint projects_branch_id_fkey
+  foreign key (branch_id) references public.branches(id) on delete restrict;
+
+alter table public.projects drop constraint if exists projects_latitude_range;
+alter table public.projects add constraint projects_latitude_range
+  check (latitude is null or latitude between -90 and 90);
+
+alter table public.projects drop constraint if exists projects_longitude_range;
+alter table public.projects add constraint projects_longitude_range
+  check (longitude is null or longitude between -180 and 180);
+
+alter table public.projects drop constraint if exists projects_status_check;
+alter table public.projects add constraint projects_status_check
+  check (status in ('completed', 'busy', 'in_progress', 'awaiting_approval', 'delayed', 'on_hold', 'cancelled'));
+
+alter table public.projects drop constraint if exists projects_progress_check;
+alter table public.projects add constraint projects_progress_check
+  check (progress between 0 and 100);
 
 create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
@@ -85,7 +199,7 @@ as $$
   select coalesce((select private.current_profile_role()) = 'colourpix_admin', false);
 $$;
 
-create or replace function private.can_view_project(project_branch text, project_installer text)
+create or replace function private.can_view_project(project_branch_id text, project_installer text)
 returns boolean
 language sql
 stable
@@ -96,7 +210,11 @@ as $$
     when (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office') then true
     when (select private.current_profile_role()) = 'psg_branch_manager' then
       (select private.current_profile_branch()) is null
-      or lower(project_branch) = lower((select private.current_profile_branch()))
+      or exists (
+        select 1 from public.branches
+        where id = project_branch_id
+        and lower(name) = lower((select private.current_profile_branch()))
+      )
     when (select private.current_profile_role()) = 'sign_company' then
       lower(project_installer) = lower(coalesce((select private.current_profile_name()), ''))
       or lower(project_installer) = lower(coalesce((select private.current_profile_branch()), ''))
@@ -104,7 +222,7 @@ as $$
   end;
 $$;
 
-create or replace function private.can_update_project(project_branch text, project_installer text)
+create or replace function private.can_update_project(project_branch_id text, project_installer text)
 returns boolean
 language sql
 stable
@@ -112,7 +230,7 @@ security definer
 set search_path = public
 as $$
   select (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company')
-    and (select private.can_view_project(project_branch, project_installer));
+    and (select private.can_view_project(project_branch_id, project_installer));
 $$;
 
 revoke all on function private.current_profile_role() from public;
@@ -128,10 +246,12 @@ grant execute on function private.is_colourpix_admin() to authenticated;
 grant execute on function private.can_view_project(text, text) to authenticated;
 grant execute on function private.can_update_project(text, text) to authenticated;
 
+alter table public.branches enable row level security;
 alter table public.projects enable row level security;
 alter table public.profiles enable row level security;
 
 grant usage on schema public to authenticated;
+grant select, insert, update, delete on table public.branches to authenticated;
 grant select, insert, update, delete on table public.projects to authenticated;
 grant select, insert, update, delete on table public.profiles to authenticated;
 
@@ -181,6 +301,10 @@ set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists "Authenticated read access to branches" on public.branches;
+drop policy if exists "Authenticated insert branches" on public.branches;
+drop policy if exists "Authenticated update branches" on public.branches;
+drop policy if exists "Authenticated delete branches" on public.branches;
 drop policy if exists "Authenticated read access to projects" on public.projects;
 drop policy if exists "Public read access to projects" on public.projects;
 drop policy if exists "Authenticated insert projects" on public.projects;
@@ -198,9 +322,26 @@ drop policy if exists "Authenticated read voice updates" on storage.objects;
 drop policy if exists "Authenticated insert voice updates" on storage.objects;
 drop policy if exists "Authenticated delete voice updates" on storage.objects;
 
+create policy "Authenticated read access to branches"
+  on public.branches for select to authenticated
+  using ((select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'));
+
+create policy "Authenticated insert branches"
+  on public.branches for insert to authenticated
+  with check ((select private.current_profile_role()) = 'colourpix_admin');
+
+create policy "Authenticated update branches"
+  on public.branches for update to authenticated
+  using ((select private.current_profile_role()) = 'colourpix_admin')
+  with check ((select private.current_profile_role()) = 'colourpix_admin');
+
+create policy "Authenticated delete branches"
+  on public.branches for delete to authenticated
+  using ((select private.current_profile_role()) = 'colourpix_admin');
+
 create policy "Authenticated read access to projects"
   on public.projects for select to authenticated
-  using ((select private.can_view_project(branch, installer)));
+  using ((select private.can_view_project(branch_id, installer)));
 
 create policy "Authenticated insert projects"
   on public.projects for insert to authenticated
@@ -208,8 +349,8 @@ create policy "Authenticated insert projects"
 
 create policy "Authenticated update projects"
   on public.projects for update to authenticated
-  using ((select private.can_update_project(branch, installer)))
-  with check ((select private.can_update_project(branch, installer)));
+  using ((select private.can_update_project(branch_id, installer)))
+  with check ((select private.can_update_project(branch_id, installer)));
 
 create policy "Authenticated delete projects"
   on public.projects for delete to authenticated

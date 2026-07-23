@@ -52,7 +52,7 @@ The setup SQL also creates private Storage buckets:
 
 ### RLS hardening
 
-[supabase/repair-live-database.sql](supabase/repair-live-database.sql) now scopes project, profile, and project-file access by the signed-in user's profile role:
+[supabase/repair-live-database.sql](supabase/repair-live-database.sql) now provisions branch access, backfills the current project location columns, and scopes branch, project, profile, and project-file access by the signed-in user's profile role:
 
 - Colourpix administrators and PSG head office can view all projects.
 - PSG branch managers can view only their branch projects.

@@ -195,10 +195,12 @@ grant execute on function private.is_colourpix_admin() to authenticated;
 grant execute on function private.can_view_project(text, text) to authenticated;
 grant execute on function private.can_update_project(text, text) to authenticated;
 
+alter table public.branches enable row level security;
 alter table public.projects enable row level security;
 alter table public.profiles enable row level security;
 
 grant usage on schema public to authenticated;
+grant select, insert, update, delete on table public.branches to authenticated;
 grant select, insert, update, delete on table public.projects to authenticated;
 grant select, insert, update, delete on table public.profiles to authenticated;
 
@@ -248,6 +250,10 @@ set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists "Authenticated read access to branches" on public.branches;
+drop policy if exists "Authenticated insert branches" on public.branches;
+drop policy if exists "Authenticated update branches" on public.branches;
+drop policy if exists "Authenticated delete branches" on public.branches;
 drop policy if exists "Authenticated read access to projects" on public.projects;
 drop policy if exists "Public read access to projects" on public.projects;
 drop policy if exists "Authenticated insert projects" on public.projects;
@@ -267,11 +273,56 @@ drop policy if exists "Authenticated delete voice updates" on storage.objects;
 
 do $$
 begin
+  create policy "Authenticated read access to branches"
+    on public.branches
+    for select
+    to authenticated
+    using ((select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'));
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  create policy "Authenticated insert branches"
+    on public.branches
+    for insert
+    to authenticated
+    with check ((select private.current_profile_role()) = 'colourpix_admin');
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  create policy "Authenticated update branches"
+    on public.branches
+    for update
+    to authenticated
+    using ((select private.current_profile_role()) = 'colourpix_admin')
+    with check ((select private.current_profile_role()) = 'colourpix_admin');
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  create policy "Authenticated delete branches"
+    on public.branches
+    for delete
+    to authenticated
+    using ((select private.current_profile_role()) = 'colourpix_admin');
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
   create policy "Authenticated read access to projects"
     on public.projects
     for select
     to authenticated
-    using ((select private.can_view_project(branch, installer)));
+    using ((select private.can_view_project(branch_id, installer)));
 exception
   when duplicate_object then null;
 end $$;
@@ -293,8 +344,8 @@ begin
     on public.projects
     for update
     to authenticated
-    using ((select private.can_update_project(branch, installer)))
-    with check ((select private.can_update_project(branch, installer)));
+    using ((select private.can_update_project(branch_id, installer)))
+    with check ((select private.can_update_project(branch_id, installer)));
 exception
   when duplicate_object then null;
 end $$;
