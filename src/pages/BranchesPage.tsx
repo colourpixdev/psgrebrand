@@ -658,15 +658,15 @@ export function BranchesPage() {
                     ) : null}
                   </div>
 
-                  <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Open Projects</p>
-                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
-                        {openProjects.length}
-                      </span>
-                    </div>
+                  {openProjects.length > 0 ? (
+                    <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs uppercase tracking-wide text-slate-500">Open Projects</p>
+                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                          {openProjects.length}
+                        </span>
+                      </div>
 
-                    {openProjects.length > 0 ? (
                       <div className="mt-3 space-y-2">
                         {openProjects.map((project) => (
                           <Link
@@ -688,10 +688,8 @@ export function BranchesPage() {
                           </Link>
                         ))}
                       </div>
-                    ) : (
-                      <p className="mt-3 text-sm text-slate-600">No open projects for this branch.</p>
-                    )}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
