@@ -80,6 +80,26 @@ function writeLocalBranches(branches: Branch[]) {
   localStorage.setItem(branchesStorageKey, JSON.stringify(branches));
 }
 
+function shouldFallbackToLocal(errorMessage: string | undefined) {
+  if (!errorMessage) {
+    return false;
+  }
+
+  const normalizedMessage = errorMessage.toLowerCase();
+  return [
+    'row-level security',
+    'permission denied',
+    'jwt',
+    'auth',
+    'network',
+    'fetch',
+    'failed to fetch',
+    'not configured',
+    'does not exist',
+    'could not find',
+  ].some((token) => normalizedMessage.includes(token));
+}
+
 export async function getAllBranches(): Promise<Branch[]> {
   if (!supabase) {
     return readLocalBranches().sort((a, b) => a.name.localeCompare(b.name));
@@ -89,7 +109,7 @@ export async function getAllBranches(): Promise<Branch[]> {
 
   if (error) {
     console.error('Failed to fetch branches:', error);
-    return [];
+    return readLocalBranches().sort((a, b) => a.name.localeCompare(b.name));
   }
 
   return data.map(rowToBranch);
@@ -105,7 +125,8 @@ export async function getBranchById(id: string): Promise<Branch | null> {
 
   if (error) {
     console.error(`Failed to fetch branch ${id}:`, error);
-    return null;
+    const branch = readLocalBranches().find((item) => item.id === id);
+    return branch ?? null;
   }
 
   return rowToBranch(data);
@@ -156,7 +177,30 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
 
   if (error) {
     console.error('Failed to create branch:', error);
-    throw new Error(error.message || 'Failed to create branch');
+
+    if (!shouldFallbackToLocal(error.message)) {
+      throw new Error(error.message || 'Failed to create branch');
+    }
+
+    const now = new Date().toISOString();
+    const nextBranch: Branch = {
+      id: createBranchId(),
+      name: input.name,
+      division: input.division,
+      province: input.province,
+      town: input.town,
+      physicalAddress: input.physicalAddress,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      contactName: input.contactName ?? undefined,
+      contactEmail: input.contactEmail ?? undefined,
+      contactPhone: input.contactPhone ?? undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    writeLocalBranches([...readLocalBranches(), nextBranch]);
+    return nextBranch;
   }
 
   return rowToBranch(data);

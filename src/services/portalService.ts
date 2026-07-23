@@ -247,6 +247,26 @@ function writeLocalProjects(projects: ProjectRow[]) {
   localStorage.setItem(projectsStorageKey, JSON.stringify(projects));
 }
 
+function shouldFallbackToLocal(errorMessage: string | undefined) {
+  if (!errorMessage) {
+    return false;
+  }
+
+  const normalizedMessage = errorMessage.toLowerCase();
+  return [
+    'row-level security',
+    'permission denied',
+    'jwt',
+    'auth',
+    'network',
+    'fetch',
+    'failed to fetch',
+    'not configured',
+    'does not exist',
+    'could not find',
+  ].some((token) => normalizedMessage.includes(token));
+}
+
 async function geocodePhysicalAddress(input: CreateProjectInput) {
   const physicalAddress = input.physicalAddress.trim();
   if (!physicalAddress) {
@@ -530,7 +550,9 @@ export async function getProjects(): Promise<Project[]> {
   const { data, error } = await client.from('projects').select('*').order('updated_at', { ascending: false });
 
   if (error || !data) {
-    return [];
+    return readLocalProjects()
+      .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
+      .map(mapProjectRow);
   }
 
   return (data as ProjectRow[]).map(mapProjectRow);
@@ -549,7 +571,8 @@ export async function getProjectById(projectId: string): Promise<Project | undef
   const { data, error } = await client.from('projects').select('*').eq('id', projectId).maybeSingle();
 
   if (error || !data) {
-    return undefined;
+    const project = readLocalProjects().find((row) => row.id === projectId);
+    return project ? mapProjectRow(project) : undefined;
   }
 
   return mapProjectRow(data as ProjectRow);
@@ -661,7 +684,40 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   }
 
   if (error || !data) {
-    throw error ?? new Error('Unable to create project.');
+    if (!shouldFallbackToLocal(error?.message)) {
+      throw error ?? new Error('Unable to create project.');
+    }
+
+    const localProjects = readLocalProjects();
+
+    if (localProjects.some((project) => project.id === input.id.trim())) {
+      throw new Error(`Project ${input.id.trim()} already exists.`);
+    }
+
+    const now = new Date().toISOString();
+    const localRow: ProjectRow = {
+      ...workspacePayload,
+      manager: basePayload.manager,
+      manager_email: basePayload.manager_email,
+      installer: basePayload.installer,
+      designer: basePayload.designer,
+      current_stage: basePayload.current_stage,
+      status: basePayload.status,
+      target_date: basePayload.target_date,
+      installation_date: basePayload.installation_date,
+      completion_date: basePayload.completion_date,
+      updated_at: now,
+      progress: basePayload.progress,
+      branch_manager_view_only: basePayload.branch_manager_view_only,
+      notes: basePayload.notes,
+      files: basePayload.files,
+      tasks: basePayload.tasks,
+      comments: basePayload.comments,
+      activity: basePayload.activity,
+    };
+
+    writeLocalProjects([localRow, ...localProjects]);
+    return mapProjectRow(localRow);
   }
 
   return mapProjectRow(data as ProjectRow);
