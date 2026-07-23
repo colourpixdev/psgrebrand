@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase';
 import type { Branch, Division } from '../types/domain';
 
+const branchesStorageKey = 'psg-rebrand:branches';
+
 export interface CreateBranchInput {
   name: string;
   division: Division;
@@ -48,8 +50,40 @@ function rowToBranch(row: BranchRow): Branch {
   };
 }
 
+function createBranchId() {
+  return globalThis.crypto?.randomUUID?.() ?? `branch-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function readLocalBranches(): Branch[] {
+  if (typeof localStorage === 'undefined') {
+    return [];
+  }
+
+  try {
+    const stored = localStorage.getItem(branchesStorageKey);
+    if (!stored) {
+      return [];
+    }
+
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? (parsed as Branch[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalBranches(branches: Branch[]) {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+
+  localStorage.setItem(branchesStorageKey, JSON.stringify(branches));
+}
+
 export async function getAllBranches(): Promise<Branch[]> {
-  if (!supabase) return [];
+  if (!supabase) {
+    return readLocalBranches().sort((a, b) => a.name.localeCompare(b.name));
+  }
 
   const { data, error } = await supabase.from('branches').select('*').order('name');
 
@@ -62,7 +96,10 @@ export async function getAllBranches(): Promise<Branch[]> {
 }
 
 export async function getBranchById(id: string): Promise<Branch | null> {
-  if (!supabase) return null;
+  if (!supabase) {
+    const branch = readLocalBranches().find((item) => item.id === id);
+    return branch ?? null;
+  }
 
   const { data, error } = await supabase.from('branches').select('*').eq('id', id).single();
 
@@ -75,7 +112,28 @@ export async function getBranchById(id: string): Promise<Branch | null> {
 }
 
 export async function createBranch(input: CreateBranchInput): Promise<Branch | null> {
-  if (!supabase) return null;
+  if (!supabase) {
+    const now = new Date().toISOString();
+    const nextBranch: Branch = {
+      id: createBranchId(),
+      name: input.name,
+      division: input.division,
+      province: input.province,
+      town: input.town,
+      physicalAddress: input.physicalAddress,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      contactName: input.contactName ?? undefined,
+      contactEmail: input.contactEmail ?? undefined,
+      contactPhone: input.contactPhone ?? undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const nextBranches = [...readLocalBranches(), nextBranch];
+    writeLocalBranches(nextBranches);
+    return nextBranch;
+  }
 
   const { data, error } = await supabase
     .from('branches')
@@ -105,7 +163,34 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
 }
 
 export async function updateBranch(id: string, input: Partial<CreateBranchInput>): Promise<Branch | null> {
-  if (!supabase) return null;
+  if (!supabase) {
+    const branches = readLocalBranches();
+    const index = branches.findIndex((item) => item.id === id);
+
+    if (index === -1) {
+      throw new Error('Branch not found.');
+    }
+
+    const existing = branches[index];
+    const updatedBranch: Branch = {
+      ...existing,
+      name: input.name ?? existing.name,
+      division: input.division ?? existing.division,
+      province: input.province ?? existing.province,
+      town: input.town ?? existing.town,
+      physicalAddress: input.physicalAddress ?? existing.physicalAddress,
+      latitude: input.latitude !== undefined ? input.latitude : existing.latitude,
+      longitude: input.longitude !== undefined ? input.longitude : existing.longitude,
+      contactName: input.contactName !== undefined ? input.contactName ?? undefined : existing.contactName,
+      contactEmail: input.contactEmail !== undefined ? input.contactEmail ?? undefined : existing.contactEmail,
+      contactPhone: input.contactPhone !== undefined ? input.contactPhone ?? undefined : existing.contactPhone,
+      updatedAt: new Date().toISOString(),
+    };
+
+    branches[index] = updatedBranch;
+    writeLocalBranches(branches);
+    return updatedBranch;
+  }
 
   const updates: Record<string, unknown> = {};
   if (input.name !== undefined) updates.name = input.name;
@@ -130,7 +215,17 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
 }
 
 export async function deleteBranch(id: string): Promise<boolean> {
-  if (!supabase) return false;
+  if (!supabase) {
+    const branches = readLocalBranches();
+    const nextBranches = branches.filter((item) => item.id !== id);
+
+    if (nextBranches.length === branches.length) {
+      throw new Error('Branch not found.');
+    }
+
+    writeLocalBranches(nextBranches);
+    return true;
+  }
 
   const { error } = await supabase.from('branches').delete().eq('id', id);
 

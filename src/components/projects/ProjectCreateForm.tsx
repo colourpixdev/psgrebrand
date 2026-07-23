@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,6 +48,7 @@ export function ProjectCreateForm() {
   const defaultProjectId = useMemo(() => generateProjectId(), []);
   const [searchParams] = useSearchParams();
   const preselectedBranchId = searchParams.get('branchId') ?? '';
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const { data: branches = [], isLoading: isLoadingBranches } = useQuery({
     queryKey: ['branches'],
@@ -83,9 +84,10 @@ export function ProjectCreateForm() {
 
   const mutation = useMutation({
     mutationFn: (values: ProjectFormValues) => createProject(values as CreateProjectInput),
-    onSuccess: async () => {
+    onSuccess: async (createdProject) => {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['portal-summary'] });
+      setSuccessMessage(`Project ${createdProject.id} was added successfully.`);
       reset({
         id: generateProjectId(),
         projectType: defaultProjectTemplate.id,
@@ -150,9 +152,11 @@ export function ProjectCreateForm() {
   }, [branches, preselectedBranchId, setValue]);
 
   const onSubmit = handleSubmit(async (values) => {
+    setSuccessMessage(null);
     const selectedBranch = branches.find((branch) => branch.id === values.branchId);
 
     if (!selectedBranch) {
+      setSuccessMessage(null);
       throw new Error('Select a valid existing branch before saving the project.');
     }
 
@@ -329,6 +333,8 @@ export function ProjectCreateForm() {
             {isRlsError ? ' Run supabase/repair-live-database.sql in the Supabase SQL Editor to enable authenticated project writes.' : null}
           </p>
         ) : null}
+
+        {successMessage ? <p className="text-sm text-emerald-300 md:col-span-2">{successMessage}</p> : null}
 
         <button type="submit" disabled={isSubmitting || mutation.isPending} className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2">
           {isSubmitting || mutation.isPending ? 'Checking address and saving...' : 'Add project'}

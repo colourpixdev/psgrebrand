@@ -52,6 +52,7 @@ async function hydrateAuthSession() {
 
 const projectFilesBucket = 'project-files';
 const voiceUpdatesBucket = 'voice-updates';
+const projectsStorageKey = 'psg-rebrand:projects';
 const maxProjectFileSize = 25 * 1024 * 1024;
 const maxVoiceUpdateSize = 50 * 1024 * 1024;
 const allowedProjectFileTypes = new Set([
@@ -218,6 +219,32 @@ function workspaceIdFromName(value: string) {
 
 function optionalProjectValue(value: string | undefined, fallback = 'Not captured') {
   return value?.trim() || fallback;
+}
+
+function readLocalProjects(): ProjectRow[] {
+  if (typeof localStorage === 'undefined') {
+    return [];
+  }
+
+  try {
+    const stored = localStorage.getItem(projectsStorageKey);
+    if (!stored) {
+      return [];
+    }
+
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? (parsed as ProjectRow[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalProjects(projects: ProjectRow[]) {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+
+  localStorage.setItem(projectsStorageKey, JSON.stringify(projects));
 }
 
 async function geocodePhysicalAddress(input: CreateProjectInput) {
@@ -493,7 +520,9 @@ export async function getProjects(): Promise<Project[]> {
   const client = supabase;
 
   if (!client) {
-    return [];
+    return readLocalProjects()
+      .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
+      .map(mapProjectRow);
   }
 
   await hydrateAuthSession();
@@ -511,7 +540,8 @@ export async function getProjectById(projectId: string): Promise<Project | undef
   const client = supabase;
 
   if (!client) {
-    return undefined;
+    const project = readLocalProjects().find((row) => row.id === projectId);
+    return project ? mapProjectRow(project) : undefined;
   }
 
   await hydrateAuthSession();
@@ -527,12 +557,6 @@ export async function getProjectById(projectId: string): Promise<Project | undef
 
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   const client = supabase;
-
-  if (!client) {
-    throw new Error('Supabase is not configured.');
-  }
-
-  await hydrateAuthSession();
 
   const workspaceName = input.workspaceName?.trim() || defaultWorkspace.name;
   const clientCompany = input.clientCompany?.trim() || defaultWorkspace.clientCompany;
@@ -576,6 +600,41 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     site_label: template.siteLabel,
     delivery_partner_label: template.deliveryPartnerLabel,
   };
+
+  if (!client) {
+    const localProjects = readLocalProjects();
+
+    if (localProjects.some((project) => project.id === input.id.trim())) {
+      throw new Error(`Project ${input.id.trim()} already exists.`);
+    }
+
+    const now = new Date().toISOString();
+    const localRow: ProjectRow = {
+      ...workspacePayload,
+      manager: basePayload.manager,
+      manager_email: basePayload.manager_email,
+      installer: basePayload.installer,
+      designer: basePayload.designer,
+      current_stage: basePayload.current_stage,
+      status: basePayload.status,
+      target_date: basePayload.target_date,
+      installation_date: basePayload.installation_date,
+      completion_date: basePayload.completion_date,
+      updated_at: now,
+      progress: basePayload.progress,
+      branch_manager_view_only: basePayload.branch_manager_view_only,
+      notes: basePayload.notes,
+      files: basePayload.files,
+      tasks: basePayload.tasks,
+      comments: basePayload.comments,
+      activity: basePayload.activity,
+    };
+
+    writeLocalProjects([localRow, ...localProjects]);
+    return mapProjectRow(localRow);
+  }
+
+  await hydrateAuthSession();
 
   let { data, error } = await client
     .from('projects')

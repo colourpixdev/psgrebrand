@@ -11,6 +11,7 @@ export function BranchesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
@@ -63,6 +64,7 @@ export function BranchesPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSuccessMessage(null);
     if (!formData.name || !formData.province || !formData.town || !formData.physicalAddress) {
       setError('Name, province, town, and physical address are required');
       return;
@@ -97,8 +99,10 @@ export function BranchesPage() {
       });
       setShowForm(false);
       setError(null);
+      setSuccessMessage(`Branch \"${formData.name}\" was created successfully.`);
       await loadBranches();
     } catch (err) {
+      setSuccessMessage(null);
       setError(err instanceof Error ? err.message : 'Failed to create branch');
     } finally {
       setSaving(false);
@@ -120,6 +124,7 @@ export function BranchesPage() {
       contactPhone: branch.contactPhone ?? '',
     });
     setError(null);
+    setSuccessMessage(null);
   }
 
   function cancelEdit() {
@@ -140,6 +145,7 @@ export function BranchesPage() {
 
   async function handleUpdate(id: string, e: React.FormEvent) {
     e.preventDefault();
+    setSuccessMessage(null);
 
     if (!editData.name || !editData.province || !editData.town || !editData.physicalAddress) {
       setError('Name, province, town, and physical address are required');
@@ -161,10 +167,13 @@ export function BranchesPage() {
         contactPhone: editData.contactPhone.trim() || null,
       });
 
+      const updatedName = editData.name;
       cancelEdit();
       setError(null);
+      setSuccessMessage(`Branch \"${updatedName}\" was updated successfully.`);
       await loadBranches();
     } catch (err) {
+      setSuccessMessage(null);
       setError(err instanceof Error ? err.message : 'Failed to update branch');
     } finally {
       setSaving(false);
@@ -174,11 +183,18 @@ export function BranchesPage() {
   async function executeDelete(id: string) {
     try {
       setSaving(true);
+      setSuccessMessage(null);
+      const deletedBranchName = pendingDeleteBranch?.name;
       await deleteBranch(id);
       setPendingDeleteBranch(null);
       setDeleteConfirmCount(1);
+      setError(null);
+      if (deletedBranchName) {
+        setSuccessMessage(`Branch \"${deletedBranchName}\" was removed successfully.`);
+      }
       await loadBranches();
     } catch (err) {
+      setSuccessMessage(null);
       setError(err instanceof Error ? err.message : 'Failed to delete branch');
     } finally {
       setSaving(false);
@@ -244,6 +260,12 @@ export function BranchesPage() {
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
             {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg">
+            {successMessage}
           </div>
         )}
 
