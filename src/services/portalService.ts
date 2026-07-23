@@ -267,6 +267,52 @@ function shouldFallbackToLocal(errorMessage: string | undefined) {
   ].some((token) => normalizedMessage.includes(token));
 }
 
+function isMissingProjectColumnError(errorMessage: string | undefined) {
+  if (!errorMessage) {
+    return false;
+  }
+
+  const normalizedMessage = errorMessage.toLowerCase();
+  return [
+    'branch_id',
+    'province',
+    'town',
+    'physical_address',
+    'latitude',
+    'longitude',
+    'workspace_id',
+    'workspace_name',
+    'client_company',
+    'graphics_partner',
+    'project_type',
+    'project_type_name',
+    'site_label',
+    'delivery_partner_label',
+  ].some((column) => normalizedMessage.includes(column));
+}
+
+function stripLegacyProjectColumns<T extends Record<string, unknown>>(payload: T) {
+  const {
+    branch_id,
+    province,
+    town,
+    physical_address,
+    latitude,
+    longitude,
+    workspace_id,
+    workspace_name,
+    client_company,
+    graphics_partner,
+    project_type,
+    project_type_name,
+    site_label,
+    delivery_partner_label,
+    ...legacyPayload
+  } = payload;
+
+  return legacyPayload;
+}
+
 async function geocodePhysicalAddress(input: CreateProjectInput) {
   const physicalAddress = input.physicalAddress.trim();
   if (!physicalAddress) {
@@ -676,6 +722,17 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     const fallbackResult = await client
       .from('projects')
       .insert(basePayload)
+      .select('*')
+      .single();
+
+    data = fallbackResult.data;
+    error = fallbackResult.error;
+  }
+
+  if (error && isMissingProjectColumnError(error.message)) {
+    const fallbackResult = await client
+      .from('projects')
+      .insert(stripLegacyProjectColumns(basePayload))
       .select('*')
       .single();
 
