@@ -414,13 +414,15 @@ export function canChangeProjectStage(user: UserRecord | null | undefined, proje
       Production: ['Installation Scheduled'],
       'Installation Scheduled': ['Installation In Progress'],
       'Installation In Progress': ['Installed'],
+      Installed: ['Client Signoff'],
+      'Client Signoff': ['Completed'],
     };
 
     return installerTransitions[project.currentStage]?.includes(nextStage) ?? false;
   }
 
   if (user.role === 'psg_head_office') {
-    const psgApprovalStages: Project['currentStage'][] = ['Artwork Sent', 'Awaiting Approval', 'Approved', 'Artwork In Progress'];
+    const psgApprovalStages: Project['currentStage'][] = ['Quotation Requested', 'Awaiting Approval', 'Approved', 'Artwork In Progress', 'Artwork Sent'];
     return psgApprovalStages.includes(project.currentStage) && psgApprovalStages.includes(nextStage);
   }
 
@@ -444,7 +446,7 @@ export function getWorkflowDenialReason(user: UserRecord | null | undefined, pro
 
   if (next.currentStage !== project.currentStage && !canChangeProjectStage(user, project, next.currentStage)) {
     if (user.role === 'sign_company') {
-      return 'Installers may only move projects from Production to Installation Scheduled, then Installation In Progress, then Installed.';
+      return 'Installers may only move projects through installation and signoff milestones.';
     }
 
     if (user.role === 'psg_head_office') {

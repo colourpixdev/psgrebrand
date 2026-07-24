@@ -27,7 +27,7 @@ export function ProjectCard({ project, user }: { project: Project; user?: UserRe
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-xs uppercase tracking-[0.18em] text-slate-500">{project.id}</p>
+          <p className="truncate text-xs uppercase tracking-[0.18em] text-slate-500">{project.branchCode ? `${project.branchCode} - ${project.id}` : project.id}</p>
           <h3 className="mt-2 truncate text-base font-semibold text-white">{project.branch}</h3>
           <p className="text-sm text-slate-400">
             {project.town}, {project.province}

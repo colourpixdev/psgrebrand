@@ -3,22 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FileText, Search, Shield } from 'lucide-react';
 import { getProjects } from '../services/portalService';
+import { getAllBranches } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
-import { timelineStages } from '../constants/portal';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import type { Project, ProjectStatus, Role } from '../types/domain';
 
-type ReportType =
-  | 'workspace-summary'
-  | 'completed-projects'
-  | 'delayed-projects'
-  | 'outstanding-quotes'
-  | 'awaiting-approval'
-  | 'installation-schedule'
-  | 'photos-signoff'
-  | 'installer-performance';
-
-type DateField = 'targetDate' | 'installationDate' | 'completionDate' | 'updatedAt';
+type ReportType = 'single-branch-detail' | 'multi-branch-overview' | 'operational-blockers';
 
 const statusLabels: Record<ProjectStatus, string> = {
   completed: 'Completed',
@@ -31,28 +21,16 @@ const statusLabels: Record<ProjectStatus, string> = {
 };
 
 const reportTypes: Array<{ value: ReportType; label: string; description: string }> = [
-  { value: 'workspace-summary', label: 'Workspace summary', description: 'All sites with progress, stage, status, delivery partner, project type, and key dates.' },
-  { value: 'completed-projects', label: 'Completed projects', description: 'Completed project records for handover, signoff, and invoice checks.' },
-  { value: 'delayed-projects', label: 'Delayed and at-risk', description: 'Delayed, on-hold, or overdue projects needing escalation.' },
-  { value: 'outstanding-quotes', label: 'Outstanding quotes', description: 'Quotation requested or received items waiting for the next commercial step.' },
-  { value: 'awaiting-approval', label: 'Awaiting approval', description: 'Artwork, quotation, PO, and client approval bottlenecks.' },
-  { value: 'installation-schedule', label: 'Delivery schedule', description: 'Delivery partners, sites, towns, and planned delivery or installation dates.' },
-  { value: 'photos-signoff', label: 'Evidence and signoff', description: 'Delivered projects that still need photos, client signoff, or closeout.' },
-  { value: 'installer-performance', label: 'Delivery partner performance', description: 'Partner workload, completed jobs, delays, and average progress.' },
-];
-
-const dateFields: Array<{ value: DateField; label: string }> = [
-  { value: 'targetDate', label: 'Target date' },
-  { value: 'installationDate', label: 'Installation date' },
-  { value: 'completionDate', label: 'Completion date' },
-  { value: 'updatedAt', label: 'Last updated' },
+  { value: 'single-branch-detail', label: 'Single branch report', description: 'A complete branch report with all projects, assignees, tasks, files, and journal activity.' },
+  { value: 'multi-branch-overview', label: 'Multi-branch overview', description: 'A wide portfolio report for meetings across all branches and teams.' },
+  { value: 'operational-blockers', label: 'Operational blockers and ownership', description: 'Shows stalled work, missing ownership, quote blockers, and overdue tasks for action planning.' },
 ];
 
 const roleReportGuidance: Record<Role, string[]> = {
-  colourpix_admin: ['Full workspace summary', 'Delayed and at-risk projects', 'Delivery partner performance', 'Outstanding quotes and approvals'],
-  psg_head_office: ['Province and site progress', 'Awaiting approval items', 'Completed handover reports', 'Delayed escalation list'],
-  psg_branch_manager: ['My site status', 'Approval and signoff actions', 'Delivery schedule', 'Evidence outstanding'],
-  sign_company: ['Assigned delivery schedule', 'Site survey pipeline', 'Evidence and signoff outstanding', 'Delayed jobs by delivery partner'],
+  colourpix_admin: ['Operational blockers and ownership', 'Single branch report', 'Multi-branch overview'],
+  psg_head_office: ['Single branch report', 'Operational blockers and ownership', 'Multi-branch overview'],
+  psg_branch_manager: ['Single branch report', 'My assigned tasks view', 'Status follow-up list'],
+  sign_company: ['My installation tasks', 'Operational blockers and ownership', 'Single branch report'],
 };
 
 function uniqueSorted(values: string[]) {
@@ -63,50 +41,21 @@ function includesText(value: string, query: string) {
   return value.toLowerCase().includes(query);
 }
 
-function projectMatchesReportType(project: Project, reportType: ReportType) {
-  switch (reportType) {
-    case 'completed-projects':
-      return project.status === 'completed' || project.currentStage === 'Completed';
-    case 'delayed-projects':
-      return project.status === 'delayed' || project.status === 'on_hold' || isPastDate(project.targetDate);
-    case 'outstanding-quotes':
-      return ['Quotation Requested', 'Quotation Received'].includes(project.currentStage);
-    case 'awaiting-approval':
-      return project.status === 'awaiting_approval' || ['Artwork Sent', 'Awaiting Approval', 'Approved', 'PO Issued'].includes(project.currentStage);
-    case 'installation-schedule':
-      return ['Installation Scheduled', 'Installation In Progress', 'Installed'].includes(project.currentStage);
-    case 'photos-signoff':
-      return ['Installed', 'Photos Uploaded', 'Client Signoff'].includes(project.currentStage);
-    case 'installer-performance':
-    case 'workspace-summary':
-    default:
-      return true;
-  }
-}
-
 function isPastDate(value: string) {
   const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) {
-    return false;
-  }
-
-  return timestamp < Date.now();
+  return Number.isFinite(timestamp) ? timestamp < Date.now() : false;
 }
 
-function isWithinDateRange(project: Project, dateField: DateField, fromDate: string, toDate: string) {
-  if (!fromDate && !toDate) {
-    return true;
-  }
-
-  const value = Date.parse(project[dateField]);
-  if (Number.isNaN(value)) {
-    return false;
-  }
-
-  const from = fromDate ? Date.parse(fromDate) : Number.NEGATIVE_INFINITY;
-  const to = toDate ? Date.parse(`${toDate}T23:59:59`) : Number.POSITIVE_INFINITY;
-
-  return value >= from && value <= to;
+function isOperationalBlocker(project: Project) {
+  const pendingTasks = project.tasks.filter((task) => !task.completed);
+  const missingManager = !project.manager || project.manager.toLowerCase() === 'not captured';
+  const awaitingQuoteOrApproval = ['Quotation Requested', 'Awaiting Approval'].includes(project.currentStage);
+  return project.status === 'delayed'
+    || project.status === 'on_hold'
+    || awaitingQuoteOrApproval
+    || isPastDate(project.targetDate)
+    || missingManager
+    || pendingTasks.length >= 4;
 }
 
 function escapeHtml(value: string | number) {
@@ -123,72 +72,101 @@ function formatFileName(reportName: string) {
   return `${reportName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${date}`;
 }
 
-function buildReportTable(projects: Project[], reportName: string) {
-  const headers = ['Project ID', 'Site', 'Project Type', 'Town', 'Province', 'Manager', 'Delivery Partner', 'Stage', 'Status', 'Progress', 'Target', 'Delivery', 'Completed', 'Updated'];
-  const rows = projects.map((project) => [
-    project.id,
-    project.branch,
-    project.projectTypeName,
-    project.town,
-    project.province,
-    project.manager,
-    project.installer,
-    project.currentStage,
-    statusLabels[project.status],
-    `${project.progress}%`,
-    project.targetDate,
-    project.installationDate,
-    project.completionDate,
-    project.updatedAt,
-  ]);
-
-  return `
-    <table>
-      <caption>${escapeHtml(reportName)}</caption>
-      <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
-    </table>
-  `;
-}
-
 function toCsvCell(value: string | number) {
   const normalized = String(value ?? '').replace(/\r?\n|\r/g, ' ');
   return `"${normalized.replace(/"/g, '""')}"`;
 }
 
-function downloadExcel(projects: Project[], reportName: string) {
-  const headers = ['Project ID', 'Site', 'Project Type', 'Town', 'Province', 'Manager', 'Delivery Partner', 'Stage', 'Status', 'Progress', 'Target', 'Delivery', 'Completed', 'Updated'];
-  const rows = projects.map((project) => [
-    project.id,
-    project.branch,
-    project.projectTypeName,
-    project.town,
-    project.province,
-    project.manager,
-    project.installer,
-    project.currentStage,
-    statusLabels[project.status],
-    `${project.progress}%`,
-    project.targetDate,
-    project.installationDate,
-    project.completionDate,
-    project.updatedAt,
-  ]);
+function projectCsvRows(projects: Project[]) {
+  return projects.map((project) => {
+    const pendingTasks = project.tasks.filter((task) => !task.completed).length;
+    const participants = project.tasks.flatMap((task) => task.assignees?.map((assignee) => `${assignee.name} (${assignee.designation})`) ?? []).join('; ');
+    return [
+      project.id,
+      project.branch,
+      project.projectTypeName,
+      project.town,
+      project.province,
+      project.manager,
+      project.currentStage,
+      statusLabels[project.status],
+      `${project.progress}%`,
+      project.targetDate,
+      pendingTasks,
+      project.files.length,
+      participants,
+      project.updatedAt,
+    ];
+  });
+}
 
-  // UTF-8 BOM helps Excel recognize encoding on Windows and avoids mojibake.
+function downloadExcel(projects: Project[], reportName: string) {
+  const headers = ['Project ID', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Progress', 'Target', 'Pending tasks', 'Files', 'Participants', 'Updated'];
+  const rows = projectCsvRows(projects);
   const csv = ['\uFEFF', headers.map(toCsvCell).join(','), ...rows.map((row) => row.map(toCsvCell).join(','))].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-
   link.href = url;
   link.download = `${formatFileName(reportName)}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
 
-function openPdfReport(projects: Project[], reportName: string) {
-  const html = `
+function branchDetailHtml(projects: Project[], reportName: string, branchName: string) {
+  const cards = projects.map((project) => {
+    const pendingTasks = project.tasks.filter((task) => !task.completed);
+    const participants = project.tasks.flatMap((task) => task.assignees ?? []);
+
+    return `
+      <section class="card">
+        <h2>${escapeHtml(project.id)} - ${escapeHtml(project.projectTypeName)}</h2>
+        <p><strong>Stage:</strong> ${escapeHtml(project.currentStage)} | <strong>Status:</strong> ${escapeHtml(statusLabels[project.status])} | <strong>Progress:</strong> ${escapeHtml(project.progress)}%</p>
+        <p><strong>Address:</strong> ${escapeHtml(project.physicalAddress || `${project.town}, ${project.province}`)}</p>
+        <p><strong>Manager:</strong> ${escapeHtml(project.manager || 'Not assigned')}</p>
+        <p><strong>Pending tasks:</strong> ${escapeHtml(pendingTasks.length)}</p>
+        <ul>
+          ${pendingTasks.map((task) => `<li>${escapeHtml(task.text)} ${task.assignees?.length ? `- ${escapeHtml(task.assignees.map((assignee) => `${assignee.name} (${assignee.designation})`).join(', '))}` : ''}</li>`).join('') || '<li>No pending tasks</li>'}
+        </ul>
+        <p><strong>Participants:</strong> ${participants.length ? escapeHtml(participants.map((participant) => `${participant.name} (${participant.designation})`).join(', ')) : 'None listed'}</p>
+        <p><strong>Files:</strong> ${project.files.length ? escapeHtml(project.files.map((file) => file.name).join(', ')) : 'No files uploaded'}</p>
+        <p><strong>Latest journal items:</strong></p>
+        <ul>
+          ${(project.activity.slice(0, 5).map((item) => `<li>${escapeHtml(item.title)} - ${escapeHtml(item.detail)}</li>`).join('')) || '<li>No journal entries</li>'}
+        </ul>
+      </section>
+    `;
+  }).join('');
+
+  return `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>${escapeHtml(reportName)}</title>
+        <style>
+          body { font-family: Arial, sans-serif; color: #111827; margin: 28px; }
+          h1 { margin-bottom: 2px; }
+          .meta { color: #4b5563; margin-bottom: 20px; }
+          .card { border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
+          ul { margin: 8px 0 0 16px; }
+          li { margin: 4px 0; }
+        </style>
+      </head>
+      <body>
+        <h1>${escapeHtml(reportName)}</h1>
+        <p class="meta">Branch: ${escapeHtml(branchName)} | Projects: ${escapeHtml(projects.length)} | Generated: ${escapeHtml(new Date().toLocaleDateString())}</p>
+        ${cards}
+        <script>window.addEventListener('load', () => setTimeout(() => window.print(), 150));</script>
+      </body>
+    </html>
+  `;
+}
+
+function openPdfReport(projects: Project[], reportName: string, reportType: ReportType, selectedBranchName: string) {
+  const html = reportType === 'single-branch-detail'
+    ? branchDetailHtml(projects, reportName, selectedBranchName)
+    : `
     <!doctype html>
     <html>
       <head>
@@ -196,10 +174,7 @@ function openPdfReport(projects: Project[], reportName: string) {
         <title>${escapeHtml(reportName)}</title>
         <style>
           body { font-family: Arial, sans-serif; color: #111827; margin: 32px; }
-          h1 { font-size: 22px; margin: 0 0 6px; }
-          p { color: #4b5563; margin: 0 0 20px; }
           table { border-collapse: collapse; width: 100%; font-size: 11px; }
-          caption { text-align: left; font-weight: 700; margin-bottom: 12px; }
           th, td { border: 1px solid #d1d5db; padding: 7px; text-align: left; vertical-align: top; }
           th { background: #e5e7eb; }
         </style>
@@ -207,12 +182,22 @@ function openPdfReport(projects: Project[], reportName: string) {
       <body>
         <h1>${escapeHtml(reportName)}</h1>
         <p>${projects.length} project${projects.length === 1 ? '' : 's'} exported on ${new Date().toLocaleDateString()}</p>
-        ${buildReportTable(projects, reportName)}
-        <script>
-          window.addEventListener('load', () => {
-            setTimeout(() => window.print(), 150);
-          });
-        </script>
+        <table>
+          <thead><tr>${['Project ID', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Progress', 'Target'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+          <tbody>${projects.map((project) => `<tr>${[
+      project.id,
+      project.branch,
+      project.projectTypeName,
+      project.town,
+      project.province,
+      project.manager,
+      project.currentStage,
+      statusLabels[project.status],
+      `${project.progress}%`,
+      project.targetDate,
+    ].map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+        <script>window.addEventListener('load', () => setTimeout(() => window.print(), 150));</script>
       </body>
     </html>
   `;
@@ -220,36 +205,30 @@ function openPdfReport(projects: Project[], reportName: string) {
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank');
-  // Revoke shortly after open so the new tab has time to load.
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export function ReportsPage() {
   const { user, roleLabel } = useAuth();
-  const [reportType, setReportType] = useState<ReportType>('workspace-summary');
+  const [reportType, setReportType] = useState<ReportType>('single-branch-detail');
   const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
-  const [stage, setStage] = useState('all');
-  const [province, setProvince] = useState('all');
-  const [installer, setInstaller] = useState('all');
-  const [dateField, setDateField] = useState<DateField>('targetDate');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [branchName, setBranchName] = useState('all');
   const [query, setQuery] = useState('');
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: getProjects,
   });
+  const { data: branches = [] } = useQuery({
+    queryKey: ['branches'],
+    queryFn: getAllBranches,
+  });
 
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
   const selectedReport = reportTypes.find((report) => report.value === reportType) ?? reportTypes[0];
-  const guidance = user ? roleReportGuidance[user.role] : ['Workspace summary', 'Delayed projects', 'Completed projects', 'Delivery schedule'];
+  const guidance = user ? roleReportGuidance[user.role] : ['Single branch report', 'Multi-branch overview', 'Operational blockers and ownership'];
   const normalizedQuery = query.trim().toLowerCase();
-
-  const filterOptions = useMemo(() => ({
-    provinces: uniqueSorted(scopedProjects.map((project) => project.province)),
-    installers: uniqueSorted(scopedProjects.map((project) => project.installer)),
-  }), [scopedProjects]);
+  const availableBranches = useMemo(() => uniqueSorted(branches.map((branch) => branch.name)), [branches]);
 
   const filteredProjects = useMemo(() => scopedProjects.filter((project) => {
     const matchesSearch = !normalizedQuery || [
@@ -258,29 +237,49 @@ export function ReportsPage() {
       project.town,
       project.province,
       project.manager,
-      project.managerEmail,
       project.installer,
-      project.designer,
       project.currentStage,
       project.status,
     ].some((value) => includesText(value, normalizedQuery));
 
-    return projectMatchesReportType(project, reportType)
-      && (status === 'all' || project.status === status)
-      && (stage === 'all' || project.currentStage === stage)
-      && (province === 'all' || project.province === province)
-      && (installer === 'all' || project.installer === installer)
-      && isWithinDateRange(project, dateField, fromDate, toDate)
-      && matchesSearch;
-  }), [dateField, fromDate, installer, normalizedQuery, scopedProjects, province, reportType, stage, status, toDate]);
-  const canExportReports = can(user, 'export_reports');
-  const exportProjects = filteredProjects.length > 0 ? filteredProjects : scopedProjects;
+    if (!matchesSearch) {
+      return false;
+    }
 
+    if (status !== 'all' && project.status !== status) {
+      return false;
+    }
+
+    if (branchName !== 'all' && project.branch !== branchName) {
+      return false;
+    }
+
+    if (reportType === 'operational-blockers') {
+      return isOperationalBlocker(project);
+    }
+
+    return true;
+  }), [branchName, normalizedQuery, reportType, scopedProjects, status]);
+
+  const displayedProjects = useMemo(() => {
+    if (reportType === 'single-branch-detail') {
+      if (branchName === 'all') {
+        return [];
+      }
+
+      return filteredProjects;
+    }
+
+    return filteredProjects;
+  }, [branchName, filteredProjects, reportType]);
+
+  const canExportReports = can(user, 'export_reports');
+  const exportProjects = displayedProjects.length > 0 ? displayedProjects : scopedProjects;
   const reportName = `${selectedReport.label} report`;
-  const delayedCount = filteredProjects.filter((project) => project.status === 'delayed' || project.status === 'on_hold').length;
-  const completedCount = filteredProjects.filter((project) => project.status === 'completed').length;
-  const averageProgress = filteredProjects.length
-    ? Math.round(filteredProjects.reduce((sum, project) => sum + project.progress, 0) / filteredProjects.length)
+  const delayedCount = displayedProjects.filter((project) => project.status === 'delayed' || project.status === 'on_hold').length;
+  const completedCount = displayedProjects.filter((project) => project.status === 'completed').length;
+  const averageProgress = displayedProjects.length
+    ? Math.round(displayedProjects.reduce((sum, project) => sum + project.progress, 0) / displayedProjects.length)
     : 0;
 
   return (
@@ -289,9 +288,7 @@ export function ReportsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-white">Reports</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-              Pull practical workspace reports by site, province, delivery partner, project type, stage, status, search term, and date range. Exports are Excel or PDF only.
-            </p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Generate branch-first reports that are practical for daily operations and management meetings.</p>
           </div>
           <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
             <p className="font-medium">{roleLabel}</p>
@@ -306,20 +303,18 @@ export function ReportsPage() {
             <Shield className="mt-1 h-5 w-5 text-emerald-300" />
             <div>
               <h3 className="text-lg font-semibold text-white">Useful reports for this role</h3>
-              <p className="mt-1 text-sm text-slate-400">Common client, workspace owner, and delivery-partner reporting pulls.</p>
+              <p className="mt-1 text-sm text-slate-400">Fast exports for day-to-day tracking and review meetings.</p>
             </div>
           </div>
           <div className="mt-4 grid gap-2 md:grid-cols-2">
-            {guidance.map((item) => (
-              <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">{item}</div>
-            ))}
+            {guidance.map((item) => <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">{item}</div>)}
           </div>
         </div>
 
         <div className="grid gap-3 rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft sm:grid-cols-3">
           <div>
             <p className="text-sm text-slate-400">Matching projects</p>
-            <p className="mt-2 text-3xl font-semibold text-white">{filteredProjects.length}</p>
+            <p className="mt-2 text-3xl font-semibold text-white">{displayedProjects.length}</p>
           </div>
           <div>
             <p className="text-sm text-slate-400">Completed</p>
@@ -348,6 +343,14 @@ export function ReportsPage() {
           </label>
 
           <label className="grid gap-2 text-sm text-slate-300">
+            Branch
+            <select value={branchName} onChange={(event) => setBranchName(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
+              <option value="all">All branches</option>
+              {availableBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+            </select>
+          </label>
+
+          <label className="grid gap-2 text-sm text-slate-300">
             Status
             <select value={status} onChange={(event) => setStatus(event.target.value as ProjectStatus | 'all')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
               <option value="all">All statuses</option>
@@ -355,48 +358,7 @@ export function ReportsPage() {
             </select>
           </label>
 
-          <label className="grid gap-2 text-sm text-slate-300">
-            Stage
-            <select value={stage} onChange={(event) => setStage(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-              <option value="all">All stages</option>
-              {timelineStages.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
-
-          <label className="grid gap-2 text-sm text-slate-300">
-            Province
-            <select value={province} onChange={(event) => setProvince(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-              <option value="all">All provinces</option>
-              {filterOptions.provinces.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
-
-          <label className="grid gap-2 text-sm text-slate-300">
-            Delivery partner
-            <select value={installer} onChange={(event) => setInstaller(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-              <option value="all">All delivery partners</option>
-              {filterOptions.installers.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
-
-          <label className="grid gap-2 text-sm text-slate-300">
-            Date field
-            <select value={dateField} onChange={(event) => setDateField(event.target.value as DateField)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-              {dateFields.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-            </select>
-          </label>
-
-          <label className="grid gap-2 text-sm text-slate-300">
-            From
-            <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50" />
-          </label>
-
-          <label className="grid gap-2 text-sm text-slate-300">
-            To
-            <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50" />
-          </label>
-
-          <label className="grid gap-2 text-sm text-slate-300 lg:col-span-2">
+          <label className="grid gap-2 text-sm text-slate-300 lg:col-span-4">
             Search
             <div className="relative">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -404,7 +366,7 @@ export function ReportsPage() {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Site, town, manager, delivery partner, project ID..."
+                placeholder="Branch, town, manager, project ID..."
                 className="w-full rounded-2xl border border-white/10 bg-slate-900/80 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
               />
             </div>
@@ -412,13 +374,13 @@ export function ReportsPage() {
         </div>
 
         <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-6 text-slate-400">{selectedReport.description} If filters return no rows, the export falls back to all projects visible to your role.</p>
+          <p className="text-sm leading-6 text-slate-400">{selectedReport.description}</p>
           <div className="flex flex-wrap gap-3">
-            <button type="button" disabled={!canExportReports} onClick={() => downloadExcel(exportProjects, reportName)} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!canExportReports || (reportType === 'single-branch-detail' && branchName === 'all')} onClick={() => downloadExcel(exportProjects, reportName)} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
               <FileText className="h-4 w-4" />
               Excel report
             </button>
-            <button type="button" disabled={!canExportReports} onClick={() => openPdfReport(exportProjects, reportName)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!canExportReports || (reportType === 'single-branch-detail' && branchName === 'all')} onClick={() => openPdfReport(exportProjects, reportName, reportType, branchName)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">
               <FileText className="h-4 w-4" />
               PDF report
             </button>
@@ -430,7 +392,7 @@ export function ReportsPage() {
         <div className="flex flex-col gap-2 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-white">Report preview</h3>
-            <p className="mt-1 text-sm text-slate-400">{reportName} with {filteredProjects.length} matching project{filteredProjects.length === 1 ? '' : 's'}.</p>
+            <p className="mt-1 text-sm text-slate-400">{reportName} with {displayedProjects.length} matching project{displayedProjects.length === 1 ? '' : 's'}.</p>
           </div>
         </div>
 
@@ -439,35 +401,35 @@ export function ReportsPage() {
             <thead className="bg-white/5 text-xs uppercase tracking-[0.18em] text-slate-400">
               <tr>
                 <th className="px-5 py-4 font-medium">Project</th>
-                <th className="px-5 py-4 font-medium">Site</th>
+                <th className="px-5 py-4 font-medium">Branch</th>
                 <th className="px-5 py-4 font-medium">Type</th>
                 <th className="px-5 py-4 font-medium">Location</th>
                 <th className="px-5 py-4 font-medium">Manager</th>
-                <th className="px-5 py-4 font-medium">Delivery partner</th>
                 <th className="px-5 py-4 font-medium">Stage</th>
                 <th className="px-5 py-4 font-medium">Status</th>
                 <th className="px-5 py-4 font-medium">Target</th>
                 <th className="px-5 py-4 font-medium">Progress</th>
+                <th className="px-5 py-4 font-medium">Outstanding tasks</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
               {isLoading ? (
                 <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
-              ) : filteredProjects.length > 0 ? filteredProjects.map((project) => (
+              ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-semibold text-sky-100 hover:text-sky-200">{project.id}</Link></td>
-                  <td className="px-5 py-4"><Link to={`/projects/${project.id}`} className="hover:text-sky-100">{project.branch}</Link></td>
+                  <td className="px-5 py-4"><Link to="/branches" className="hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectTypeName}</td>
                   <td className="px-5 py-4">{project.town}, {project.province}</td>
                   <td className="px-5 py-4">{project.manager}</td>
-                  <td className="px-5 py-4">{project.installer}</td>
                   <td className="px-5 py-4">{project.currentStage}</td>
                   <td className="px-5 py-4">{statusLabels[project.status]}</td>
                   <td className="px-5 py-4">{project.targetDate}</td>
                   <td className="px-5 py-4">{project.progress}%</td>
+                  <td className="px-5 py-4">{project.tasks.filter((task) => !task.completed).length}</td>
                 </tr>
               )) : (
-                <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">No projects match the selected report filters.</td></tr>
+                <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">{reportType === 'single-branch-detail' && branchName === 'all' ? 'Select a specific branch for a single-branch report.' : 'No projects match the selected filters.'}</td></tr>
               )}
             </tbody>
           </table>

@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { Branch, Division } from '../types/domain';
+import type { Branch, ContactPerson, Division } from '../types/domain';
 
 const branchesStorageKey = 'psg-rebrand:branches';
 
@@ -7,6 +7,7 @@ export interface CreateBranchInput {
   name: string;
   division: Division;
   province: string;
+  city?: string;
   town: string;
   physicalAddress: string;
   latitude?: number | null;
@@ -14,13 +15,16 @@ export interface CreateBranchInput {
   contactName?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
+  contacts?: ContactPerson[];
 }
 
 type BranchRow = {
   id: string;
+  code?: string | null;
   name: string;
   division: Division;
   province: string;
+  city?: string | null;
   town: string;
   physical_address: string;
   latitude: number | null;
@@ -28,6 +32,7 @@ type BranchRow = {
   contact_name?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
+  contacts?: ContactPerson[] | null;
   created_at: string;
   updated_at: string;
 };
@@ -35,9 +40,11 @@ type BranchRow = {
 function rowToBranch(row: BranchRow): Branch {
   return {
     id: row.id,
+    code: row.code ?? undefined,
     name: row.name,
     division: row.division,
     province: row.province,
+    city: row.city ?? undefined,
     town: row.town,
     physicalAddress: row.physical_address,
     latitude: row.latitude,
@@ -45,6 +52,7 @@ function rowToBranch(row: BranchRow): Branch {
     contactName: row.contact_name ?? undefined,
     contactEmail: row.contact_email ?? undefined,
     contactPhone: row.contact_phone ?? undefined,
+    contacts: Array.isArray(row.contacts) ? row.contacts : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -110,6 +118,8 @@ function isMissingBranchColumnError(errorMessage: string | undefined) {
     'contact_name',
     'contact_email',
     'contact_phone',
+    'city',
+    'contacts',
   ].some((column) => normalizedMessage.includes(column));
 }
 
@@ -118,6 +128,7 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
     name: input.name,
     division: input.division,
     province: input.province,
+    city: input.city?.trim() || null,
     town: input.town,
     physical_address: input.physicalAddress,
     latitude: input.latitude ?? null,
@@ -125,11 +136,12 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
     contact_name: input.contactName ?? null,
     contact_email: input.contactEmail ?? null,
     contact_phone: input.contactPhone ?? null,
+    contacts: input.contacts ?? null,
   };
 }
 
 function stripLegacyBranchColumns<T extends Record<string, unknown>>(payload: T) {
-  const { contact_name, contact_email, contact_phone, ...legacyPayload } = payload;
+  const { contact_name, contact_email, contact_phone, city, contacts, ...legacyPayload } = payload;
   return legacyPayload;
 }
 
@@ -173,6 +185,7 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
       name: input.name,
       division: input.division,
       province: input.province,
+      city: input.city?.trim() || undefined,
       town: input.town,
       physicalAddress: input.physicalAddress,
       latitude: input.latitude ?? null,
@@ -180,6 +193,7 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
       contactName: input.contactName ?? undefined,
       contactEmail: input.contactEmail ?? undefined,
       contactPhone: input.contactPhone ?? undefined,
+      contacts: input.contacts,
       createdAt: now,
       updatedAt: now,
     };
@@ -221,6 +235,7 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
       name: input.name,
       division: input.division,
       province: input.province,
+      city: input.city?.trim() || undefined,
       town: input.town,
       physicalAddress: input.physicalAddress,
       latitude: input.latitude ?? null,
@@ -228,6 +243,7 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
       contactName: input.contactName ?? undefined,
       contactEmail: input.contactEmail ?? undefined,
       contactPhone: input.contactPhone ?? undefined,
+      contacts: input.contacts,
       createdAt: now,
       updatedAt: now,
     };
@@ -254,6 +270,7 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
       name: input.name ?? existing.name,
       division: input.division ?? existing.division,
       province: input.province ?? existing.province,
+      city: input.city !== undefined ? input.city ?? undefined : existing.city,
       town: input.town ?? existing.town,
       physicalAddress: input.physicalAddress ?? existing.physicalAddress,
       latitude: input.latitude !== undefined ? input.latitude : existing.latitude,
@@ -261,6 +278,7 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
       contactName: input.contactName !== undefined ? input.contactName ?? undefined : existing.contactName,
       contactEmail: input.contactEmail !== undefined ? input.contactEmail ?? undefined : existing.contactEmail,
       contactPhone: input.contactPhone !== undefined ? input.contactPhone ?? undefined : existing.contactPhone,
+      contacts: input.contacts !== undefined ? input.contacts ?? undefined : existing.contacts,
       updatedAt: new Date().toISOString(),
     };
 
@@ -273,6 +291,7 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
   if (input.name !== undefined) updates.name = input.name;
   if (input.division !== undefined) updates.division = input.division;
   if (input.province !== undefined) updates.province = input.province;
+  if (input.city !== undefined) updates.city = input.city;
   if (input.town !== undefined) updates.town = input.town;
   if (input.physicalAddress !== undefined) updates.physical_address = input.physicalAddress;
   if (input.latitude !== undefined) updates.latitude = input.latitude;
@@ -280,6 +299,7 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
   if (input.contactName !== undefined) updates.contact_name = input.contactName;
   if (input.contactEmail !== undefined) updates.contact_email = input.contactEmail;
   if (input.contactPhone !== undefined) updates.contact_phone = input.contactPhone;
+  if (input.contacts !== undefined) updates.contacts = input.contacts;
 
   let { data, error } = await supabase.from('branches').update(updates).eq('id', id).select().single();
 

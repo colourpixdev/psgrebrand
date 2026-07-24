@@ -2,11 +2,41 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllBranches, createBranch, updateBranch, deleteBranch } from '../services/branchService';
 import { getProjects } from '../services/portalService';
-import type { Branch, Division, Project } from '../types/domain';
+import type { Branch, ContactPerson, Division, Project } from '../types/domain';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
+import { buildBranchCodeMap, getBranchCodeForBranch } from '../utils/branchProjectIds';
 
 const divisions: Division[] = ['Wealth', 'Insure', 'Wealth Insure', 'Asset', 'Trust'];
+
+function ParticipantFields({ contacts, onChange }: { contacts: ContactPerson[]; onChange: (contacts: ContactPerson[]) => void }) {
+  function updateContact(index: number, field: keyof ContactPerson, value: string) {
+    onChange(contacts.map((contact, contactIndex) => contactIndex === index ? { ...contact, [field]: value } : contact));
+  }
+
+  return (
+    <div className="mb-6 border-t border-white/10 pt-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-slate-200">Additional branch participants</p>
+          <p className="mt-1 text-xs text-slate-500">Add other office contacts and their designations.</p>
+        </div>
+        <button type="button" onClick={() => onChange([...contacts, { name: '', email: '', phone: '', designation: '' }])} className="rounded-xl border border-sky-400/30 px-3 py-2 text-sm text-sky-200 transition hover:bg-sky-400/10">Add participant</button>
+      </div>
+      <div className="mt-3 space-y-3">
+        {contacts.map((contact, index) => (
+          <div key={`${contact.email}-${index}`} className="grid gap-3 rounded-xl border border-white/10 bg-slate-950/35 p-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+            <input type="text" value={contact.name} onChange={(event) => updateContact(index, 'name', event.target.value)} placeholder="Name" className="rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white" />
+            <input type="text" value={contact.designation} onChange={(event) => updateContact(index, 'designation', event.target.value)} placeholder="Designation" className="rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white" />
+            <input type="email" value={contact.email ?? ''} onChange={(event) => updateContact(index, 'email', event.target.value)} placeholder="Email" className="rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white" />
+            <input type="text" value={contact.phone ?? ''} onChange={(event) => updateContact(index, 'phone', event.target.value)} placeholder="Phone" className="rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white" />
+            <button type="button" onClick={() => onChange(contacts.filter((_, contactIndex) => contactIndex !== index))} className="text-sm text-red-200 transition hover:text-red-100">Remove</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function BranchesPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -24,6 +54,7 @@ export function BranchesPage() {
     name: '',
     division: 'Wealth' as Division,
     province: '',
+    city: '',
     town: '',
     physicalAddress: '',
     latitude: '',
@@ -31,11 +62,14 @@ export function BranchesPage() {
     contactName: '',
     contactEmail: '',
     contactPhone: '',
+    contactDesignation: '',
+    contacts: [] as ContactPerson[],
   });
   const [editData, setEditData] = useState({
     name: '',
     division: 'Wealth' as Division,
     province: '',
+    city: '',
     town: '',
     physicalAddress: '',
     latitude: '',
@@ -43,6 +77,8 @@ export function BranchesPage() {
     contactName: '',
     contactEmail: '',
     contactPhone: '',
+    contactDesignation: '',
+    contacts: [] as ContactPerson[],
   });
   const { user } = useAuth();
 
@@ -102,6 +138,7 @@ export function BranchesPage() {
         name: formData.name,
         division: formData.division,
         province: formData.province,
+        city: formData.city,
         town: formData.town,
         physicalAddress: formData.physicalAddress,
         latitude: formData.latitude ? parseFloat(formData.latitude) : null,
@@ -109,12 +146,22 @@ export function BranchesPage() {
         contactName: formData.contactName.trim() || null,
         contactEmail: formData.contactEmail.trim() || null,
         contactPhone: formData.contactPhone.trim() || null,
+        contacts: [
+          ...(formData.contactName.trim() ? [{
+            name: formData.contactName.trim(),
+            email: formData.contactEmail.trim() || undefined,
+            phone: formData.contactPhone.trim() || undefined,
+            designation: formData.contactDesignation.trim() || 'Branch Contact',
+          }] : []),
+          ...formData.contacts.filter((contact) => contact.name.trim()),
+        ],
       });
 
       setFormData({
         name: '',
         division: 'Wealth',
         province: '',
+        city: '',
         town: '',
         physicalAddress: '',
         latitude: '',
@@ -122,6 +169,8 @@ export function BranchesPage() {
         contactName: '',
         contactEmail: '',
         contactPhone: '',
+        contactDesignation: '',
+        contacts: [],
       });
       setShowForm(false);
       setError(null);
@@ -137,17 +186,26 @@ export function BranchesPage() {
 
   function beginEdit(branch: Branch) {
     setEditingBranchId(branch.id);
+    const existingContacts = branch.contacts?.length
+      ? branch.contacts
+      : branch.contactName
+        ? [{ name: branch.contactName, email: branch.contactEmail, phone: branch.contactPhone, designation: 'Branch Contact' }]
+        : [];
+    const primaryContact = existingContacts[0];
     setEditData({
       name: branch.name,
       division: branch.division,
       province: branch.province,
+      city: branch.city ?? '',
       town: branch.town,
       physicalAddress: branch.physicalAddress,
       latitude: branch.latitude?.toString() ?? '',
       longitude: branch.longitude?.toString() ?? '',
-      contactName: branch.contactName ?? '',
-      contactEmail: branch.contactEmail ?? '',
-      contactPhone: branch.contactPhone ?? '',
+      contactName: primaryContact?.name ?? branch.contactName ?? '',
+      contactEmail: primaryContact?.email ?? branch.contactEmail ?? '',
+      contactPhone: primaryContact?.phone ?? branch.contactPhone ?? '',
+      contactDesignation: primaryContact?.designation ?? '',
+      contacts: existingContacts.slice(1),
     });
     setError(null);
     setSuccessMessage(null);
@@ -159,6 +217,7 @@ export function BranchesPage() {
       name: '',
       division: 'Wealth',
       province: '',
+      city: '',
       town: '',
       physicalAddress: '',
       latitude: '',
@@ -166,6 +225,8 @@ export function BranchesPage() {
       contactName: '',
       contactEmail: '',
       contactPhone: '',
+      contactDesignation: '',
+      contacts: [],
     });
   }
 
@@ -184,6 +245,7 @@ export function BranchesPage() {
         name: editData.name,
         division: editData.division,
         province: editData.province,
+        city: editData.city,
         town: editData.town,
         physicalAddress: editData.physicalAddress,
         latitude: editData.latitude ? parseFloat(editData.latitude) : null,
@@ -191,6 +253,15 @@ export function BranchesPage() {
         contactName: editData.contactName.trim() || null,
         contactEmail: editData.contactEmail.trim() || null,
         contactPhone: editData.contactPhone.trim() || null,
+        contacts: [
+          ...(editData.contactName.trim() ? [{
+            name: editData.contactName.trim(),
+            email: editData.contactEmail.trim() || undefined,
+            phone: editData.contactPhone.trim() || undefined,
+            designation: editData.contactDesignation.trim() || 'Branch Contact',
+          }] : []),
+          ...editData.contacts.filter((contact) => contact.name.trim()),
+        ],
       });
 
       const updatedName = editData.name;
@@ -257,12 +328,14 @@ export function BranchesPage() {
     }
 
     return branches.filter((branch) => {
-      return [branch.name, branch.division, branch.province, branch.town, branch.physicalAddress]
+      return [branch.name, branch.division, branch.province, branch.city ?? '', branch.town, branch.physicalAddress]
         .join(' ')
         .toLowerCase()
         .includes(query);
     });
   }, [branches, searchTerm]);
+
+  const branchCodeById = useMemo(() => buildBranchCodeMap(branches), [branches]);
 
   const openProjectsByBranch = useMemo(() => {
     return projects.reduce<Record<string, Project[]>>((acc, project) => {
@@ -369,6 +442,16 @@ export function BranchesPage() {
                 />
               </div>
               <div>
+                <label className="mb-1 block text-sm font-medium text-slate-300">City</label>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
+                  placeholder="e.g., Cape Town"
+                />
+              </div>
+              <div>
                 <label className="mb-1 block text-sm font-medium text-slate-300">Town *</label>
                 <input
                   type="text"
@@ -418,7 +501,7 @@ export function BranchesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-300">Contact Name</label>
                 <input
@@ -449,7 +532,19 @@ export function BranchesPage() {
                   placeholder="e.g., +27 82 000 0000"
                 />
               </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-300">Contact Designation</label>
+                <input
+                  type="text"
+                  value={formData.contactDesignation}
+                  onChange={(e) => setFormData({ ...formData, contactDesignation: e.target.value })}
+                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
+                  placeholder="e.g., Branch Manager"
+                />
+              </div>
             </div>
+
+            <ParticipantFields contacts={formData.contacts} onChange={(contacts) => setFormData({ ...formData, contacts })} />
 
             <button
               type="submit"
@@ -498,7 +593,7 @@ export function BranchesPage() {
                     onSubmit={(e) => handleUpdate(branch.id, e)}
                     className="rounded-3xl border border-sky-400/25 bg-sky-500/10 p-5"
                   >
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
                       <input
                         type="text"
                         value={editData.name}
@@ -524,6 +619,13 @@ export function BranchesPage() {
                         placeholder="Province"
                         className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                         required
+                      />
+                      <input
+                        type="text"
+                        value={editData.city}
+                        onChange={(e) => setEditData({ ...editData, city: e.target.value })}
+                        placeholder="City"
+                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                       />
                       <input
                         type="text"
@@ -562,7 +664,7 @@ export function BranchesPage() {
                       />
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
                       <input
                         type="text"
                         value={editData.contactName}
@@ -584,6 +686,17 @@ export function BranchesPage() {
                         placeholder="Contact phone"
                         className="rounded-lg border border-slate-300 px-3 py-2"
                       />
+                      <input
+                        type="text"
+                        value={editData.contactDesignation}
+                        onChange={(e) => setEditData({ ...editData, contactDesignation: e.target.value })}
+                        placeholder="Contact designation"
+                        className="rounded-lg border border-slate-300 px-3 py-2"
+                      />
+                    </div>
+
+                    <div className="mt-4">
+                      <ParticipantFields contacts={editData.contacts} onChange={(contacts) => setEditData({ ...editData, contacts })} />
                     </div>
 
                     <div className="mt-4 flex gap-2">
@@ -611,8 +724,9 @@ export function BranchesPage() {
                 <div key={branch.id} className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft">
                   <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_1fr_auto] lg:items-start">
                     <div>
-                      <p className="text-lg font-semibold text-white">{branch.name}</p>
-                      <p className="mt-1 text-sm text-slate-400">{branch.town}, {branch.province}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{getBranchCodeForBranch(branch, branchCodeById)}</p>
+                      <Link to={`/branches/${branch.id}`} className="mt-1 block text-lg font-semibold text-white transition hover:text-sky-100">{branch.name}</Link>
+                      <p className="mt-1 text-sm text-slate-400">{branch.city ? `${branch.city}, ` : ''}{branch.town}, {branch.province}</p>
                       <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
                     </div>
 
@@ -626,6 +740,7 @@ export function BranchesPage() {
                     <div>
                       <p className="text-xs uppercase tracking-wide text-slate-500">Contact</p>
                       <p className="mt-1 text-sm text-slate-300">{branch.contactName || 'Not set'}</p>
+                      {branch.contacts?.[0]?.designation ? <p className="text-xs text-slate-400">{branch.contacts[0].designation}</p> : null}
                       {branch.contactEmail ? <p className="text-xs text-slate-400">{branch.contactEmail}</p> : null}
                       {branch.contactPhone ? <p className="text-xs text-slate-400">{branch.contactPhone}</p> : null}
                     </div>
@@ -665,6 +780,10 @@ export function BranchesPage() {
                         <span className="rounded-full bg-slate-900/70 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
                           {openProjects.length}
                         </span>
+                      </div>
+
+                      <div className="mt-3">
+                        <Link to={`/branches/${branch.id}`} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">Open full branch details</Link>
                       </div>
 
                       <div className="mt-3 space-y-2">

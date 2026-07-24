@@ -40,11 +40,26 @@ export type ProjectStatus = 'completed' | 'busy' | 'in_progress' | 'awaiting_app
 
 export type Division = 'Wealth' | 'Insure' | 'Wealth Insure' | 'Asset' | 'Trust';
 
+export interface ContactPerson {
+  name: string;
+  email?: string;
+  phone?: string;
+  designation: string;
+}
+
+export interface TaskAssignee {
+  name: string;
+  email: string;
+  designation: string;
+}
+
 export interface Branch {
   id: string;
+  code?: string;
   name: string;
   division: Division;
   province: string;
+  city?: string;
   town: string;
   physicalAddress: string;
   latitude: number | null;
@@ -52,6 +67,7 @@ export interface Branch {
   contactName?: string;
   contactEmail?: string;
   contactPhone?: string;
+  contacts?: ContactPerson[];
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +75,7 @@ export interface Branch {
 export interface Project {
   id: string;
   branchId: string;
+  branchCode?: string;
   branch: string;
   workspaceId: string;
   workspaceName: string;
@@ -107,8 +124,11 @@ export interface TaskItem {
   stage?: ProjectStage;
   assigneeName?: string;
   assigneeEmail?: string;
+  assignees?: TaskAssignee[];
   createdAt?: string;
   completedAt?: string;
+  completedByName?: string;
+  completedByEmail?: string;
 }
 
 export interface CommentItem {

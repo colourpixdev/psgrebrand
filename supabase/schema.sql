@@ -1,10 +1,13 @@
 create extension if not exists pgcrypto;
+create sequence if not exists public.branch_code_sequence start with 1;
 
 create table if not exists public.branches (
   id text primary key,
+  code text not null default ('PSG' || lpad(nextval('public.branch_code_sequence')::text, 3, '0')),
   name text not null,
   division text not null,
   province text not null,
+  city text,
   town text not null,
   physical_address text not null,
   latitude double precision,
@@ -12,6 +15,7 @@ create table if not exists public.branches (
   contact_name text,
   contact_email text,
   contact_phone text,
+  contacts jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -19,6 +23,10 @@ create table if not exists public.branches (
 alter table public.branches add column if not exists contact_name text;
 alter table public.branches add column if not exists contact_email text;
 alter table public.branches add column if not exists contact_phone text;
+alter table public.branches add column if not exists code text;
+alter table public.branches add column if not exists city text;
+alter table public.branches add column if not exists contacts jsonb not null default '[]'::jsonb;
+alter table public.branches alter column code set default ('PSG' || lpad(nextval('public.branch_code_sequence')::text, 3, '0'));
 
 do $$ begin
   alter table public.branches add constraint branches_latitude_range check (latitude is null or latitude between -90 and 90);
@@ -33,6 +41,7 @@ end $$;
 create table if not exists public.projects (
   id text primary key,
   branch_id text not null references public.branches(id) on delete restrict,
+  branch_code text,
   manager text not null,
   manager_email text not null,
   installer text not null,
@@ -59,6 +68,10 @@ create table if not exists public.projects (
   site_label text,
   delivery_partner_label text
 );
+
+alter table public.projects add column if not exists branch_code text;
+create unique index if not exists branches_code_key on public.branches (code);
+create index if not exists projects_branch_code_idx on public.projects (branch_code);
 
 create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),

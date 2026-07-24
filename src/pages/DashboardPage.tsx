@@ -1,116 +1,133 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { FileText, LifeBuoy, Search } from 'lucide-react';
-import { MetricCard } from '../components/dashboard/MetricCard';
-import { ActivityFeed } from '../components/dashboard/ActivityFeed';
+import { getAllBranches } from '../services/branchService';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
-import { productBrand } from '../constants/branding';
+import { buildBranchCodeMap, getBranchCodeForBranch } from '../utils/branchProjectIds';
+import type { Project } from '../types/domain';
+
+type JournalEntry = {
+  projectId: string;
+  branch: string;
+  title: string;
+  detail: string;
+  date: string;
+  timestamp: string;
+};
+
+function byUpdatedAtDesc(a: Project, b: Project) {
+  return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '');
+}
+
+function journalEntries(projects: Project[]): JournalEntry[] {
+  return projects.flatMap((project) => [
+    ...project.activity.map((activity, index) => ({
+      projectId: project.id,
+      branch: project.branch,
+      title: activity.title,
+      detail: activity.detail,
+      date: activity.date,
+      timestamp: project.updatedAt || `activity-${index}`,
+    })),
+    ...project.comments.map((comment, index) => ({
+      projectId: project.id,
+      branch: project.branch,
+      title: comment.kind === 'question' ? 'Message request' : 'Journal message',
+      detail: comment.message,
+      date: comment.requestedAt || comment.date,
+      timestamp: comment.requestedAt || comment.date || `${project.updatedAt}-${index}`,
+    })),
+  ]).sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 8);
+}
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: getAllBranches });
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: getProjects,
   });
   const scopedProjects = filterProjectsForUser(projects, user);
-  const recentActivity = scopedProjects.flatMap((project) => project.activity).slice(0, 4);
+  const branchCodeById = useMemo(() => buildBranchCodeMap(branches), [branches]);
   const userEmail = user?.email.toLowerCase() ?? '';
   const userName = user?.name.toLowerCase() ?? '';
+
+  const officeRows = useMemo(() => branches.map((branch) => {
+    const branchProjects = scopedProjects
+      .filter((project) => project.branchId === branch.id || project.branch.toLowerCase() === branch.name.toLowerCase())
+      .sort(byUpdatedAtDesc);
+    const primaryContact = branch.contacts?.[0];
+
+    return {
+      branch,
+      branchCode: getBranchCodeForBranch(branch, branchCodeById),
+      currentProject: branchProjects[0],
+      outstandingTasks: branchProjects.reduce((count, project) => count + project.tasks.filter((task) => !task.completed).length, 0),
+      contact: primaryContact?.name || branch.contactName || 'Not set',
+      designation: primaryContact?.designation,
+    };
+  }), [branchCodeById, branches, scopedProjects]);
+
   const myTasks = scopedProjects.flatMap((project) => project.tasks
-    .filter((task) => !task.completed && ((task.assigneeEmail?.toLowerCase() ?? '') === userEmail || (task.assigneeName?.toLowerCase() ?? '') === userName))
-    .map((task) => ({ ...task, projectId: project.id, branch: project.branch, town: project.town })))
-    .slice(0, 8);
-  const openQuestions = scopedProjects.flatMap((project) => project.comments
-    .filter((comment) => comment.kind === 'question' && comment.status !== 'answered')
-    .map((comment) => ({ ...comment, projectId: project.id, branch: project.branch })))
-    .slice(0, 4);
-  const metrics = [
-    { label: 'Projects', value: scopedProjects.length },
-    { label: 'Completed', value: scopedProjects.filter((project) => project.status === 'completed').length },
-    { label: 'Active', value: scopedProjects.filter((project) => ['busy', 'in_progress', 'awaiting_approval'].includes(project.status)).length },
-    { label: 'Awaiting Approval', value: scopedProjects.filter((project) => project.status === 'awaiting_approval').length },
-    { label: 'Delayed', value: scopedProjects.filter((project) => project.status === 'delayed').length },
-  ];
+    .filter((task) => {
+      if (task.completed) {
+        return false;
+      }
+
+      const assignedByPrimary = (task.assigneeEmail?.toLowerCase() ?? '') === userEmail || (task.assigneeName?.toLowerCase() ?? '') === userName;
+      const assignedByList = task.assignees?.some((assignee) => assignee.email.toLowerCase() === userEmail || assignee.name.toLowerCase() === userName) ?? false;
+      return assignedByPrimary || assignedByList;
+    })
+    .map((task) => ({ ...task, projectId: project.id, branch: project.branch })))
+    .slice(0, 5);
+  const journal = journalEntries(scopedProjects);
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(14,165,233,0.18),rgba(2,6,23,0.65))] p-6 shadow-soft">
-        <p className="text-sm uppercase tracking-[0.32em] text-teal-200/80">{productBrand.workspace}</p>
-        <h2 className="mt-3 text-3xl font-semibold text-white">Today</h2>
+      <section className="flex flex-col gap-3 border-b border-white/10 pb-5 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">PSG Rebrand</p>
+          <h2 className="mt-1 text-2xl font-semibold text-white">Office rollout control board</h2>
+        </div>
+        <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">Manage offices</Link>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        <Link to="/search" className="group rounded-3xl border border-sky-300/20 bg-sky-500/10 p-5 shadow-soft transition hover:border-sky-200/40 hover:bg-sky-500/15">
-          <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-400 text-slate-950"><Search className="h-5 w-5" /></span>
-            <div>
-              <p className="text-sm font-semibold text-white">Find projects</p>
-              <p className="text-xs text-slate-400">Search and open details</p>
-            </div>
+      <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 shadow-soft">
+        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+          <div>
+            <h3 className="font-semibold text-white">Office register</h3>
+            <p className="mt-1 text-sm text-slate-400">{officeRows.length} office locations</p>
           </div>
-        </Link>
-        <Link to="/projects" className="group rounded-3xl border border-emerald-300/20 bg-emerald-500/10 p-5 shadow-soft transition hover:border-emerald-200/40 hover:bg-emerald-500/15">
-          <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-400 text-slate-950"><FileText className="h-5 w-5" /></span>
-            <div>
-              <p className="text-sm font-semibold text-white">Text project updates</p>
-              <p className="text-xs text-slate-400">Search, open, update</p>
-            </div>
-          </div>
-        </Link>
-        <Link to="/support" className="group rounded-3xl border border-teal-300/20 bg-teal-500/10 p-5 shadow-soft transition hover:border-teal-200/40 hover:bg-teal-500/15">
-          <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-teal-300 text-slate-950"><LifeBuoy className="h-5 w-5" /></span>
-            <div>
-              <p className="text-sm font-semibold text-white">User interaction</p>
-              <p className="text-xs text-slate-400">Requests and support</p>
-            </div>
-          </div>
-        </Link>
+          <Link to="/projects" className="text-sm font-semibold text-emerald-200 transition hover:text-emerald-100">Add project</Link>
+        </div>
+        {officeRows.length > 0 ? <div className="divide-y divide-white/10">
+          {officeRows.map(({ branch, branchCode, currentProject, outstandingTasks, contact, designation }) => (
+            <Link key={branch.id} to={`/branches/${branch.id}`} className="grid gap-2 px-5 py-4 transition hover:bg-white/5 md:grid-cols-[90px_1.25fr_1fr_1.1fr_110px] md:items-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-200">{branchCode}</p>
+              <div><p className="font-semibold text-white">{branch.name}</p><p className="mt-1 text-sm text-slate-400">{branch.division} · {branch.city || branch.town}, {branch.province}</p></div>
+              <div className="text-sm text-slate-300"><p>{contact}</p>{designation ? <p className="mt-1 text-xs text-slate-500">{designation}</p> : null}</div>
+              <div><p className="text-sm font-medium text-slate-200">{currentProject?.currentStage || 'No project started'}</p><p className="mt-1 text-xs text-slate-500">{currentProject ? currentProject.id : branch.physicalAddress}</p></div>
+              <p className="text-sm text-slate-300 md:text-right">{outstandingTasks} open task{outstandingTasks === 1 ? '' : 's'}</p>
+            </Link>
+          ))}
+        </div> : <p className="px-5 py-10 text-sm text-slate-400">No offices have been added yet.</p>}
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {metrics.map((metric) => (
-          <MetricCard key={metric.label} label={metric.label} value={metric.value} />
-        ))}
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-[2rem] border border-white/10 bg-white/6 p-5 shadow-soft">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-white">My Tasks</h3>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300">{myTasks.length}</span>
-          </div>
-          <div className="mt-4 grid gap-3">
-            {myTasks.length > 0 ? myTasks.map((task) => (
-              <Link key={`${task.projectId}-${task.id}`} to={`/projects/${task.projectId}`} className="rounded-2xl border border-white/10 bg-slate-950/45 p-4 transition hover:border-sky-400/30 hover:bg-slate-950/70">
-                <p className="text-sm font-semibold text-white">{task.text}</p>
-                <p className="mt-1 text-xs text-slate-400">{task.branch} · {task.town}</p>
-              </Link>
-            )) : (
-              <div className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No assigned tasks waiting.</div>
-            )}
+      <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-soft">
+          <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-white">My action queue</h3><span className="text-sm text-slate-400">{myTasks.length}</span></div>
+          <div className="mt-4 space-y-2">
+            {myTasks.length > 0 ? myTasks.map((task) => <Link key={`${task.projectId}-${task.id}`} to={`/projects/${task.projectId}`} className="block border-b border-white/10 py-3 last:border-0 transition hover:text-sky-100"><p className="text-sm font-medium text-white">{task.text}</p><p className="mt-1 text-xs text-slate-400">{task.branch}</p></Link>) : <p className="py-4 text-sm text-slate-400">No assigned tasks waiting.</p>}
           </div>
         </div>
-        <div className="rounded-[2rem] border border-white/10 bg-white/6 p-5 shadow-soft">
-          <h3 className="text-lg font-semibold text-white">Responses</h3>
-          <div className="mt-4 grid gap-3">
-            {openQuestions.length > 0 ? openQuestions.map((question) => (
-              <Link key={question.id} to={`/projects/${question.projectId}`} className="rounded-2xl border border-white/10 bg-slate-950/45 p-4 transition hover:border-amber-300/30">
-                <p className="text-sm font-semibold text-white">{question.branch}</p>
-                <p className="mt-1 line-clamp-2 text-xs text-slate-400">{question.message}</p>
-              </Link>
-            )) : (
-              <div className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No open responses needed.</div>
-            )}
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-soft">
+          <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-white">Daily journal and messages</h3><span className="text-sm text-slate-400">Latest updates</span></div>
+          <div className="mt-4 divide-y divide-white/10">
+            {journal.length > 0 ? journal.map((entry, index) => <Link key={`${entry.projectId}-${entry.timestamp}-${index}`} to={`/projects/${entry.projectId}`} className="block py-3 first:pt-0 transition hover:text-sky-100"><div className="flex items-start justify-between gap-3"><p className="text-sm font-medium text-white">{entry.title}</p><p className="shrink-0 text-xs text-slate-500">{entry.date}</p></div><p className="mt-1 text-xs text-slate-400">{entry.branch} · {entry.detail}</p></Link>) : <p className="py-4 text-sm text-slate-400">No journal or message updates yet.</p>}
           </div>
         </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
-        <ActivityFeed items={recentActivity} />
       </section>
     </div>
   );

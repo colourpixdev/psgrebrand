@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectTemplateId, Role, TaskItem, UserRecord } from '../types/domain';
+import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectTemplateId, Role, TaskAssignee, TaskItem, UserRecord } from '../types/domain';
 import { defaultWorkspace, rolloutAppEmail } from '../constants/workspaces';
 import { defaultProjectTemplate, getProjectTemplate } from '../constants/projectTemplates';
 import { timelineStages } from '../constants/portal';
@@ -21,6 +21,7 @@ type ProjectRow = {
   site_label?: string | null;
   delivery_partner_label?: string | null;
   branch_id?: string | null;
+  branch_code?: string | null;
   branch?: string | null;
   province?: string | null;
   town?: string | null;
@@ -119,6 +120,26 @@ function isTimelineStage(value: unknown): value is Project['currentStage'] {
   return typeof value === 'string' && timelineStages.includes(value as Project['currentStage']);
 }
 
+function normalizeTaskAssignees(candidate: Partial<TaskItem>): TaskAssignee[] | undefined {
+  if (Array.isArray(candidate.assignees)) {
+    const cleaned = candidate.assignees
+      .filter((assignee): assignee is TaskAssignee => Boolean(assignee?.email && assignee?.name))
+      .map((assignee) => ({
+        name: assignee.name,
+        email: assignee.email,
+        designation: assignee.designation || 'Participant',
+      }));
+
+    return cleaned.length > 0 ? cleaned : undefined;
+  }
+
+  if (candidate.assigneeEmail && candidate.assigneeName) {
+    return [{ name: candidate.assigneeName, email: candidate.assigneeEmail, designation: 'Participant' }];
+  }
+
+  return undefined;
+}
+
 function normalizeProjectTasks(tasks: unknown[] | null): TaskItem[] {
   if (!Array.isArray(tasks)) {
     return [];
@@ -144,8 +165,11 @@ function normalizeProjectTasks(tasks: unknown[] | null): TaskItem[] {
           stage: isTimelineStage(candidate.stage) ? candidate.stage : undefined,
           assigneeName: typeof candidate.assigneeName === 'string' ? candidate.assigneeName : undefined,
           assigneeEmail: typeof candidate.assigneeEmail === 'string' ? candidate.assigneeEmail : undefined,
+          assignees: normalizeTaskAssignees(candidate),
           createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : undefined,
           completedAt: typeof candidate.completedAt === 'string' ? candidate.completedAt : undefined,
+          completedByName: typeof candidate.completedByName === 'string' ? candidate.completedByName : undefined,
+          completedByEmail: typeof candidate.completedByEmail === 'string' ? candidate.completedByEmail : undefined,
         };
       }
 
@@ -189,6 +213,7 @@ export type CreateProjectInput = {
   graphicsPartner?: string;
   projectType?: ProjectTemplateId;
   branchId?: string;
+  branchCode?: string;
   branch: string;
   province?: string;
   town?: string;
@@ -288,12 +313,14 @@ function isMissingProjectColumnError(errorMessage: string | undefined) {
     'project_type_name',
     'site_label',
     'delivery_partner_label',
+    'branch_code',
   ].some((column) => normalizedMessage.includes(column));
 }
 
 function stripLegacyProjectColumns<T extends Record<string, unknown>>(payload: T) {
   const {
     branch_id,
+    branch_code,
     province,
     town,
     physical_address,
@@ -430,6 +457,7 @@ export type AddProjectTaskInput = {
   stage?: Project['currentStage'];
   assigneeName?: string;
   assigneeEmail?: string;
+  assignees?: TaskAssignee[];
 };
 
 export type UpdateProjectTaskInput = {
@@ -440,7 +468,9 @@ export type UpdateProjectTaskInput = {
   stage?: Project['currentStage'];
   assigneeName?: string;
   assigneeEmail?: string;
+  assignees?: TaskAssignee[];
   actor: string;
+  actorEmail?: string;
 };
 
 export type UpsertProjectStageTaskInput = {
@@ -450,6 +480,7 @@ export type UpsertProjectStageTaskInput = {
   completed?: boolean;
   assigneeName?: string;
   assigneeEmail?: string;
+  assignees?: TaskAssignee[];
 };
 
 export type RenameProjectFileInput = {
@@ -497,6 +528,14 @@ function createActivity(title: string, detail: string, type: ActivityItem['type'
   };
 }
 
+function summarizeAssignees(assignees?: TaskAssignee[]) {
+  if (!assignees || assignees.length === 0) {
+    return 'unassigned';
+  }
+
+  return assignees.map((assignee) => assignee.name).join(', ');
+}
+
 function mapProjectRow(row: ProjectRow): Project {
   const template = getProjectTemplate(row.project_type);
   const mappedBranchId = row.branch_id ?? row.branch ?? 'unassigned';
@@ -505,6 +544,7 @@ function mapProjectRow(row: ProjectRow): Project {
   return {
     id: row.id,
     branchId: mappedBranchId,
+    branchCode: row.branch_code ?? undefined,
     branch: mappedBranch,
     workspaceId: row.workspace_id ?? defaultWorkspace.id,
     workspaceName: row.workspace_name ?? defaultWorkspace.name,
@@ -635,6 +675,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   const basePayload = {
     id: input.id.trim(),
     branch_id: resolvedBranchId,
+    branch_code: input.branchCode?.trim() || null,
     branch: input.branch.trim(),
     province: optionalProjectValue(input.province),
     town: optionalProjectValue(input.town),
@@ -1156,8 +1197,21 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
     throw new Error('Project not found.');
   }
 
-  const tasks: TaskItem[] = [{ id: createTaskId(), text: task, completed: false, stage: input.stage, assigneeName: input.assigneeName, assigneeEmail: input.assigneeEmail, createdAt: new Date().toISOString() }, ...existingProject.tasks];
-  const activity = [createActivity('Task added', `${input.actor} added task: ${task}${input.assigneeName ? ` for ${input.assigneeName}` : ''}`), ...existingProject.activity];
+  const assignees = input.assignees?.length
+    ? input.assignees
+    : (input.assigneeName && input.assigneeEmail ? [{ name: input.assigneeName, email: input.assigneeEmail, designation: 'Participant' }] : undefined);
+  const primaryAssignee = assignees?.[assignees.length - 1];
+  const tasks: TaskItem[] = [{
+    id: createTaskId(),
+    text: task,
+    completed: false,
+    stage: input.stage,
+    assigneeName: primaryAssignee?.name,
+    assigneeEmail: primaryAssignee?.email,
+    assignees,
+    createdAt: new Date().toISOString(),
+  }, ...existingProject.tasks];
+  const activity = [createActivity('Task added', `${input.actor} added task: ${task} (${summarizeAssignees(assignees)}).`), ...existingProject.activity];
 
   const { data, error } = await client
     .from('projects')
@@ -1203,14 +1257,26 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     }
 
     const completed = input.completed ?? task.completed;
+    const assignees = input.assignees !== undefined
+      ? (input.assignees.length > 0 ? input.assignees : undefined)
+      : task.assignees;
+    const fallbackAssignee = input.assigneeEmail !== undefined
+      ? (input.assigneeEmail && input.assigneeName ? [{ name: input.assigneeName, email: input.assigneeEmail, designation: 'Participant' }] : undefined)
+      : undefined;
+    const resolvedAssignees = assignees ?? fallbackAssignee;
+    const primaryAssignee = resolvedAssignees?.[resolvedAssignees.length - 1];
+
     return {
       ...task,
       text: text ?? task.text,
       completed,
       stage: input.stage ?? task.stage,
-      assigneeName: input.assigneeName !== undefined ? input.assigneeName || undefined : task.assigneeName,
-      assigneeEmail: input.assigneeEmail !== undefined ? input.assigneeEmail || undefined : task.assigneeEmail,
+      assigneeName: primaryAssignee?.name ?? (input.assigneeName !== undefined ? input.assigneeName || undefined : task.assigneeName),
+      assigneeEmail: primaryAssignee?.email ?? (input.assigneeEmail !== undefined ? input.assigneeEmail || undefined : task.assigneeEmail),
+      assignees: resolvedAssignees,
       completedAt: completed ? task.completedAt ?? new Date().toISOString() : undefined,
+      completedByName: completed ? input.actor : undefined,
+      completedByEmail: completed ? input.actorEmail : undefined,
     };
   });
   const action = input.completed === undefined ? 'updated' : input.completed ? 'completed' : 'reopened';
@@ -1254,14 +1320,23 @@ export async function upsertProjectStageTask(input: UpsertProjectStageTaskInput)
   const now = new Date().toISOString();
   const existingTask = existingProject.tasks.find((task) => task.stage === input.stage);
   const completed = input.completed ?? existingTask?.completed ?? false;
+  const assignees = input.assignees !== undefined
+    ? (input.assignees.length > 0 ? input.assignees : undefined)
+    : existingTask?.assignees;
+  const fallbackAssignee = input.assigneeEmail !== undefined
+    ? (input.assigneeEmail && input.assigneeName ? [{ name: input.assigneeName, email: input.assigneeEmail, designation: 'Participant' }] : undefined)
+    : undefined;
+  const resolvedAssignees = assignees ?? fallbackAssignee;
+  const primaryAssignee = resolvedAssignees?.[resolvedAssignees.length - 1];
 
   const nextTask: TaskItem = {
     id: existingTask?.id ?? createTaskId(),
     text: existingTask?.text ?? input.stage,
     completed,
     stage: input.stage,
-    assigneeName: input.assigneeName !== undefined ? input.assigneeName || undefined : existingTask?.assigneeName,
-    assigneeEmail: input.assigneeEmail !== undefined ? input.assigneeEmail || undefined : existingTask?.assigneeEmail,
+    assigneeName: primaryAssignee?.name ?? (input.assigneeName !== undefined ? input.assigneeName || undefined : existingTask?.assigneeName),
+    assigneeEmail: primaryAssignee?.email ?? (input.assigneeEmail !== undefined ? input.assigneeEmail || undefined : existingTask?.assigneeEmail),
+    assignees: resolvedAssignees,
     createdAt: existingTask?.createdAt ?? now,
     completedAt: completed ? existingTask?.completedAt ?? now : undefined,
   };

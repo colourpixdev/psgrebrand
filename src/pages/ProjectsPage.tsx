@@ -19,7 +19,7 @@ export function ProjectsPage() {
   const normalizedTownSearch = townSearch.trim().toLowerCase();
   const quickUpdateProjects = useMemo(() => {
     const matches = normalizedTownSearch
-      ? projects.filter((project) => [project.town, project.branch, project.province, project.id].some((value) => value.toLowerCase().includes(normalizedTownSearch)))
+      ? projects.filter((project) => [project.town, project.branch, project.province, project.id, project.branchCode ?? ''].some((value) => value.toLowerCase().includes(normalizedTownSearch)))
       : projects;
 
     return matches.slice(0, 6);

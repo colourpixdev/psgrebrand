@@ -12,6 +12,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage').then((module) =
 const MapPage = lazy(() => import('./pages/MapPage').then((module) => ({ default: module.MapPage })));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage').then((module) => ({ default: module.ProjectDetailPage })));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then((module) => ({ default: module.ProjectsPage })));
+const BranchDetailPage = lazy(() => import('./pages/BranchDetailPage').then((module) => ({ default: module.BranchDetailPage })));
 const ReportsPage = lazy(() => import('./pages/ReportsPage').then((module) => ({ default: module.ReportsPage })));
 const SearchPage = lazy(() => import('./pages/SearchPage').then((module) => ({ default: module.SearchPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })));
@@ -26,8 +27,8 @@ const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then((mod
 
 const navigation = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/projects', label: 'Projects', icon: KanbanSquare },
   { to: '/branches', label: 'Branches', icon: MapPinned },
+  { to: '/projects', label: 'Projects', icon: KanbanSquare },
   { to: '/search', label: 'Search', icon: Search },
   { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/map', label: 'Map', icon: MapPinned },
@@ -72,7 +73,11 @@ function AppRoutes() {
   const [supabaseStatus, setSupabaseStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    const matchedRoute = location.pathname.startsWith('/projects/') ? '/projects' : location.pathname;
+    const matchedRoute = location.pathname.startsWith('/projects/')
+      ? '/projects'
+      : location.pathname.startsWith('/branches/')
+        ? '/branches'
+        : location.pathname;
     const pageTitle = routeTitles[matchedRoute] ?? productBrand.description;
     document.title = `${pageTitle} | ${productBrand.name}`;
   }, [location.pathname]);
@@ -172,6 +177,7 @@ function AppRoutes() {
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/branches" element={<BranchesPage />} />
+          <Route path="/branches/:branchId" element={<BranchDetailPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/access-controls" element={<AccessControlsPage />} />
