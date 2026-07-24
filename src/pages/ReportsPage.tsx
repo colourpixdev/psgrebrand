@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FileText, Search, Shield } from 'lucide-react';
 import { getProjects } from '../services/portalService';
-import { getAllBranches } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import type { Project, ProjectStatus, Role } from '../types/domain';
@@ -210,7 +209,7 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
 
 export function ReportsPage() {
   const { user, roleLabel } = useAuth();
-  const [reportType, setReportType] = useState<ReportType>('single-branch-detail');
+  const [reportType, setReportType] = useState<ReportType>('multi-branch-overview');
   const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
   const [branchName, setBranchName] = useState('all');
   const [query, setQuery] = useState('');
@@ -219,16 +218,11 @@ export function ReportsPage() {
     queryKey: ['projects'],
     queryFn: getProjects,
   });
-  const { data: branches = [] } = useQuery({
-    queryKey: ['branches'],
-    queryFn: getAllBranches,
-  });
-
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
   const selectedReport = reportTypes.find((report) => report.value === reportType) ?? reportTypes[0];
   const guidance = user ? roleReportGuidance[user.role] : ['Single branch report', 'Multi-branch overview', 'Operational blockers and ownership'];
   const normalizedQuery = query.trim().toLowerCase();
-  const availableBranches = useMemo(() => uniqueSorted(branches.map((branch) => branch.name)), [branches]);
+  const availableBranches = useMemo(() => uniqueSorted(scopedProjects.map((project) => project.branch)), [scopedProjects]);
 
   const filteredProjects = useMemo(() => scopedProjects.filter((project) => {
     const matchesSearch = !normalizedQuery || [
@@ -343,7 +337,7 @@ export function ReportsPage() {
           </label>
 
           <label className="grid gap-2 text-sm text-slate-300">
-            Branch
+            Active branch
             <select value={branchName} onChange={(event) => setBranchName(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
               <option value="all">All branches</option>
               {availableBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}

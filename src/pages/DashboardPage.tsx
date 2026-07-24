@@ -68,7 +68,7 @@ export function DashboardPage() {
       contact: primaryContact?.name || branch.contactName || 'Not set',
       designation: primaryContact?.designation,
     };
-  }), [branchCodeById, branches, scopedProjects]);
+  }).filter(({ currentProject }) => Boolean(currentProject)), [branchCodeById, branches, scopedProjects]);
 
   const myTasks = scopedProjects.flatMap((project) => project.tasks
     .filter((task) => {
@@ -89,7 +89,7 @@ export function DashboardPage() {
       <section className="flex flex-col gap-3 border-b border-white/10 pb-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">PSG Rebrand</p>
-          <h2 className="mt-1 text-2xl font-semibold text-white">Office rollout control board</h2>
+          <h2 className="mt-1 text-2xl font-semibold text-white">Active rollout control board</h2>
         </div>
         <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">Manage offices</Link>
       </section>
@@ -97,8 +97,8 @@ export function DashboardPage() {
       <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 shadow-soft">
         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
           <div>
-            <h3 className="font-semibold text-white">Office register</h3>
-            <p className="mt-1 text-sm text-slate-400">{officeRows.length} office locations</p>
+            <h3 className="font-semibold text-white">Active office rollouts</h3>
+            <p className="mt-1 text-sm text-slate-400">{officeRows.length} office location{officeRows.length === 1 ? '' : 's'} with active work</p>
           </div>
           <Link to="/projects" className="text-sm font-semibold text-emerald-200 transition hover:text-emerald-100">Add project</Link>
         </div>
@@ -112,7 +112,7 @@ export function DashboardPage() {
               <p className="text-sm text-slate-300 md:text-right">{outstandingTasks} open task{outstandingTasks === 1 ? '' : 's'}</p>
             </Link>
           ))}
-        </div> : <p className="px-5 py-10 text-sm text-slate-400">No offices have been added yet.</p>}
+        </div> : <p className="px-5 py-10 text-sm text-slate-400">No rollout projects are active yet. Offices stay in the branch register until work begins.</p>}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
