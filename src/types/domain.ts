@@ -133,10 +133,12 @@ export interface TaskItem {
 
 export interface CommentItem {
   id?: string;
+  taskId?: string;
   kind?: 'comment' | 'question';
   date: string;
   author: string;
   message: string;
+  assignees?: TaskAssignee[];
   status?: 'open' | 'answered';
   requestStage?: ProjectStage;
   requesterEmail?: string;

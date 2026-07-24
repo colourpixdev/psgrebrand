@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { FileText } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,7 +40,56 @@ function journalEntries(projects: Project[]): JournalEntry[] {
       date: comment.requestedAt || comment.date,
       timestamp: comment.requestedAt || comment.date || `${project.updatedAt}-${index}`,
     })),
-  ]).sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 8);
+  ]).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function downloadJournalPdf(entries: JournalEntry[]) {
+  const rows = entries.map((entry) => `
+    <tr>
+      <td>${escapeHtml(entry.date)}</td>
+      <td>${escapeHtml(entry.branch)}</td>
+      <td>${escapeHtml(entry.title)}</td>
+      <td>${escapeHtml(entry.detail)}</td>
+    </tr>
+  `).join('');
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>PSG Rebrand journal log</title>
+        <style>
+          body { font-family: Arial, sans-serif; color: #111827; margin: 28px; }
+          h1 { margin: 0; font-size: 24px; }
+          p { color: #4b5563; }
+          table { border-collapse: collapse; width: 100%; font-size: 11px; }
+          th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; vertical-align: top; }
+          th { background: #e5e7eb; }
+        </style>
+      </head>
+      <body>
+        <h1>PSG Rebrand journal log</h1>
+        <p>Generated ${escapeHtml(new Date().toLocaleString())}. Includes ${entries.length} visible journal and message entr${entries.length === 1 ? 'y' : 'ies'}.</p>
+        <table>
+          <thead><tr><th>Date</th><th>Branch</th><th>Entry</th><th>Detail</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4">No journal entries available.</td></tr>'}</tbody>
+        </table>
+        <script>window.addEventListener('load', () => setTimeout(() => window.print(), 150));</script>
+      </body>
+    </html>
+  `;
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export function DashboardPage() {
@@ -83,6 +133,7 @@ export function DashboardPage() {
     .map((task) => ({ ...task, projectId: project.id, branch: project.branch })))
     .slice(0, 5);
   const journal = journalEntries(scopedProjects);
+  const latestJournal = journal.slice(0, 8);
 
   return (
     <div className="space-y-6">
@@ -119,13 +170,13 @@ export function DashboardPage() {
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-soft">
           <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-white">My action queue</h3><span className="text-sm text-slate-400">{myTasks.length}</span></div>
           <div className="mt-4 space-y-2">
-            {myTasks.length > 0 ? myTasks.map((task) => <Link key={`${task.projectId}-${task.id}`} to={`/projects/${task.projectId}`} className="block border-b border-white/10 py-3 last:border-0 transition hover:text-sky-100"><p className="text-sm font-medium text-white">{task.text}</p><p className="mt-1 text-xs text-slate-400">{task.branch}</p></Link>) : <p className="py-4 text-sm text-slate-400">No assigned tasks waiting.</p>}
+            {myTasks.length > 0 ? myTasks.map((task) => <Link key={`${task.projectId}-${task.id}`} to={`/projects/${task.projectId}`} className="block border-b border-white/10 py-3 last:border-0 transition hover:text-sky-100"><p className="text-sm font-medium text-white">{task.text}</p><p className="mt-1 text-xs text-slate-400">{task.branch}</p></Link>) : <p className="py-4 text-sm text-slate-400">No open tasks are assigned to {user?.name || 'you'}.</p>}
           </div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-soft">
-          <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-white">Daily journal and messages</h3><span className="text-sm text-slate-400">Latest updates</span></div>
+          <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-white">Daily journal and messages</h3><button type="button" onClick={() => downloadJournalPdf(journal)} className="inline-flex items-center gap-2 text-sm font-semibold text-sky-200 transition hover:text-sky-100"><FileText className="h-4 w-4" />Download PDF log</button></div>
           <div className="mt-4 divide-y divide-white/10">
-            {journal.length > 0 ? journal.map((entry, index) => <Link key={`${entry.projectId}-${entry.timestamp}-${index}`} to={`/projects/${entry.projectId}`} className="block py-3 first:pt-0 transition hover:text-sky-100"><div className="flex items-start justify-between gap-3"><p className="text-sm font-medium text-white">{entry.title}</p><p className="shrink-0 text-xs text-slate-500">{entry.date}</p></div><p className="mt-1 text-xs text-slate-400">{entry.branch} · {entry.detail}</p></Link>) : <p className="py-4 text-sm text-slate-400">No journal or message updates yet.</p>}
+            {latestJournal.length > 0 ? latestJournal.map((entry, index) => <Link key={`${entry.projectId}-${entry.timestamp}-${index}`} to={`/projects/${entry.projectId}`} className="block py-3 first:pt-0 transition hover:text-sky-100"><div className="flex items-start justify-between gap-3"><p className="text-sm font-medium text-white">{entry.title}</p><p className="shrink-0 text-xs text-slate-500">{entry.date}</p></div><p className="mt-1 text-xs text-slate-400">{entry.branch} · {entry.detail}</p></Link>) : <p className="py-4 text-sm text-slate-400">No journal or message updates yet.</p>}
           </div>
         </div>
       </section>

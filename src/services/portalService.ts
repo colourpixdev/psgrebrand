@@ -418,6 +418,13 @@ export type AddProjectCommentInput = {
   message: string;
 };
 
+export type AddAssignedProjectUpdateInput = {
+  projectId: string;
+  author: string;
+  message: string;
+  assignees: TaskAssignee[];
+};
+
 export type UpdateProjectNotesInput = {
   projectId: string;
   actor: string;
@@ -983,6 +990,82 @@ export async function addProjectComment(input: AddProjectCommentInput): Promise<
   return updatedProject;
 }
 
+export async function addAssignedProjectUpdate(input: AddAssignedProjectUpdateInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const message = input.message.trim();
+  const assignees = input.assignees.filter((assignee) => assignee.name && assignee.email);
+  if (!message) {
+    throw new Error('Project update cannot be empty.');
+  }
+  if (assignees.length === 0) {
+    throw new Error('Assign this project update to at least one person.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const now = new Date().toISOString();
+  const taskId = createTaskId();
+  const primaryAssignee = assignees[assignees.length - 1];
+  const task: TaskItem = {
+    id: taskId,
+    text: message,
+    completed: false,
+    assigneeName: primaryAssignee.name,
+    assigneeEmail: primaryAssignee.email,
+    assignees,
+    createdAt: now,
+  };
+  const comment: CommentItem = {
+    id: taskId,
+    taskId,
+    kind: 'comment',
+    date: todayLabel(),
+    author: input.author,
+    message,
+    assignees,
+  };
+  const activity = [
+    createActivity('Assigned project update', `${input.author} assigned an update to ${summarizeAssignees(assignees)}.`),
+    ...existingProject.activity,
+  ];
+
+  const { data, error } = await client
+    .from('projects')
+    .update({
+      comments: [comment, ...existingProject.comments],
+      tasks: [task, ...existingProject.tasks],
+      activity,
+      updated_at: now,
+    })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to save assigned project update.');
+  }
+
+  const updatedProject = mapProjectRow(data as ProjectRow);
+  await notifyProjectChange({
+    project: updatedProject,
+    actor: input.author,
+    message,
+    changeType: 'note',
+  });
+
+  return updatedProject;
+}
+
 export async function updateProjectNotes(input: UpdateProjectNotesInput): Promise<Project> {
   const client = supabase;
 
@@ -1200,6 +1283,9 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
   const assignees = input.assignees?.length
     ? input.assignees
     : (input.assigneeName && input.assigneeEmail ? [{ name: input.assigneeName, email: input.assigneeEmail, designation: 'Participant' }] : undefined);
+  if (!assignees?.length) {
+    throw new Error('Assign every open task to at least one person.');
+  }
   const primaryAssignee = assignees?.[assignees.length - 1];
   const tasks: TaskItem[] = [{
     id: createTaskId(),
@@ -1263,8 +1349,12 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     const fallbackAssignee = input.assigneeEmail !== undefined
       ? (input.assigneeEmail && input.assigneeName ? [{ name: input.assigneeName, email: input.assigneeEmail, designation: 'Participant' }] : undefined)
       : undefined;
-    const resolvedAssignees = assignees ?? fallbackAssignee;
+    const resolvedAssignees = assignees ?? fallbackAssignee ?? normalizeTaskAssignees(task);
     const primaryAssignee = resolvedAssignees?.[resolvedAssignees.length - 1];
+
+    if (!completed && !resolvedAssignees?.length) {
+      throw new Error('Assign every open task to at least one person.');
+    }
 
     return {
       ...task,
@@ -1328,6 +1418,10 @@ export async function upsertProjectStageTask(input: UpsertProjectStageTaskInput)
     : undefined;
   const resolvedAssignees = assignees ?? fallbackAssignee;
   const primaryAssignee = resolvedAssignees?.[resolvedAssignees.length - 1];
+
+  if (!completed && !resolvedAssignees?.length) {
+    throw new Error('Assign every open task to at least one person.');
+  }
 
   const nextTask: TaskItem = {
     id: existingTask?.id ?? createTaskId(),
