@@ -374,7 +374,7 @@ export function ProjectDetailPage() {
   const canCompleteTasks = Boolean(rolePolicy?.tasks.canCompleteTasks);
   const canAssignTasks = Boolean(rolePolicy?.tasks.canAssignTasks || rolePolicy?.tasks.canReassignTasks);
   const canDeleteTasks = canAdministerProjectDetails && Boolean(rolePolicy?.tasks.canDeleteTasks);
-  const canDeleteProject = canAdministerProjectDetails && Boolean(rolePolicy?.projectAccess.canDeleteProjects);
+  const canDeleteProject = Boolean(rolePolicy?.projectAccess.canDeleteProjects);
   const canCreateAssignedUpdate = canAddComments && canAddTasks;
   const assignableUsers = canAssignTasks ? users : users.filter((item) => item.email.toLowerCase() === user?.email.toLowerCase());
 
