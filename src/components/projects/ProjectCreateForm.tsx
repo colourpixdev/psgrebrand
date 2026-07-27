@@ -38,11 +38,73 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
+type ProjectSaveError = {
+  message?: unknown;
+  details?: unknown;
+  hint?: unknown;
+  code?: unknown;
+  status?: unknown;
+};
+
+function projectSaveErrorDetails(error: unknown) {
+  if (typeof error === 'string') {
+    return [{ label: 'Message', value: error }];
+  }
+
+  if (!error || typeof error !== 'object') {
+    return [{ label: 'Message', value: 'The save request failed without a diagnostic message.' }];
+  }
+
+  const candidate = error as ProjectSaveError;
+  const details = [
+    { label: 'Message', value: candidate.message },
+    { label: 'Database code', value: candidate.code },
+    { label: 'Database details', value: candidate.details },
+    { label: 'Database hint', value: candidate.hint },
+    { label: 'HTTP status', value: candidate.status },
+  ].filter((item): item is { label: string; value: string | number } => typeof item.value === 'string' || typeof item.value === 'number');
+
+  return details.length > 0
+    ? details
+    : [{ label: 'Message', value: 'The save request failed without a diagnostic message.' }];
+}
+
+function projectSaveNextStep(error: unknown) {
+  const candidate = error && typeof error === 'object' ? error as ProjectSaveError : {};
+  const text = [candidate.message, candidate.details, candidate.hint, candidate.code]
+    .filter((value): value is string | number => typeof value === 'string' || typeof value === 'number')
+    .join(' ')
+    .toLowerCase();
+
+  if (candidate.code === '42501' || text.includes('row-level security') || text.includes('permission denied')) {
+    return 'Your signed-in role is not allowed to insert projects. An administrator must grant this role insert access in Supabase.';
+  }
+
+  if (candidate.code === '23505' || text.includes('duplicate key')) {
+    return 'A project with this generated project ID already exists. Select the branch again to generate a new ID, then save.';
+  }
+
+  if (candidate.code === '23503' || text.includes('foreign key')) {
+    return 'The selected branch no longer exists in the live database. Refresh the page, select an existing branch, and try again.';
+  }
+
+  if (text.includes('schema cache') || text.includes('could not find the')) {
+    return 'The live database schema does not match the deployed app. Refresh the Supabase schema cache or apply the project schema repair.';
+  }
+
+  if (text.includes('failed to fetch') || text.includes('network')) {
+    return 'The app could not reach Supabase. Check your connection and try again.';
+  }
+
+  return 'Use the diagnostic above to identify the database or account configuration that rejected the save.';
+}
+
 export function ProjectCreateForm() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const preselectedBranchId = searchParams.get('branchId') ?? '';
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<unknown>(null);
 
   const { data: branches = [], isLoading: isLoadingBranches } = useQuery({
     queryKey: ['branches'],
@@ -153,26 +215,33 @@ export function ProjectCreateForm() {
 
   const onSubmit = handleSubmit(async (values) => {
     setSuccessMessage(null);
-    const selectedBranch = branches.find((branch) => branch.id === values.branchId);
+    setSubmitError(null);
 
-    if (!selectedBranch) {
-      throw new Error('Select a valid existing branch before saving the project.');
+    try {
+      const selectedBranch = branches.find((branch) => branch.id === values.branchId);
+
+      if (!selectedBranch) {
+        throw new Error('The selected branch is unavailable. Refresh the page, select the branch again, and retry saving.');
+      }
+
+      await mutation.mutateAsync({
+        ...values,
+        currentStage: values.currentStage as CreateProjectInput['currentStage'],
+        workspaceName: defaultWorkspace.name,
+        clientCompany: defaultWorkspace.clientCompany,
+        graphicsPartner: defaultGraphicsPartner,
+        branch: selectedBranch.name,
+        province: selectedBranch.province,
+        town: selectedBranch.town,
+        physicalAddress: selectedBranch.physicalAddress,
+      });
+    } catch (error) {
+      setSubmitError(error);
     }
-
-    await mutation.mutateAsync({
-      ...values,
-      currentStage: values.currentStage as CreateProjectInput['currentStage'],
-      workspaceName: defaultWorkspace.name,
-      clientCompany: defaultWorkspace.clientCompany,
-      graphicsPartner: defaultGraphicsPartner,
-      branch: selectedBranch.name,
-      province: selectedBranch.province,
-      town: selectedBranch.town,
-      physicalAddress: selectedBranch.physicalAddress,
-    });
   });
 
-  const mutationError = mutation.error instanceof Error ? mutation.error.message : null;
+  const projectSaveError = submitError ?? mutation.error;
+  const projectSaveDetails = projectSaveError ? projectSaveErrorDetails(projectSaveError) : [];
 
   return (
     <section className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-6 shadow-soft">
@@ -285,7 +354,15 @@ export function ProjectCreateForm() {
           <textarea {...register('notes')} rows={4} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none" />
         </label>
 
-        {mutationError ? <p className="md:col-span-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">{mutationError}</p> : null}
+        {projectSaveError ? (
+          <div role="alert" className="md:col-span-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            <p className="font-semibold">Project was not saved.</p>
+            <dl className="mt-2 grid gap-1 text-xs text-red-100/90">
+              {projectSaveDetails.map((detail) => <div key={detail.label}><dt className="inline font-semibold">{detail.label}: </dt><dd className="inline break-words">{detail.value}</dd></div>)}
+            </dl>
+            <p className="mt-2 text-xs text-red-100">Next step: {projectSaveNextStep(projectSaveError)}</p>
+          </div>
+        ) : null}
         {successMessage ? <p className="md:col-span-2 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{successMessage}</p> : null}
 
         <div className="md:col-span-2 flex justify-end">

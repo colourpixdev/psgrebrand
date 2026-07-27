@@ -299,6 +299,7 @@ function isMissingProjectColumnError(errorMessage: string | undefined) {
 
   const normalizedMessage = errorMessage.toLowerCase();
   return [
+    'branch',
     'branch_id',
     'province',
     'town',
@@ -317,8 +318,23 @@ function isMissingProjectColumnError(errorMessage: string | undefined) {
   ].some((column) => normalizedMessage.includes(column));
 }
 
+function stripProjectPresentationColumns<T extends Record<string, unknown>>(payload: T) {
+  const {
+    branch,
+    province,
+    town,
+    physical_address,
+    latitude,
+    longitude,
+    ...legacyPayload
+  } = payload;
+
+  return legacyPayload;
+}
+
 function stripLegacyProjectColumns<T extends Record<string, unknown>>(payload: T) {
   const {
+    branch,
     branch_id,
     branch_code,
     province,
@@ -778,14 +794,25 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   }
 
   if (error && isMissingProjectColumnError(error.message)) {
-    const fallbackResult = await client
+    const compatibleResult = await client
+      .from('projects')
+      .insert(stripProjectPresentationColumns(basePayload))
+      .select('*')
+      .single();
+
+    data = compatibleResult.data;
+    error = compatibleResult.error;
+  }
+
+  if (error && isMissingProjectColumnError(error.message)) {
+    const legacyResult = await client
       .from('projects')
       .insert(stripLegacyProjectColumns(basePayload))
       .select('*')
       .single();
 
-    data = fallbackResult.data;
-    error = fallbackResult.error;
+    data = legacyResult.data;
+    error = legacyResult.error;
   }
 
   if (error || !data) {
