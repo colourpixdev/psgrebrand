@@ -679,6 +679,43 @@ export async function getProjectById(projectId: string): Promise<Project | undef
   return mapProjectRow(data as ProjectRow);
 }
 
+export async function deleteProject(projectId: string): Promise<void> {
+  const client = supabase;
+  const normalizedProjectId = projectId.trim();
+
+  if (!normalizedProjectId) {
+    throw new Error('Project ID is required.');
+  }
+
+  if (!client) {
+    const localProjects = readLocalProjects();
+    const remainingProjects = localProjects.filter((project) => project.id !== normalizedProjectId);
+
+    if (remainingProjects.length === localProjects.length) {
+      throw new Error('Project not found.');
+    }
+
+    writeLocalProjects(remainingProjects);
+    return;
+  }
+
+  await hydrateAuthSession();
+
+  const { data, error } = await client
+    .from('projects')
+    .delete()
+    .eq('id', normalizedProjectId)
+    .select('id');
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error('The project was not removed. Your account may not have permission to delete this project.');
+  }
+}
+
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   const client = supabase;
 

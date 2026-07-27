@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { Timeline } from '../components/timeline/Timeline';
 import { roleLabels, timelineStages } from '../constants/portal';
-import { addAssignedProjectUpdate, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addAssignedProjectUpdate, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
 import { canViewProject, getAllowedStageOptions, getRolePolicy, getWorkflowDenialReason } from '../utils/permissions';
@@ -67,6 +67,7 @@ function calculateTimelineWorkflow(project: Project, changedStage: ProjectStage,
 
 export function ProjectDetailPage() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [stage, setStage] = useState<ProjectStage>('New Project');
@@ -90,6 +91,7 @@ export function ProjectDetailPage() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskText, setEditingTaskText] = useState('');
   const [editingTaskAssigneeEmails, setEditingTaskAssigneeEmails] = useState<string[]>([]);
+  const [deleteConfirmationArmed, setDeleteConfirmationArmed] = useState(false);
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => getProjectById(projectId ?? ''),
@@ -299,6 +301,17 @@ export function ProjectDetailPage() {
     },
   });
 
+  const deleteProjectMutation = useMutation({
+    mutationFn: () => deleteProject(projectId ?? ''),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['projects'] }),
+        queryClient.invalidateQueries({ queryKey: ['portal-summary'] }),
+      ]);
+      navigate('/projects', { replace: true });
+    },
+  });
+
   const uploadMutation = useMutation({
     mutationFn: (file: File) => uploadProjectFile(projectId ?? '', file, project?.files ?? []),
     onSuccess: async () => {
@@ -349,7 +362,7 @@ export function ProjectDetailPage() {
   });
 
   const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error;
-  const workflowError = workflowMutation.error ?? timelineTaskMutation.error ?? assignedUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error;
+  const workflowError = workflowMutation.error ?? timelineTaskMutation.error ?? assignedUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
   const notesError = notesMutation.error;
   const rolePolicy = getRolePolicy(user);
   const canAdministerProjectDetails = Boolean(user?.isPlatformOwner);
@@ -361,6 +374,7 @@ export function ProjectDetailPage() {
   const canCompleteTasks = Boolean(rolePolicy?.tasks.canCompleteTasks);
   const canAssignTasks = Boolean(rolePolicy?.tasks.canAssignTasks || rolePolicy?.tasks.canReassignTasks);
   const canDeleteTasks = canAdministerProjectDetails && Boolean(rolePolicy?.tasks.canDeleteTasks);
+  const canDeleteProject = canAdministerProjectDetails && Boolean(rolePolicy?.projectAccess.canDeleteProjects);
   const canCreateAssignedUpdate = canAddComments && canAddTasks;
   const assignableUsers = canAssignTasks ? users : users.filter((item) => item.email.toLowerCase() === user?.email.toLowerCase());
 
@@ -445,6 +459,30 @@ export function ProjectDetailPage() {
           <div>Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>
           <div className="md:col-span-4">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
         </div>
+        {canDeleteProject ? (
+          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-red-400/15 pt-5">
+            <button
+              type="button"
+              onClick={() => {
+                if (deleteConfirmationArmed) {
+                  deleteProjectMutation.mutate();
+                  return;
+                }
+
+                setDeleteConfirmationArmed(true);
+              }}
+              disabled={deleteProjectMutation.isPending}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-red-400/35 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {deleteProjectMutation.isPending ? 'Deleting project...' : deleteConfirmationArmed ? 'Confirm delete project' : 'Delete project'}
+            </button>
+            {deleteConfirmationArmed ? (
+              <button type="button" onClick={() => setDeleteConfirmationArmed(false)} disabled={deleteProjectMutation.isPending} className="min-h-11 text-sm font-semibold text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50">
+                Cancel
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/75 p-4 shadow-soft">
