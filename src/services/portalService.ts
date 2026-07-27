@@ -321,7 +321,6 @@ function isMissingProjectColumnError(errorMessage: string | undefined) {
 function stripProjectPresentationColumns<T extends Record<string, unknown>>(payload: T) {
   const {
     branch,
-    province,
     town,
     physical_address,
     latitude,
@@ -337,7 +336,6 @@ function stripLegacyProjectColumns<T extends Record<string, unknown>>(payload: T
     branch,
     branch_id,
     branch_code,
-    province,
     town,
     physical_address,
     latitude,
