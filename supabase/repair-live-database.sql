@@ -88,6 +88,7 @@ create table if not exists public.projects (
 alter table public.projects add column if not exists branch_id text;
 alter table public.projects add column if not exists branch_code text;
 alter table public.projects add column if not exists branch text;
+alter table public.projects alter column branch drop not null;
 alter table public.projects add column if not exists province text;
 alter table public.projects add column if not exists town text;
 alter table public.projects add column if not exists physical_address text;

@@ -42,6 +42,7 @@ create table if not exists public.projects (
   id text primary key,
   branch_id text not null references public.branches(id) on delete restrict,
   branch_code text,
+  branch text,
   manager text not null,
   manager_email text not null,
   installer text not null,
@@ -70,6 +71,8 @@ create table if not exists public.projects (
 );
 
 alter table public.projects add column if not exists branch_code text;
+alter table public.projects add column if not exists branch text;
+alter table public.projects alter column branch drop not null;
 create unique index if not exists branches_code_key on public.branches (code);
 create index if not exists projects_branch_code_idx on public.projects (branch_code);
 
