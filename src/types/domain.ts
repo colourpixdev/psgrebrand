@@ -83,6 +83,9 @@ export interface Project {
   progress: number;
   branchManagerViewOnly: boolean;
   notes: string;
+  signageContactName?: string;
+  signageContactEmail?: string;
+  signageContactPhone?: string;
   files: ProjectFile[];
   tasks: TaskItem[];
   comments: CommentItem[];

@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { Timeline } from '../components/timeline/Timeline';
 import { roleLabels, timelineStages } from '../constants/portal';
-import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectSignageContact, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById } from '../services/branchService';
 import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
@@ -68,6 +68,9 @@ export function ProjectDetailPage() {
   const [commentMessage, setCommentMessage] = useState('');
   const [journalTaskId, setJournalTaskId] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
+  const [signageContactNameDraft, setSignageContactNameDraft] = useState('');
+  const [signageContactEmailDraft, setSignageContactEmailDraft] = useState('');
+  const [signageContactPhoneDraft, setSignageContactPhoneDraft] = useState('');
   const [questionMessage, setQuestionMessage] = useState('');
   const [questionTaskId, setQuestionTaskId] = useState('');
   const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
@@ -116,6 +119,9 @@ export function ProjectDetailPage() {
   useEffect(() => {
     if (project) {
       setNotesDraft(project.notes);
+      setSignageContactNameDraft(project.signageContactName ?? '');
+      setSignageContactEmailDraft(project.signageContactEmail ?? '');
+      setSignageContactPhoneDraft(project.signageContactPhone ?? '');
     }
   }, [project]);
 
@@ -146,6 +152,17 @@ export function ProjectDetailPage() {
       projectId: projectId ?? '',
       actor: user?.name ?? 'Workspace user',
       notes: notesDraft,
+    }),
+    onSuccess: syncProject,
+  });
+
+  const signageContactMutation = useMutation({
+    mutationFn: () => updateProjectSignageContact({
+      projectId: projectId ?? '',
+      actor: user?.name ?? 'Workspace user',
+      signageContactName: signageContactNameDraft,
+      signageContactEmail: signageContactEmailDraft,
+      signageContactPhone: signageContactPhoneDraft,
     }),
     onSuccess: syncProject,
   });
@@ -422,7 +439,7 @@ export function ProjectDetailPage() {
 
   const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error ?? deleteFileMutation.error;
   const workflowError = timelineTaskMutation.error ?? addStageMutation.error ?? removeStageMutation.error ?? taskUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
-  const notesError = notesMutation.error;
+  const notesError = notesMutation.error ?? signageContactMutation.error;
   const rolePolicy = getRolePolicy(user);
   const canAdministerProjectDetails = Boolean(user?.isPlatformOwner);
   const canUploadFiles = canAdministerProjectDetails && Boolean(rolePolicy?.files.canUploadFiles);
@@ -506,6 +523,9 @@ export function ProjectDetailPage() {
   const stagePlan = getStagePlan(selectedProject);
   const canEditNotes = canViewProject(user, selectedProject);
   const hasNotesChange = notesDraft.trim() !== selectedProject.notes.trim();
+  const hasSignageContactChange = signageContactNameDraft.trim() !== (selectedProject.signageContactName ?? '').trim()
+    || signageContactEmailDraft.trim() !== (selectedProject.signageContactEmail ?? '').trim()
+    || signageContactPhoneDraft.trim() !== (selectedProject.signageContactPhone ?? '').trim();
   const branchParticipants = branch?.contacts?.length
     ? branch.contacts
     : branch?.contactName
@@ -521,10 +541,6 @@ export function ProjectDetailPage() {
           {selectedProject.town}, {selectedProject.province} · Manager {selectedProject.manager} · {selectedProject.deliveryPartnerLabel} {selectedProject.installer}
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-4 text-sm text-slate-300">
-          <div>Workspace: <span className="text-white">{selectedProject.workspaceName}</span></div>
-          <div>Client: <span className="text-white">{selectedProject.clientCompany}</span></div>
-          <div>Project type: <span className="text-white">{selectedProject.projectTypeName}</span></div>
-          <div>Service partner: <span className="text-white">{selectedProject.graphicsPartner}</span></div>
           <div>Current Status: <span className="text-white">{selectedProject.currentStage}</span></div>
           <div>Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>
           <div>Installation Date: <span className="text-white">{selectedProject.installationDate}</span></div>
@@ -565,6 +581,47 @@ export function ProjectDetailPage() {
             ) : <p className="mt-4 text-sm text-slate-400">No branch contact persons have been added yet.</p>}
           </div>
         ) : null}
+
+        <div className="mt-5 border-t border-white/10 pt-5">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Signage company contact</h3>
+          <p className="mt-1 text-xs text-slate-500">Keep {selectedProject.installer || 'the signage company'}'s contact person on hand for quick follow-up.</p>
+          {canEditNotes ? (
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <label className="grid gap-2 text-sm text-slate-300">
+                Contact name
+                <input value={signageContactNameDraft} onChange={(event) => setSignageContactNameDraft(event.target.value)} placeholder="e.g. John from ABC Signage" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50" />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                Email
+                <input type="email" value={signageContactEmailDraft} onChange={(event) => setSignageContactEmailDraft(event.target.value)} placeholder="name@company.co.za" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50" />
+              </label>
+              <label className="grid gap-2 text-sm text-slate-300">
+                Phone
+                <input value={signageContactPhoneDraft} onChange={(event) => setSignageContactPhoneDraft(event.target.value)} placeholder="071 234 5678" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50" />
+              </label>
+            </div>
+          ) : (
+            <div className="mt-3 grid gap-2 text-sm text-slate-300">
+              <p>Contact name: <span className="text-white">{selectedProject.signageContactName || 'Not captured'}</span></p>
+              <p>Email: <span className="text-white">{selectedProject.signageContactEmail || 'Not captured'}</span></p>
+              <p>Phone: <span className="text-white">{selectedProject.signageContactPhone || 'Not captured'}</span></p>
+            </div>
+          )}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {(selectedProject.signageContactEmail || selectedProject.signageContactPhone) ? (
+              <div className="flex flex-wrap gap-3">
+                {selectedProject.signageContactEmail ? <a href={`mailto:${selectedProject.signageContactEmail}`} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">Email {selectedProject.signageContactName || 'contact'}</a> : null}
+                {selectedProject.signageContactPhone ? <a href={`tel:${selectedProject.signageContactPhone}`} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">Call {selectedProject.signageContactName || 'contact'}</a> : null}
+              </div>
+            ) : null}
+            {canEditNotes ? (
+              <button type="button" disabled={signageContactMutation.isPending || !hasSignageContactChange} onClick={() => signageContactMutation.mutate()} className="rounded-2xl bg-sky-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
+                {signageContactMutation.isPending ? 'Saving...' : 'Save signage contact'}
+              </button>
+            ) : null}
+          </div>
+        </div>
+
         {canDeleteProject ? (
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-red-400/15 pt-5">
             <button

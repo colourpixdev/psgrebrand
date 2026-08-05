@@ -40,6 +40,9 @@ type ProjectRow = {
   progress: number | null;
   branch_manager_view_only: boolean | null;
   notes: string | null;
+  signage_contact_name?: string | null;
+  signage_contact_email?: string | null;
+  signage_contact_phone?: string | null;
   files: unknown[] | null;
   tasks: unknown[] | null;
   comments: CommentItem[] | null;
@@ -228,6 +231,9 @@ export type CreateProjectInput = {
   completionDate?: string;
   progress: number;
   notes?: string;
+  signageContactName?: string;
+  signageContactEmail?: string;
+  signageContactPhone?: string;
 };
 
 type ProjectChangeNotificationInput = {
@@ -314,6 +320,9 @@ function isMissingProjectColumnError(errorMessage: string | undefined) {
     'site_label',
     'delivery_partner_label',
     'branch_code',
+    'signage_contact_name',
+    'signage_contact_email',
+    'signage_contact_phone',
   ].some((column) => normalizedMessage.includes(column));
 }
 
@@ -321,6 +330,9 @@ function stripProjectPresentationColumns<T extends Record<string, unknown>>(payl
   const {
     latitude,
     longitude,
+    signage_contact_name,
+    signage_contact_email,
+    signage_contact_phone,
     ...legacyPayload
   } = payload;
 
@@ -341,6 +353,9 @@ function stripLegacyProjectColumns<T extends Record<string, unknown>>(payload: T
     project_type_name,
     site_label,
     delivery_partner_label,
+    signage_contact_name,
+    signage_contact_email,
+    signage_contact_phone,
     ...legacyPayload
   } = payload;
 
@@ -430,6 +445,14 @@ export type UpdateProjectNotesInput = {
   projectId: string;
   actor: string;
   notes: string;
+};
+
+export type UpdateProjectSignageContactInput = {
+  projectId: string;
+  actor: string;
+  signageContactName?: string;
+  signageContactEmail?: string;
+  signageContactPhone?: string;
 };
 
 export type AskProjectQuestionInput = {
@@ -588,6 +611,9 @@ function mapProjectRow(row: ProjectRow): Project {
     progress: row.progress ?? 0,
     branchManagerViewOnly: Boolean(row.branch_manager_view_only),
     notes: row.notes ?? '',
+    signageContactName: row.signage_contact_name ?? undefined,
+    signageContactEmail: row.signage_contact_email ?? undefined,
+    signageContactPhone: row.signage_contact_phone ?? undefined,
     files: normalizeProjectFiles(row.files),
     tasks: normalizeProjectTasks(row.tasks),
     comments: row.comments ?? [],
@@ -747,6 +773,9 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     progress: input.progress,
     branch_manager_view_only: false,
     notes: input.notes?.trim() ?? '',
+    signage_contact_name: input.signageContactName?.trim() || null,
+    signage_contact_email: input.signageContactEmail?.trim() || null,
+    signage_contact_phone: input.signageContactPhone?.trim() || null,
     files: [],
     tasks: [],
     comments: [],
@@ -1080,6 +1109,39 @@ export async function updateProjectNotes(input: UpdateProjectNotesInput): Promis
 
   if (error || !data) {
     throw error ?? new Error('Unable to update project notes.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function updateProjectSignageContact(input: UpdateProjectSignageContactInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const signage_contact_name = input.signageContactName?.trim() || null;
+  const signage_contact_email = input.signageContactEmail?.trim() || null;
+  const signage_contact_phone = input.signageContactPhone?.trim() || null;
+  const activity = [createActivity('Signage contact updated', `${input.actor} updated the signage company contact details.`), ...existingProject.activity];
+
+  const { data, error } = await client
+    .from('projects')
+    .update({ signage_contact_name, signage_contact_email, signage_contact_phone, activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to update signage company contact.');
   }
 
   return mapProjectRow(data as ProjectRow);
