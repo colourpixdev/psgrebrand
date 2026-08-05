@@ -415,8 +415,8 @@ export function BranchesPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Branches</h1>
-            <p className="text-slate-400">Manage divisions and branch locations</p>
+            <h1 className="text-4xl font-bold text-white mb-2">Branch Rebrand Projects</h1>
+            <p className="text-slate-400">List of PSG branches in South Africa and Namibia. Each branch is managed as a rebrand project.</p>
           </div>
           {isAdmin && (
             <button
@@ -753,7 +753,7 @@ export function BranchesPage() {
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{getBranchCodeForBranch(branch, branchCodeById)}</p>
                       <p className="mt-1 text-lg font-semibold text-white">{branch.name}</p>
-                      <Link to={`/branches/${branch.id}`} className="mt-3 inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View branch details</Link>
+                      <Link to={`/branches/${branch.id}`} className="mt-3 inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Open branch project</Link>
                       <p className="mt-1 text-sm text-slate-400">{branch.town}, {branch.province}</p>
                       <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
                     </div>
@@ -779,7 +779,7 @@ export function BranchesPage() {
                           to={`/branches/${encodeURIComponent(branch.id)}`}
                           className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200 transition hover:bg-emerald-500/20"
                         >
-                          Add Project
+                          Open branch record
                         </Link>
                         <button
                           type="button"
@@ -804,7 +804,7 @@ export function BranchesPage() {
                   {openProjects.length > 0 ? (
                     <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs uppercase tracking-wide text-slate-500">Open Projects</p>
+                        <p className="text-xs uppercase tracking-wide text-slate-500">Open rebrand updates</p>
                         <span className="rounded-full bg-slate-900/70 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
                           {openProjects.length}
                         </span>

@@ -1,11 +1,11 @@
 ﻿export const productBrand = {
   name: 'PSG Rebrand',
-  description: 'Private Project Workspace',
+  description: 'PSG Branch Rebrand Workspace',
   developer: 'PSG Rebrand',
   licensee: 'Platform owner',
   customer: 'PSG Wealth Insure',
   partner: 'Colourpix CC',
-  workspace: 'PSG Rebrand Workspace',
+  workspace: 'PSG Branch Rebrand',
   licenseStatus: 'Licensed',
   version: import.meta.env.VITE_APP_VERSION ?? '0.0.0',
   poweredBy: 'Powered by PSG Rebrand',

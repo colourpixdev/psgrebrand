@@ -57,9 +57,9 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <section className="border-b border-white/10 pb-5">
-        <p className="text-xs uppercase tracking-[0.18em] text-slate-400">PSG Rebrand</p>
+        <p className="text-xs uppercase tracking-[0.18em] text-slate-400">PSG Branch Rebrand</p>
         <h2 className="mt-1 text-2xl font-semibold text-white">{greeting()}, {user?.name?.split(' ')[0] || 'there'}</h2>
-        <p className="mt-2 text-sm text-slate-400">National rollout progress and reporting workspace.</p>
+        <p className="mt-2 text-sm text-slate-400">Track PSG branch rebrand progress across South Africa and Namibia.</p>
       </section>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-6">
@@ -68,7 +68,7 @@ export function DashboardPage() {
           <p className="mt-2 text-2xl font-semibold text-white">{branches.length}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Projects Active</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Branches active</p>
           <p className="mt-2 text-2xl font-semibold text-white">{stats.active}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
