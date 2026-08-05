@@ -776,8 +776,8 @@ export function BranchesPage() {
                     {isAdmin ? (
                       <div className="flex gap-2 lg:justify-end">
                         <Link
-                          to={`/projects?branchId=${encodeURIComponent(branch.id)}`}
-                          className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200 transition hover:bg-emerald-500/20"
+                          to={`/branches/${encodeURIComponent(branch.id)}`}
+                          className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200 transition hover:bg-emerald-500/20"
                         >
                           Add Project
                         </Link>
@@ -828,7 +828,7 @@ export function BranchesPage() {
                                 {project.status.replace('_', ' ')}
                               </span>
                             </div>
-                            <Link to={`/projects/${project.id}`} className="mt-2 inline-flex items-center justify-center rounded-lg border border-sky-300/35 bg-sky-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View project details</Link>
+                            <Link to={`/branches/${encodeURIComponent(branch.id)}`} className="mt-2 inline-flex items-center justify-center rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Open branch hub</Link>
                           </div>
                         ))}
                       </div>

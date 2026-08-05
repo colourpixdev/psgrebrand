@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { LayoutDashboard, KanbanSquare, FileText, Shield, Users, MapPinned, Map } from 'lucide-react';
 import { AppShell } from './layouts/AppShell';
 import { SaveFeedbackProvider } from './contexts/SaveFeedbackContext';
@@ -14,6 +14,7 @@ const DashboardPage = lazyWithChunkReload('dashboard', () => import('./pages/Das
 const MapPage = lazyWithChunkReload('map', () => import('./pages/MapPage').then((module) => ({ default: module.MapPage })));
 const ProjectDetailPage = lazyWithChunkReload('project-detail', () => import('./pages/ProjectDetailPage').then((module) => ({ default: module.ProjectDetailPage })));
 const ProjectsPage = lazyWithChunkReload('projects', () => import('./pages/ProjectsPage').then((module) => ({ default: module.ProjectsPage })));
+const BranchesPage = lazyWithChunkReload('branches', () => import('./pages/BranchesPage').then((module) => ({ default: module.BranchesPage })));
 const BranchDetailPage = lazyWithChunkReload('branch-detail', () => import('./pages/BranchDetailPage').then((module) => ({ default: module.BranchDetailPage })));
 const SearchPage = lazyWithChunkReload('search', () => import('./pages/SearchPage').then((module) => ({ default: module.SearchPage })));
 const SettingsPage = lazyWithChunkReload('settings', () => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })));
@@ -23,13 +24,13 @@ const ProfilePage = lazyWithChunkReload('profile', () => import('./pages/Profile
 const AboutPage = lazyWithChunkReload('about', () => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const LegalPage = lazyWithChunkReload('legal', () => import('./pages/LegalPage').then((module) => ({ default: module.LegalPage })));
 const AccessControlsPage = lazyWithChunkReload('access-controls', () => import('./pages/AccessControlsPage').then((module) => ({ default: module.AccessControlsPage })));
-const BranchesPage = lazyWithChunkReload('branches', () => import('./pages/BranchesPage').then((module) => ({ default: module.BranchesPage })));
+// Branches UI is being consolidated into Projects. Keep the page file for now
+// but do not lazy-load it here — we will redirect branch routes to projects.
 const AuthCallbackPage = lazyWithChunkReload('auth-callback', () => import('./pages/AuthCallbackPage').then((module) => ({ default: module.AuthCallbackPage })));
 
 const navigation = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/branches', label: 'Branches', icon: MapPinned },
-  { to: '/projects', label: 'Projects', icon: KanbanSquare },
   { to: '/map', label: 'Map', icon: Map },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/settings', label: 'Settings', icon: Shield },
@@ -59,6 +60,8 @@ function RouteLoading() {
     </div>
   );
 }
+
+// No redirect — branches are now a first-class workspace hub.
 
 function AppRoutes() {
   const { user, isLoading } = useAuth();
@@ -167,7 +170,7 @@ function AppRoutes() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects" element={<Navigate to="/branches" replace />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/branches" element={<BranchesPage />} />
           <Route path="/branches/:branchId" element={<BranchDetailPage />} />

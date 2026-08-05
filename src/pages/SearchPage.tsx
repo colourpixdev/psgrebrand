@@ -55,7 +55,7 @@ export function SearchPage() {
         {filtered.length > 0 ? (
           filtered.map((project) => (
             <article key={project.id} className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft transition hover:border-sky-400/40 hover:bg-white/5">
-              <Link to={`/projects/${project.id}`} className="block">
+                <Link to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`} className="block">
                 <p className="text-lg font-semibold text-white">{project.branch}</p>
                 <p className="mt-1 text-sm text-slate-400">{project.id}</p>
                 <p className="mt-3 text-xs uppercase tracking-[0.2em] text-teal-200/80">{project.projectTypeName}</p>

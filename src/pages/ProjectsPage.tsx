@@ -65,12 +65,12 @@ export function ProjectsPage() {
               <p className="text-sm font-semibold text-white">{project.branch}</p>
               <p className="mt-1 text-xs text-slate-400">{project.town}, {project.province} · {project.id}</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link to={`/projects/${project.id}`} className="inline-flex items-center gap-2 rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">
-                  View project details
+                <Link to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`} className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">
+                  Open branch hub
                 </Link>
                 <Link to={`/projects/${project.id}#project-note`} className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400">
                   <FileText className="h-4 w-4" />
-                  Add note
+                  Project note
                 </Link>
               </div>
             </article>

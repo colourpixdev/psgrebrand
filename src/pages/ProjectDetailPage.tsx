@@ -29,7 +29,7 @@ const projectSections: Array<{ id: ProjectSectionId; number: string; label: stri
   { id: 'timeline', number: '01', label: 'Project Tasks' },
   { id: 'taskUpdates', number: '02', label: 'Task Updates' },
   { id: 'files', number: '03', label: 'Files' },
-  { id: 'notes', number: '04', label: 'Summary' },
+  { id: 'notes', number: '04', label: 'Last note:' },
 ];
 
 function getStagePlan(project: Project): ProjectStage[] {
@@ -606,7 +606,7 @@ export function ProjectDetailPage() {
 
         {selectedProject.notes.trim() ? (
           <div className="mt-5 border-t border-white/10 pt-5">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Quick summary</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Last note:</h3>
             <p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">{selectedProject.notes}</p>
           </div>
         ) : null}
@@ -670,7 +670,7 @@ export function ProjectDetailPage() {
             <p className="text-xs uppercase tracking-[0.28em] text-teal-200/80">Project menu</p>
             <h3 className="mt-1 text-lg font-semibold text-white">Choose a workspace block</h3>
           </div>
-          <Link to="/projects" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">Back to projects</Link>
+          <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">Back to branches</Link>
         </div>
         <nav className="mt-4 flex flex-wrap gap-2">
           {projectSections.map((item) => (

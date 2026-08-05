@@ -273,7 +273,7 @@ export function MapPage() {
                             branchProjects.map((project) => (
                               <Link
                                 key={project.id}
-                                to={`/projects/${project.id}`}
+                                to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`}
                                 className="inline-flex items-center justify-center rounded-md border border-sky-300/50 bg-sky-500/15 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700 transition hover:bg-sky-500/25"
                               >
                                 View project details
@@ -298,7 +298,7 @@ export function MapPage() {
                     {project.physicalAddress ? <p className="mt-1 text-xs text-slate-600">{project.physicalAddress}</p> : null}
                     <p className="mt-2 text-xs"><strong>Stage:</strong> {project.currentStage}</p>
                     <p className="text-xs"><strong>Status:</strong> {statusStyles[project.status].label}</p>
-                    <Link className="mt-3 inline-flex rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-500" to={`/projects/${project.id}`}>
+                    <Link className="mt-3 inline-flex rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500" to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`}>
                       View project details
                     </Link>
                   </div>
@@ -328,7 +328,7 @@ export function MapPage() {
             {locations.map(({ project, color }) => (
               <Link
                 key={project.id}
-                to={`/projects/${project.id}`}
+                to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`}
                 className="block rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-sky-400/40 hover:bg-white/10"
               >
                 <div className="flex items-start gap-3">

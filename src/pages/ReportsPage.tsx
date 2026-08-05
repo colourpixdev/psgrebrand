@@ -306,20 +306,7 @@ export function ReportsPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft">
-          <div className="flex items-start gap-3">
-            <Shield className="mt-1 h-5 w-5 text-emerald-300" />
-            <div>
-              <h3 className="text-lg font-semibold text-white">Useful reports for this role</h3>
-              <p className="mt-1 text-sm text-slate-400">Fast exports for day-to-day tracking and review meetings.</p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-2 md:grid-cols-2">
-            {guidance.map((item) => <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">{item}</div>)}
-          </div>
-        </div>
-
+      <section className="grid gap-4">
         <div className="grid gap-3 rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft sm:grid-cols-3">
           <div>
             <p className="text-sm text-slate-400">Matching projects</p>
@@ -426,7 +413,7 @@ export function ReportsPage() {
                 <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
-                  <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-lg border border-sky-300/35 bg-sky-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View project details</Link></td>
+                  <td className="px-5 py-4 text-white"><Link to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`} className="inline-flex items-center justify-center rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Open branch hub</Link></td>
                   <td className="px-5 py-4"><Link to="/branches" className="hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectTypeName}</td>
                   <td className="px-5 py-4">{project.town}, {project.province}</td>

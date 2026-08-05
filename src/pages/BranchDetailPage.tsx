@@ -126,7 +126,7 @@ export function BranchDetailPage() {
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-lg font-semibold text-white">Projects in this branch</h3>
-          <Link to={`/projects?branchId=${encodeURIComponent(branch.id)}`} className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">Add project</Link>
+          <Link to={`/branches/${encodeURIComponent(branch.id)}`} className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">Add project</Link>
         </div>
 
         <div className="mt-4 space-y-4">
@@ -150,9 +150,10 @@ export function BranchDetailPage() {
                   </div>
                 </div>
 
-                <div className="mt-3">
-                  <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View project details</Link>
-                </div>
+                    <div className="mt-3 flex gap-2">
+                      <Link to={`/branches/${encodeURIComponent(branch.id)}`} className="inline-flex items-center justify-center rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Open branch hub</Link>
+                      <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Project details</Link>
+                    </div>
 
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
