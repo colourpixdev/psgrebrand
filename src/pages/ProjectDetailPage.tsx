@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { Timeline } from '../components/timeline/Timeline';
 import { roleLabels } from '../constants/portal';
-import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectSignageContact, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectSignageContact, updateProjectSummary, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById } from '../services/branchService';
 import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,12 +21,13 @@ const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-type ProjectSectionId = 'timeline' | 'files' | 'notes';
+type ProjectSectionId = 'timeline' | 'taskUpdates' | 'files' | 'notes';
 
 const projectSections: Array<{ id: ProjectSectionId; number: string; label: string }> = [
-  { id: 'timeline', number: '01', label: 'Workboard' },
-  { id: 'files', number: '02', label: 'Files' },
-  { id: 'notes', number: '03', label: 'Notes' },
+  { id: 'timeline', number: '01', label: 'Project Tasks' },
+  { id: 'taskUpdates', number: '02', label: 'Task Updates' },
+  { id: 'files', number: '03', label: 'Files' },
+  { id: 'notes', number: '04', label: 'Summary' },
 ];
 
 function getStagePlan(project: Project): ProjectStage[] {
@@ -73,6 +74,10 @@ export function ProjectDetailPage() {
   const [signageContactNameDraft, setSignageContactNameDraft] = useState('');
   const [signageContactEmailDraft, setSignageContactEmailDraft] = useState('');
   const [signageContactPhoneDraft, setSignageContactPhoneDraft] = useState('');
+  const [currentStageDraft, setCurrentStageDraft] = useState<ProjectStage>('New Project');
+  const [targetDateDraft, setTargetDateDraft] = useState('');
+  const [installationDateDraft, setInstallationDateDraft] = useState('');
+  const [completionDateDraft, setCompletionDateDraft] = useState('');
   const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
   const [answerMessage, setAnswerMessage] = useState('');
   const [answerStage, setAnswerStage] = useState<ProjectStage>('New Project');
@@ -123,6 +128,10 @@ export function ProjectDetailPage() {
       setSignageContactNameDraft(project.signageContactName ?? '');
       setSignageContactEmailDraft(project.signageContactEmail ?? '');
       setSignageContactPhoneDraft(project.signageContactPhone ?? '');
+      setCurrentStageDraft(project.currentStage);
+      setTargetDateDraft(project.targetDate);
+      setInstallationDateDraft(project.installationDate);
+      setCompletionDateDraft(project.completionDate);
     }
   }, [project]);
 
@@ -153,6 +162,18 @@ export function ProjectDetailPage() {
       projectId: projectId ?? '',
       actor: user?.name ?? 'Workspace user',
       notes: notesDraft,
+    }),
+    onSuccess: syncProject,
+  });
+
+  const projectSummaryMutation = useMutation({
+    mutationFn: () => updateProjectSummary({
+      projectId: projectId ?? '',
+      actor: user?.name ?? 'Workspace user',
+      currentStage: currentStageDraft,
+      targetDate: targetDateDraft,
+      installationDate: installationDateDraft,
+      completionDate: completionDateDraft,
     }),
     onSuccess: syncProject,
   });
@@ -522,8 +543,13 @@ export function ProjectDetailPage() {
   const canUpdateTimelineStages = canViewProject(user, selectedProject);
   const canManageStages = false;
   const stagePlan = getStagePlan(selectedProject);
+  const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
   const canEditNotes = canViewProject(user, selectedProject);
   const hasNotesChange = notesDraft.trim() !== selectedProject.notes.trim();
+  const hasSummaryChange = currentStageDraft.trim() !== selectedProject.currentStage.trim()
+    || targetDateDraft.trim() !== selectedProject.targetDate.trim()
+    || installationDateDraft.trim() !== selectedProject.installationDate.trim()
+    || completionDateDraft.trim() !== selectedProject.completionDate.trim();
   const hasSignageContactChange = signageContactNameDraft.trim() !== (selectedProject.signageContactName ?? '').trim()
     || signageContactEmailDraft.trim() !== (selectedProject.signageContactEmail ?? '').trim()
     || signageContactPhoneDraft.trim() !== (selectedProject.signageContactPhone ?? '').trim();
@@ -543,12 +569,46 @@ export function ProjectDetailPage() {
           {selectedProject.town}, {selectedProject.province} · Manager {selectedProject.manager} · {selectedProject.deliveryPartnerLabel} {selectedProject.installer}
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-4 text-sm text-slate-300">
-          <div>Current Status: <span className="text-white">{selectedProject.currentStage}</span></div>
-          <div>Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>
-          <div>Installation Date: <span className="text-white">{selectedProject.installationDate}</span></div>
-          <div>Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>
+          {canEditNotes ? (
+            <label className="grid gap-2">
+              <span>Current Status</span>
+              <select value={currentStageDraft} onChange={(event) => setCurrentStageDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50">
+                {summaryStageOptions.map((stageName) => <option key={stageName} value={stageName}>{stageName}</option>)}
+              </select>
+            </label>
+          ) : <div>Current Status: <span className="text-white">{selectedProject.currentStage}</span></div>}
+
+          {canEditNotes ? (
+            <label className="grid gap-2">
+              <span>Target Date</span>
+              <input value={targetDateDraft} onChange={(event) => setTargetDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/50" />
+            </label>
+          ) : <div>Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>}
+
+          {canEditNotes ? (
+            <label className="grid gap-2">
+              <span>Installation Date</span>
+              <input value={installationDateDraft} onChange={(event) => setInstallationDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/50" />
+            </label>
+          ) : <div>Installation Date: <span className="text-white">{selectedProject.installationDate}</span></div>}
+
+          {canEditNotes ? (
+            <label className="grid gap-2">
+              <span>Completion Date</span>
+              <input value={completionDateDraft} onChange={(event) => setCompletionDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/50" />
+            </label>
+          ) : <div>Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>}
+
           <div className="md:col-span-4">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
         </div>
+        {canEditNotes ? (
+          <div className="mt-3 flex">
+            <button type="button" disabled={projectSummaryMutation.isPending || !hasSummaryChange} onClick={() => projectSummaryMutation.mutate()} className="rounded-2xl bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">
+              {projectSummaryMutation.isPending ? 'Saving summary...' : 'Save summary fields'}
+            </button>
+          </div>
+        ) : null}
+        {projectSummaryMutation.error instanceof Error ? <p className="mt-2 text-sm text-red-300">{projectSummaryMutation.error.message}</p> : null}
 
         {selectedProject.notes.trim() ? (
           <div className="mt-5 border-t border-white/10 pt-5">
@@ -677,7 +737,7 @@ export function ProjectDetailPage() {
         </nav>
       </section>
 
-      <section className={activeProjectSection === 'timeline' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
+      <section className={activeProjectSection === 'taskUpdates' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         {workflowError instanceof Error ? <p className="mb-4 text-sm text-red-300">{workflowError.message}</p> : null}
         <Timeline
           stages={stagePlan}
@@ -1005,11 +1065,11 @@ export function ProjectDetailPage() {
       <section className={activeProjectSection === 'notes' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-white">Notes</h3>
-            <p className="mt-1 text-sm text-slate-400">Edit project notes here. Saved changes are written to the Project Journal.</p>
+            <h3 className="text-lg font-semibold text-white">Summary</h3>
+            <p className="mt-1 text-sm text-slate-400">Edit the project summary here. Saved changes are written to the project activity log.</p>
           </div>
           <button type="button" disabled={!canEditNotes || notesMutation.isPending || !hasNotesChange} onClick={() => notesMutation.mutate()} className="w-fit rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
-            {notesMutation.isPending ? 'Saving notes...' : 'Save notes'}
+            {notesMutation.isPending ? 'Saving summary...' : 'Save summary'}
           </button>
         </div>
         <textarea value={notesDraft} disabled={!canEditNotes || notesMutation.isPending} onChange={(event) => setNotesDraft(event.target.value)} rows={6} placeholder="Add project notes..." className="mt-5 w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm sm:leading-6" />

@@ -434,6 +434,15 @@ export type UpdateProjectWorkflowInput = {
   actor: string;
 };
 
+export type UpdateProjectSummaryInput = {
+  projectId: string;
+  actor: string;
+  currentStage: Project['currentStage'];
+  targetDate: string;
+  installationDate: string;
+  completionDate: string;
+};
+
 export type AddProjectCommentInput = {
   projectId: string;
   author: string;
@@ -1020,6 +1029,54 @@ export async function updateProjectWorkflow(input: UpdateProjectWorkflowInput): 
 
   if (error || !data) {
     throw error ?? new Error('Unable to update project workflow.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function updateProjectSummary(input: UpdateProjectSummaryInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const currentStage = input.currentStage.trim();
+  if (!currentStage) {
+    throw new Error('Current status is required.');
+  }
+
+  const targetDate = input.targetDate.trim();
+  const installationDate = input.installationDate.trim();
+  const completionDate = input.completionDate.trim();
+  const activity = [
+    createActivity('Project summary updated', `${input.actor} updated current status and schedule dates.`),
+    ...existingProject.activity,
+  ];
+
+  const { data, error } = await client
+    .from('projects')
+    .update({
+      current_stage: currentStage,
+      target_date: targetDate,
+      installation_date: installationDate,
+      completion_date: completionDate,
+      activity,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to update project summary.');
   }
 
   return mapProjectRow(data as ProjectRow);
