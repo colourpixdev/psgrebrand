@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileText } from 'lucide-react';
 import type { ProjectFile } from '../../types/domain';
 
@@ -21,6 +21,13 @@ function canPreviewFile(file: ProjectFile) {
   return fileType.startsWith('image/') || fileType === 'application/pdf' || fileName.endsWith('.pdf');
 }
 
+function isImageFile(file: ProjectFile) {
+  const fileType = file.type ?? '';
+  const fileName = file.name.toLowerCase();
+
+  return fileType.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg)$/.test(fileName);
+}
+
 export function FileGrid({
   files,
   taskFolders = [],
@@ -31,6 +38,7 @@ export function FileGrid({
   onDownload,
   onRename,
   onUpload,
+  getThumbnailUrl,
 }: {
   files: ProjectFile[];
   taskFolders?: Array<{ id: string; label: string }>;
@@ -41,23 +49,52 @@ export function FileGrid({
   onDownload?: (file: ProjectFile) => void;
   onRename?: (file: ProjectFile, nextName: string) => void;
   onUpload?: (file: File, taskId?: string) => void;
+  getThumbnailUrl?: (file: ProjectFile) => Promise<string | null>;
 }) {
   const [renamingFileKey, setRenamingFileKey] = useState<string | null>(null);
   const [nextFileName, setNextFileName] = useState('');
   const [openFolderIds, setOpenFolderIds] = useState<string[]>([]);
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const requestedThumbnailKeys = useRef(new Set<string>());
 
   const rootFiles = files.filter((file) => !file.taskId);
   const folders = taskFolders
     .map((folder) => ({ ...folder, files: files.filter((file) => file.taskId === folder.id) }))
     .filter((folder) => folder.files.length > 0);
 
+  useEffect(() => {
+    if (!getThumbnailUrl) {
+      return;
+    }
+
+    files.forEach((file) => {
+      const key = file.path ?? file.name;
+      if (!file.path || !isImageFile(file) || requestedThumbnailKeys.current.has(key)) {
+        return;
+      }
+
+      requestedThumbnailKeys.current.add(key);
+      getThumbnailUrl(file).then((url) => {
+        if (url) {
+          setThumbnails((current) => ({ ...current, [key]: url }));
+        }
+      }).catch(() => {
+        requestedThumbnailKeys.current.delete(key);
+      });
+    });
+  }, [files, getThumbnailUrl]);
+
   function renderFileCard(file: ProjectFile) {
     const key = file.path ?? file.name;
+    const thumbnailUrl = thumbnails[key];
 
     return (
       <div key={`${key}-${file.uploadedAt ?? ''}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-200">
+        {thumbnailUrl ? (
+          <img src={thumbnailUrl} alt={file.name} className="mb-3 h-32 w-full rounded-xl object-cover" />
+        ) : null}
         <div className="flex items-start gap-3">
-          <FileText className="mt-0.5 h-4 w-4 shrink-0 text-sky-200" />
+          {thumbnailUrl ? null : <FileText className="mt-0.5 h-4 w-4 shrink-0 text-sky-200" />}
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium text-white">{file.name}</p>
             <p className="mt-1 text-xs text-slate-500">{formatFileSize(file.size)}</p>

@@ -907,6 +907,7 @@ export function ProjectDetailPage() {
           onPreview={(file: ProjectFile) => previewMutation.mutate(file)}
           onDownload={(file: ProjectFile) => downloadMutation.mutate(file)}
           onRename={(file: ProjectFile, nextName) => renameFileMutation.mutate({ file, nextName })}
+          getThumbnailUrl={(file: ProjectFile) => getProjectFileUrl(file)}
         />
       </section>
 
