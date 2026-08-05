@@ -437,7 +437,7 @@ export type AskProjectQuestionInput = {
   author: string;
   authorEmail: string;
   message: string;
-  requestStage?: Project['currentStage'];
+  taskId?: string;
 };
 
 export type AnswerProjectQuestionInput = {
@@ -1098,6 +1098,7 @@ export async function askProjectQuestion(input: AskProjectQuestionInput): Promis
   }
 
   const now = new Date().toISOString();
+  const linkedTask = input.taskId ? existingProject.tasks.find((task) => task.id === input.taskId) : undefined;
   const comments: CommentItem[] = [
     {
       id: createQuestionId(),
@@ -1106,14 +1107,14 @@ export async function askProjectQuestion(input: AskProjectQuestionInput): Promis
       author: input.author,
       message,
       status: 'open',
-      requestStage: input.requestStage,
+      taskId: linkedTask?.id,
       requesterEmail: input.authorEmail,
       requestedAt: now,
       unreadForRequester: false,
     },
     ...existingProject.comments,
   ];
-  const activity = [createActivity('Question raised', `${input.author} asked Colourpix for an update${input.requestStage ? ` on ${input.requestStage}` : ''}.`), ...existingProject.activity];
+  const activity = [createActivity('Question raised', `${input.author} asked Colourpix for an update${linkedTask ? ` on "${linkedTask.text}"` : ''}.`), ...existingProject.activity];
 
   const { data, error } = await client
     .from('projects')

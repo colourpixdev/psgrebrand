@@ -69,7 +69,7 @@ export function ProjectDetailPage() {
   const [journalTaskId, setJournalTaskId] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
   const [questionMessage, setQuestionMessage] = useState('');
-  const [questionStage, setQuestionStage] = useState<'' | ProjectStage>('');
+  const [questionTaskId, setQuestionTaskId] = useState('');
   const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
   const [answerMessage, setAnswerMessage] = useState('');
   const [answerStage, setAnswerStage] = useState<ProjectStage>('New Project');
@@ -156,11 +156,11 @@ export function ProjectDetailPage() {
       author: user?.name ?? 'Workspace user',
       authorEmail: user?.email ?? '',
       message: questionMessage,
-      requestStage: questionStage || undefined,
+      taskId: questionTaskId || undefined,
     }),
     onSuccess: async (updatedProject) => {
       setQuestionMessage('');
-      setQuestionStage('');
+      setQuestionTaskId('');
       await syncProject(updatedProject);
     },
   });
@@ -755,10 +755,10 @@ export function ProjectDetailPage() {
                 <textarea value={questionMessage} onChange={(event) => setQuestionMessage(event.target.value)} rows={3} placeholder="Please confirm whether artwork approval is still blocking this stage." className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50" />
               </label>
               <label className="grid content-start gap-2 text-sm text-slate-300">
-                Related stage
-                <select value={questionStage} onChange={(event) => setQuestionStage(event.target.value as '' | ProjectStage)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-                  <option value="">General update</option>
-                  {stagePlan.map((item) => <option key={item} value={item}>{item}</option>)}
+                Related task
+                <select value={questionTaskId} onChange={(event) => setQuestionTaskId(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
+                  <option value="">General update (not tied to a task)</option>
+                  {selectedProject.tasks.map((task) => <option key={task.id} value={task.id}>{task.text}</option>)}
                 </select>
               </label>
             </div>
@@ -781,7 +781,10 @@ export function ProjectDetailPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-semibold text-white">{question.author}</p>
                       <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-xs text-slate-200">{question.status === 'answered' ? 'Answered' : 'Awaiting workspace team'}</span>
-                      {question.requestStage ? <span className="rounded-full border border-sky-400/20 bg-sky-500/10 px-2.5 py-1 text-xs text-sky-100">{question.requestStage}</span> : null}
+                      {question.taskId ? (() => {
+                        const linkedTask = selectedProject.tasks.find((task) => task.id === question.taskId);
+                        return linkedTask ? <span className="rounded-full border border-sky-400/20 bg-sky-500/10 px-2.5 py-1 text-xs text-sky-100">On: {linkedTask.text}</span> : null;
+                      })() : null}
                     </div>
                     <p className="mt-2 text-sm leading-6 text-slate-200">{question.message}</p>
                     <p className="mt-2 text-xs text-slate-500">Asked {question.date}</p>
