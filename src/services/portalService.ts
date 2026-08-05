@@ -423,13 +423,7 @@ export type AddProjectCommentInput = {
   projectId: string;
   author: string;
   message: string;
-};
-
-export type AddAssignedProjectUpdateInput = {
-  projectId: string;
-  author: string;
-  message: string;
-  assignees: TaskAssignee[];
+  taskId?: string;
 };
 
 export type UpdateProjectNotesInput = {
@@ -1014,15 +1008,21 @@ export async function addProjectComment(input: AddProjectCommentInput): Promise<
     throw new Error('Project not found.');
   }
 
-  const comments = [
+  const linkedTask = input.taskId ? existingProject.tasks.find((task) => task.id === input.taskId) : undefined;
+  const comments: CommentItem[] = [
     {
+      kind: 'comment',
       date: todayLabel(),
       author: input.author,
       message,
+      taskId: linkedTask?.id,
     },
     ...existingProject.comments,
   ];
-  const activity = [createActivity('Comment added', `${input.author} added a project comment.`), ...existingProject.activity];
+  const activity = [
+    createActivity('Project update', linkedTask ? `${input.author} added an update on "${linkedTask.text}": ${message}` : `${input.author} added a journal entry.`),
+    ...existingProject.activity,
+  ];
 
   const { data, error } = await client
     .from('projects')
@@ -1042,80 +1042,6 @@ export async function addProjectComment(input: AddProjectCommentInput): Promise<
     actor: input.author,
     message,
     changeType: isVoiceNoteMessage(message) ? 'voice_note' : 'note',
-  });
-
-  return updatedProject;
-}
-
-export async function addAssignedProjectUpdate(input: AddAssignedProjectUpdateInput): Promise<Project> {
-  const client = supabase;
-
-  if (!client) {
-    throw new Error('Supabase is not configured.');
-  }
-
-  const message = input.message.trim();
-  const assignees = input.assignees.filter((assignee) => assignee.name && assignee.email);
-  if (!message) {
-    throw new Error('Project update cannot be empty.');
-  }
-
-  await hydrateAuthSession();
-
-  const existingProject = await getProjectById(input.projectId);
-  if (!existingProject) {
-    throw new Error('Project not found.');
-  }
-
-  const now = new Date().toISOString();
-  const taskId = createTaskId();
-  const primaryAssignee = assignees[assignees.length - 1];
-  const task: TaskItem | null = assignees.length > 0 ? {
-    id: taskId,
-    text: message,
-    completed: false,
-    assigneeName: primaryAssignee.name,
-    assigneeEmail: primaryAssignee.email,
-    assignees,
-    createdAt: now,
-  } : null;
-  const comment: CommentItem = {
-    id: taskId,
-    taskId: task ? taskId : undefined,
-    kind: 'comment',
-    date: todayLabel(),
-    author: input.author,
-    message,
-    assignees: assignees.length > 0 ? assignees : undefined,
-  };
-  const activity = [
-    createActivity('Project journal entry', assignees.length > 0 ? `${input.author} assigned an update to ${summarizeAssignees(assignees)}.` : `${input.author} added a journal entry.`),
-    ...existingProject.activity,
-  ];
-
-  const { data, error } = await client
-    .from('projects')
-    .update({
-      comments: [comment, ...existingProject.comments],
-      tasks: task ? [task, ...existingProject.tasks] : existingProject.tasks,
-      activity,
-      updated_at: now,
-    })
-    .eq('id', input.projectId)
-    .select('*')
-    .single();
-
-
-  if (error || !data) {
-    throw error ?? new Error('Unable to save assigned project update.');
-  }
-
-  const updatedProject = mapProjectRow(data as ProjectRow);
-  await notifyProjectChange({
-    project: updatedProject,
-    actor: input.author,
-    message,
-    changeType: 'note',
   });
 
   return updatedProject;

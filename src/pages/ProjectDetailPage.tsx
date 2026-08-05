@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { Timeline } from '../components/timeline/Timeline';
 import { roleLabels, timelineStages } from '../constants/portal';
-import { addAssignedProjectUpdate, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById } from '../services/branchService';
 import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
@@ -66,7 +66,7 @@ export function ProjectDetailPage() {
   const queryClient = useQueryClient();
   const [activeProjectSection, setActiveProjectSection] = useState<ProjectSectionId>('timeline');
   const [commentMessage, setCommentMessage] = useState('');
-  const [commentAssigneeEmails, setCommentAssigneeEmails] = useState<string[]>([]);
+  const [journalTaskId, setJournalTaskId] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
   const [questionMessage, setQuestionMessage] = useState('');
   const [questionStage, setQuestionStage] = useState<'' | ProjectStage>('');
@@ -119,12 +119,6 @@ export function ProjectDetailPage() {
     }
   }, [project]);
 
-  useEffect(() => {
-    if (user?.email && commentAssigneeEmails.length === 0) {
-      setCommentAssigneeEmails([user.email]);
-    }
-  }, [commentAssigneeEmails.length, user?.email]);
-
   const syncProject = async (updatedProject: Project) => {
     queryClient.setQueryData(['project', projectId], updatedProject);
     await Promise.all([
@@ -133,16 +127,16 @@ export function ProjectDetailPage() {
     ]);
   };
 
-  const assignedUpdateMutation = useMutation({
-    mutationFn: () => addAssignedProjectUpdate({
+  const taskUpdateMutation = useMutation({
+    mutationFn: () => addProjectComment({
       projectId: projectId ?? '',
       author: user?.name ?? 'Workspace user',
       message: commentMessage,
-      assignees: buildTaskAssignees(commentAssigneeEmails),
+      taskId: journalTaskId || undefined,
     }),
     onSuccess: async (updatedProject) => {
       setCommentMessage('');
-      setCommentAssigneeEmails(user?.email ? [user.email] : []);
+      setJournalTaskId('');
       await syncProject(updatedProject);
     },
   });
@@ -417,7 +411,7 @@ export function ProjectDetailPage() {
   });
 
   const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error;
-  const workflowError = timelineTaskMutation.error ?? addStageMutation.error ?? removeStageMutation.error ?? assignedUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
+  const workflowError = timelineTaskMutation.error ?? addStageMutation.error ?? removeStageMutation.error ?? taskUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
   const notesError = notesMutation.error;
   const rolePolicy = getRolePolicy(user);
   const canAdministerProjectDetails = Boolean(user?.isPlatformOwner);
@@ -735,20 +729,21 @@ export function ProjectDetailPage() {
         </div>
 
         <div className="mt-5 grid gap-3 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
-          <p className="text-xs uppercase tracking-[0.24em] text-sky-200">Add a journal entry</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-sky-200">Add a task update</p>
           <label className="grid gap-2 text-sm text-slate-300">
-            Update or follow-up
-            <textarea value={commentMessage} disabled={!canCreateAssignedUpdate} onChange={(event) => setCommentMessage(event.target.value)} rows={3} placeholder={canCreateAssignedUpdate ? 'Example: Expecting delays because of the weather forecast this weekend.' : 'Project update tasks are restricted'} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm sm:leading-6" />
-          </label>
-          <label className="grid gap-2 text-sm text-slate-300">
-            Assign to (optional)
-            <select multiple value={commentAssigneeEmails} disabled={!canCreateAssignedUpdate} onChange={(event) => setCommentAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
-              {assignableUsers.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
+            Related task
+            <select value={journalTaskId} disabled={!canCreateAssignedUpdate} onChange={(event) => setJournalTaskId(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
+              <option value="">General update (not tied to a task)</option>
+              {selectedProject.tasks.map((item) => <option key={item.id} value={item.id}>{item.text}{item.stage ? ' · stage' : ''}</option>)}
             </select>
           </label>
-          <p className="text-xs text-slate-400">Assign yourself for a personal reminder, add the people responsible for resolving this follow-up, or leave unassigned for a plain journal note.</p>
-          <button type="button" disabled={!canCreateAssignedUpdate || assignedUpdateMutation.isPending || !commentMessage.trim()} onClick={() => assignedUpdateMutation.mutate()} className="w-fit rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
-            {assignedUpdateMutation.isPending ? 'Saving entry...' : commentAssigneeEmails.length > 0 ? 'Save and assign follow-up' : 'Save journal entry'}
+          <label className="grid gap-2 text-sm text-slate-300">
+            Update
+            <textarea value={commentMessage} disabled={!canCreateAssignedUpdate} onChange={(event) => setCommentMessage(event.target.value)} rows={3} placeholder={canCreateAssignedUpdate ? 'Example: Waiting for measurements.' : 'Project update tasks are restricted'} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm sm:leading-6" />
+          </label>
+          <p className="text-xs text-slate-400">Pick the task this update is about, or leave it as a general update for a plain journal note.</p>
+          <button type="button" disabled={!canCreateAssignedUpdate || taskUpdateMutation.isPending || !commentMessage.trim()} onClick={() => taskUpdateMutation.mutate()} className="w-fit rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
+            {taskUpdateMutation.isPending ? 'Saving update...' : journalTaskId ? 'Save task update' : 'Save journal entry'}
           </button>
         </div>
 
@@ -875,12 +870,11 @@ export function ProjectDetailPage() {
                   <p className="font-medium text-white">{comment.author}</p>
                   <p className="text-slate-500">{comment.date}</p>
                 </div>
-                <p className="mt-2 text-sm text-slate-300">{comment.message}</p>
-                {comment.assignees?.length ? <p className="mt-3 text-xs text-sky-100">Assigned to {comment.assignees.map((assignee) => `${assignee.name} (${assignee.designation})`).join(', ')}</p> : null}
                 {comment.taskId ? (() => {
                   const linkedTask = selectedProject.tasks.find((task) => task.id === comment.taskId);
-                  return <p className={`mt-1 text-xs ${linkedTask?.completed ? 'text-emerald-200' : 'text-amber-200'}`}>{linkedTask?.completed ? 'Follow-up completed' : 'Follow-up open'}</p>;
+                  return linkedTask ? <p className={`text-xs font-semibold ${linkedTask.completed ? 'text-emerald-200' : 'text-amber-200'}`}>Update on: {linkedTask.text}</p> : null;
                 })() : null}
+                <p className="mt-2 text-sm text-slate-300">{comment.message}</p>
               </div>
             )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No follow-ups recorded yet.</p>}
           </div>
