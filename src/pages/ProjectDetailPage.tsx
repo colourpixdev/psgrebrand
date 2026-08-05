@@ -695,11 +695,11 @@ export function ProjectDetailPage() {
                       {selectedProject.files.filter((file) => file.taskId === task.id).length} file{selectedProject.files.filter((file) => file.taskId === task.id).length === 1 ? '' : 's'} in this task's folder
                     </span>
                     <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-white/10 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
-                      {uploadMutation.isPending ? 'Uploading...' : 'Upload image'}
+                      {uploadMutation.isPending ? 'Uploading...' : 'Upload file'}
                       <input
                         type="file"
                         disabled={uploadMutation.isPending}
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
                         className="sr-only"
                         onChange={(event) => {
                           const file = event.target.files?.[0];
