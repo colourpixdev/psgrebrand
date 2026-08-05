@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { Timeline } from '../components/timeline/Timeline';
 import { roleLabels, timelineStages } from '../constants/portal';
-import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById } from '../services/branchService';
 import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
@@ -401,6 +401,16 @@ export function ProjectDetailPage() {
     onSuccess: syncProject,
   });
 
+  const deleteFileMutation = useMutation({
+    mutationFn: (file: ProjectFile) => deleteProjectFile({
+      projectId: projectId ?? '',
+      filePath: file.path,
+      fileName: file.name,
+      actor: user?.name ?? 'Workspace user',
+    }),
+    onSuccess: syncProject,
+  });
+
   const previewMutation = useMutation({
     mutationFn: (file: ProjectFile) => getProjectFileUrl(file),
     onSuccess: (url) => {
@@ -410,12 +420,13 @@ export function ProjectDetailPage() {
     },
   });
 
-  const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error;
+  const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error ?? deleteFileMutation.error;
   const workflowError = timelineTaskMutation.error ?? addStageMutation.error ?? removeStageMutation.error ?? taskUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
   const notesError = notesMutation.error;
   const rolePolicy = getRolePolicy(user);
   const canAdministerProjectDetails = Boolean(user?.isPlatformOwner);
   const canUploadFiles = canAdministerProjectDetails && Boolean(rolePolicy?.files.canUploadFiles);
+  const canDeleteFiles = canAdministerProjectDetails && Boolean(rolePolicy?.files.canDeleteFiles);
   const canAddComments = Boolean(rolePolicy?.communication.canCreateComments);
   const canAskColourpix = Boolean(rolePolicy?.communication.canAskQuestions);
   const canAnswerColourpixQuestions = canAdministerProjectDetails && Boolean(rolePolicy?.communication.canAnswerQuestions);
@@ -906,10 +917,12 @@ export function ProjectDetailPage() {
           isUploading={uploadMutation.isPending || previewMutation.isPending || downloadMutation.isPending}
           uploadError={fileError instanceof Error ? fileError.message : null}
           canUpload={canUploadFiles}
+          canDelete={canDeleteFiles}
           onUpload={(file, taskId) => uploadMutation.mutate({ file, taskId })}
           onPreview={(file: ProjectFile) => previewMutation.mutate(file)}
           onDownload={(file: ProjectFile) => downloadMutation.mutate(file)}
           onRename={(file: ProjectFile, nextName) => renameFileMutation.mutate({ file, nextName })}
+          onDelete={(file: ProjectFile) => deleteFileMutation.mutate(file)}
           getThumbnailUrl={(file: ProjectFile) => getProjectFileUrl(file)}
         />
       </section>

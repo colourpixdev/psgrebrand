@@ -34,22 +34,26 @@ export function FileGrid({
   isUploading,
   uploadError,
   canUpload = true,
+  canDelete = false,
   onPreview,
   onDownload,
   onRename,
   onUpload,
   getThumbnailUrl,
+  onDelete,
 }: {
   files: ProjectFile[];
   taskFolders?: Array<{ id: string; label: string }>;
   isUploading?: boolean;
   uploadError?: string | null;
   canUpload?: boolean;
+  canDelete?: boolean;
   onPreview?: (file: ProjectFile) => void;
   onDownload?: (file: ProjectFile) => void;
   onRename?: (file: ProjectFile, nextName: string) => void;
   onUpload?: (file: File, taskId?: string) => void;
   getThumbnailUrl?: (file: ProjectFile) => Promise<string | null>;
+  onDelete?: (file: ProjectFile) => void;
 }) {
   const [renamingFileKey, setRenamingFileKey] = useState<string | null>(null);
   const [nextFileName, setNextFileName] = useState('');
@@ -113,9 +117,21 @@ export function FileGrid({
             <button type="button" onClick={() => { setRenamingFileKey(key); setNextFileName(file.name); }} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
               Rename
             </button>
+            {canDelete ? (
+              <button type="button" onClick={() => onDelete?.(file)} className="text-xs font-semibold text-red-300 transition hover:text-red-200">
+                Delete
+              </button>
+            ) : null}
           </div>
         ) : (
-          <p className="mt-3 text-xs text-slate-500">Legacy file name only</p>
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <p className="text-xs text-slate-500">Legacy file name only</p>
+            {canDelete ? (
+              <button type="button" onClick={() => onDelete?.(file)} className="text-xs font-semibold text-red-300 transition hover:text-red-200">
+                Delete
+              </button>
+            ) : null}
+          </div>
         )}
         {renamingFileKey === key ? (
           <div className="mt-3 grid gap-2">

@@ -500,6 +500,13 @@ export type RenameProjectFileInput = {
   actor: string;
 };
 
+export type DeleteProjectFileInput = {
+  projectId: string;
+  filePath?: string;
+  fileName: string;
+  actor: string;
+};
+
 export type DeleteProjectTaskInput = {
   projectId: string;
   taskId: string;
@@ -1517,6 +1524,44 @@ export async function renameProjectFile(input: RenameProjectFileInput): Promise<
 
   if (error || !data) {
     throw error ?? new Error('Unable to rename project file.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function deleteProjectFile(input: DeleteProjectFileInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const files = existingProject.files.filter((file) => {
+    const matches = input.filePath ? file.path === input.filePath : file.name === input.fileName;
+    return !matches;
+  });
+  const activity = [createActivity('File deleted', `${input.actor} deleted ${input.fileName}.`), ...existingProject.activity];
+
+  const { data, error } = await client
+    .from('projects')
+    .update({ files, activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to delete project file.');
+  }
+
+  if (input.filePath) {
+    await client.storage.from(projectFilesBucket).remove([input.filePath]);
   }
 
   return mapProjectRow(data as ProjectRow);
