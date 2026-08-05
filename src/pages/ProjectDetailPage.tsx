@@ -234,7 +234,7 @@ export function ProjectDetailPage() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ task, text, completed, assigneeEmails }: { task: TaskItem; text?: string; completed?: boolean; assigneeEmails?: string[] }) => {
+    mutationFn: ({ task, text, completed, status, assigneeEmails }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; assigneeEmails?: string[] }) => {
       const assignees = assigneeEmails !== undefined ? buildTaskAssignees(assigneeEmails) : undefined;
       const primaryAssignee = assignees?.[assignees.length - 1];
       return updateProjectTask({
@@ -242,6 +242,7 @@ export function ProjectDetailPage() {
         taskId: task.id,
         text,
         completed,
+        status,
         assigneeName: assigneeEmails !== undefined ? primaryAssignee?.name : undefined,
         assigneeEmail: assigneeEmails !== undefined ? primaryAssignee?.email : undefined,
         assignees,
@@ -398,6 +399,16 @@ export function ProjectDetailPage() {
     }
 
     return true;
+  }
+
+  function getTaskStatus(task: TaskItem): 'open' | 'busy' | 'done' {
+    return task.status ?? (task.completed ? 'done' : 'open');
+  }
+
+  function nextTaskStatus(status: 'open' | 'busy' | 'done'): 'open' | 'busy' | 'done' {
+    if (status === 'open') return 'busy';
+    if (status === 'busy') return 'done';
+    return 'open';
   }
 
   function startAnswer(question: CommentItem) {
@@ -561,9 +572,18 @@ export function ProjectDetailPage() {
               Add
             </button>
           </div>
-          <p className="mt-2 text-xs text-slate-500">Every open task needs at least one assignee. Designations come from each user profile title or role label.</p>
+          <p className="mt-2 text-xs text-slate-500">Every open task needs at least one assignee. Designations come from each user profile title or role label. Click the status button to move a task from Open to Busy to Done.</p>
           <div className="mt-4 space-y-2">
-            {adHocTasks.length > 0 ? adHocTasks.map((task) => (
+            {adHocTasks.length > 0 ? adHocTasks.map((task) => {
+              const taskStatus = getTaskStatus(task);
+              const statusStyles: Record<'open' | 'busy' | 'done', string> = {
+                open: 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10',
+                busy: 'border-amber-400/30 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25',
+                done: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25',
+              };
+              const statusLabels: Record<'open' | 'busy' | 'done', string> = { open: 'Open', busy: 'Busy', done: 'Done' };
+
+              return (
               <div key={task.id} className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200">
                 {editingTaskId === task.id ? (
                   <div className="grid gap-3">
@@ -572,16 +592,23 @@ export function ProjectDetailPage() {
                       {users.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
                     </select>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" disabled={updateTaskMutation.isPending || !editingTaskText.trim() || (!task.completed && editingTaskAssigneeEmails.length === 0)} onClick={() => updateTaskMutation.mutate({ task, text: editingTaskText, assigneeEmails: editingTaskAssigneeEmails })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">Save</button>
+                      <button type="button" disabled={updateTaskMutation.isPending || !editingTaskText.trim() || (taskStatus !== 'done' && editingTaskAssigneeEmails.length === 0)} onClick={() => updateTaskMutation.mutate({ task, text: editingTaskText, assigneeEmails: editingTaskAssigneeEmails })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">Save</button>
                       <button type="button" onClick={() => { setEditingTaskId(null); setEditingTaskText(''); setEditingTaskAssigneeEmails([]); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <label className="flex min-w-0 flex-1 items-start gap-3">
-                      <input type="checkbox" checked={task.completed} disabled={!canCurrentUserCompleteTask(task) || updateTaskMutation.isPending} onChange={(event) => updateTaskMutation.mutate({ task, completed: event.target.checked })} className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-900 accent-emerald-400 disabled:cursor-not-allowed disabled:opacity-50" />
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      <button
+                        type="button"
+                        disabled={!canCurrentUserCompleteTask(task) || updateTaskMutation.isPending}
+                        onClick={() => updateTaskMutation.mutate({ task, status: nextTaskStatus(taskStatus) })}
+                        className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${statusStyles[taskStatus]}`}
+                      >
+                        {statusLabels[taskStatus]}
+                      </button>
                       <span className="min-w-0">
-                        <span className={task.completed ? 'block text-slate-500 line-through' : 'block text-slate-200'}>{task.text}</span>
+                        <span className={taskStatus === 'done' ? 'block text-slate-500 line-through' : 'block text-slate-200'}>{task.text}</span>
                         <span className="mt-1 block text-xs text-slate-500">
                           {task.assignees && task.assignees.length > 0
                             ? `Assigned to ${task.assignees.map((assignee) => `${assignee.name} (${assignee.designation})`).join(', ')}`
@@ -590,7 +617,7 @@ export function ProjectDetailPage() {
                               : 'Unassigned'}
                         </span>
                       </span>
-                    </label>
+                    </div>
                     {canAddTasks || canDeleteTasks ? (
                       <div className="flex shrink-0 gap-2">
                         {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); setEditingTaskAssigneeEmails(task.assignees?.map((assignee) => assignee.email) ?? (task.assigneeEmail ? [task.assigneeEmail] : [])); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Edit</button> : null}
@@ -600,7 +627,8 @@ export function ProjectDetailPage() {
                   </div>
                 )}
               </div>
-            )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No open tasks.</p>}
+              );
+            }) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No open tasks.</p>}
           </div>
         </div>
       </section>

@@ -117,10 +117,13 @@ export interface ProjectFile {
   uploadedAt?: string;
 }
 
+export type TaskStatus = 'open' | 'busy' | 'done';
+
 export interface TaskItem {
   id: string;
   text: string;
   completed: boolean;
+  status?: TaskStatus;
   stage?: ProjectStage;
   assigneeName?: string;
   assigneeEmail?: string;

@@ -480,6 +480,7 @@ export type UpdateProjectTaskInput = {
   taskId: string;
   text?: string;
   completed?: boolean;
+  status?: TaskItem['status'];
   stage?: Project['currentStage'];
   assigneeName?: string;
   assigneeEmail?: string;
@@ -1347,6 +1348,7 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
     id: createTaskId(),
     text: task,
     completed: false,
+    status: 'open',
     stage: input.stage,
     assigneeName: primaryAssignee?.name,
     assigneeEmail: primaryAssignee?.email,
@@ -1398,7 +1400,8 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       return task;
     }
 
-    const completed = input.completed ?? task.completed;
+    const status = input.status ?? (input.completed !== undefined ? (input.completed ? 'done' : 'open') : task.status ?? (task.completed ? 'done' : 'open'));
+    const completed = status === 'done';
     const assignees = input.assignees !== undefined
       ? (input.assignees.length > 0 ? input.assignees : undefined)
       : task.assignees;
@@ -1416,6 +1419,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       ...task,
       text: text ?? task.text,
       completed,
+      status,
       stage: input.stage ?? task.stage,
       assigneeName: primaryAssignee?.name ?? (input.assigneeName !== undefined ? input.assigneeName || undefined : task.assigneeName),
       assigneeEmail: primaryAssignee?.email ?? (input.assigneeEmail !== undefined ? input.assigneeEmail || undefined : task.assigneeEmail),
@@ -1425,12 +1429,14 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       completedByEmail: completed ? input.actorEmail : undefined,
     };
   });
-  const action = input.completed === undefined ? 'updated' : input.completed ? 'completed' : 'reopened';
+  const nextStatus = input.status ?? (input.completed !== undefined ? (input.completed ? 'done' : 'open') : undefined);
+  const activityTitle = nextStatus === 'done' ? 'Task completed' : nextStatus === 'busy' ? 'Task in progress' : nextStatus === 'open' ? 'Task reopened' : 'Task updated';
+  const activityVerb = nextStatus === 'done' ? 'completed' : nextStatus === 'busy' ? 'marked in progress on' : nextStatus === 'open' ? 'reopened' : 'updated';
   const activity = [
     createActivity(
-      input.completed === undefined ? 'Task updated' : input.completed ? 'Task completed' : 'Task reopened',
-      `${input.actor} ${action} task: ${text ?? existingTask.text}`,
-      input.completed ? 'success' : 'info',
+      activityTitle,
+      `${input.actor} ${activityVerb} task: ${text ?? existingTask.text}`,
+      nextStatus === 'done' ? 'success' : 'info',
     ),
     ...existingProject.activity,
   ];
