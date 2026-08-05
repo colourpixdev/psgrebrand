@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { FileText, LogOut, Search } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
 import { productBrand } from '../constants/branding';
@@ -19,14 +19,9 @@ interface NavigationItem {
 export function AppShell({ navigation, children, statusBanner }: { navigation: NavigationItem[]; children: ReactNode; statusBanner?: ReactNode }) {
   const { user, roleLabel, signOut } = useAuth();
   const navigate = useNavigate();
-  const mobileNavigation = navigation.filter((item) => ['/', '/projects', '/support', '/profile', '/search'].includes(item.to));
+  const mobileNavigation = navigation.slice(0, 5);
   const profileIdentity = getProfileIdentity(user);
   const profileName = profileIdentity.displayName || user?.name || 'Signed out';
-  const quickLinks = [
-    { to: '/projects', label: 'Projects', icon: FileText },
-    { to: '/search', label: 'Search', icon: Search },
-    { to: '/map', label: 'Map', icon: FileText },
-  ];
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,rgba(2,6,23,0.88),rgba(15,23,42,0.98))] text-slate-100">
@@ -68,19 +63,8 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
             </div>
           </div>
 
-          <div className="mb-6 grid gap-2 rounded-2xl border border-teal-400/15 bg-teal-400/8 p-3 text-xs text-slate-300">
-            <Link to="/search" className="flex items-center justify-center gap-2 rounded-xl bg-sky-500 px-3 py-2 font-semibold text-white transition hover:bg-sky-400">
-              <Search className="h-4 w-4" />
-              Search projects
-            </Link>
-            <Link to="/projects" className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-semibold text-slate-100 transition hover:bg-white/10">
-              <FileText className="h-4 w-4" />
-              Projects
-            </Link>
-          </div>
-
-          <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-start gap-3">
+          <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-sky-400/30">
+            <Link to="/profile" className="flex items-start gap-3">
               {profileIdentity.avatarUrl ? (
                 <img src={profileIdentity.avatarUrl} alt="User avatar" className="h-9 w-9 rounded-xl object-cover ring-1 ring-white/10" />
               ) : (
@@ -90,7 +74,7 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
                 <p className="text-sm font-medium">{profileName}</p>
                 <p className="text-xs text-slate-400">{roleLabel}</p>
               </div>
-            </div>
+            </Link>
           </div>
 
           <nav className="space-y-1">
@@ -129,19 +113,6 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
 
         <main className="min-w-0 flex-1 px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:py-6 xl:px-10">
           {statusBanner}
-          <div className="mb-5 flex justify-center">
-            <div className="inline-flex rounded-2xl border border-white/10 bg-slate-950/55 p-1 shadow-soft">
-              {quickLinks.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link key={item.to} to={item.to} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-sky-500/15 hover:text-sky-100 sm:px-4">
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
           {children}
           <AppFooter />
         </main>

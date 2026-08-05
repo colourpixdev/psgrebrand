@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +8,8 @@ import { filterProjectsForUser } from '../utils/permissions';
 
 export function SearchPage() {
   const { user } = useAuth();
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
 
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],

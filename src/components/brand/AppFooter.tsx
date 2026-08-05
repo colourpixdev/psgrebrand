@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { productBrand } from '../../constants/branding';
 
 export function AppFooter() {
@@ -7,6 +8,11 @@ export function AppFooter() {
         <span>{productBrand.poweredBy}</span>
         <span>Version {productBrand.version}</span>
         <span>{productBrand.copyright}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+        <Link to="/support" className="transition hover:text-slate-300">Support</Link>
+        <Link to="/about" className="transition hover:text-slate-300">About</Link>
+        <Link to="/legal" className="transition hover:text-slate-300">Legal</Link>
       </div>
     </footer>
   );

@@ -20,17 +20,14 @@ const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-type ProjectSectionId = 'timeline' | 'questions' | 'workflow-actions' | 'tasks' | 'files' | 'notes' | 'project-journal' | 'project-update-history';
+type ProjectSectionId = 'timeline' | 'journal' | 'workflow-actions' | 'files' | 'notes';
 
 const projectSections: Array<{ id: ProjectSectionId; number: string; label: string }> = [
-  { id: 'timeline', number: '01', label: 'Timeline' },
-  { id: 'questions', number: '02', label: 'Questions and update requests' },
+  { id: 'timeline', number: '01', label: 'Timeline and tasks' },
+  { id: 'journal', number: '02', label: 'Journal' },
   { id: 'workflow-actions', number: '03', label: 'Workflow Actions' },
-  { id: 'tasks', number: '04', label: 'Tasks' },
-  { id: 'files', number: '05', label: 'Files' },
-  { id: 'notes', number: '06', label: 'Notes' },
-  { id: 'project-journal', number: '07', label: 'Project Journal' },
-  { id: 'project-update-history', number: '08', label: 'Project update history' },
+  { id: 'files', number: '04', label: 'Files' },
+  { id: 'notes', number: '05', label: 'Notes' },
 ];
 
 function calculateTimelineWorkflow(project: Project, changedStage: ProjectStage, completed: boolean) {
@@ -540,7 +537,7 @@ export function ProjectDetailPage() {
         </div>
       </section>
 
-      <section className={activeProjectSection === 'timeline' ? '' : 'hidden'}>
+      <section className={activeProjectSection === 'timeline' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
         <Timeline
           stages={timelineStages}
           activeStage={selectedProject.currentStage}
@@ -552,13 +549,67 @@ export function ProjectDetailPage() {
           onToggleStage={(timelineStage, completed) => timelineTaskMutation.mutate({ stage: timelineStage, completed })}
           onAssignStage={(timelineStage, assigneeEmail) => timelineTaskMutation.mutate({ stage: timelineStage, assigneeEmail })}
         />
+
+        <div className="mt-6 border-t border-white/10 pt-6">
+          <h3 className="text-lg font-semibold text-white">Tasks</h3>
+          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem_auto]">
+            <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder={canAddTasks ? 'Add next action...' : 'Task updates restricted'} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
+            <select multiple value={taskAssigneeEmails} disabled={!canAddTasks} onChange={(event) => setTaskAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
+              {assignableUsers.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
+            </select>
+            <button type="button" disabled={!canAddTasks || taskMutation.isPending || !taskText.trim() || taskAssigneeEmails.length === 0} onClick={() => taskMutation.mutate()} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+              Add
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">Every open task needs at least one assignee. Designations come from each user profile title or role label.</p>
+          <div className="mt-4 space-y-2">
+            {adHocTasks.length > 0 ? adHocTasks.map((task) => (
+              <div key={task.id} className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200">
+                {editingTaskId === task.id ? (
+                  <div className="grid gap-3">
+                    <input value={editingTaskText} onChange={(event) => setEditingTaskText(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" />
+                    <select multiple value={editingTaskAssigneeEmails} onChange={(event) => setEditingTaskAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50">
+                      {users.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
+                    </select>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={updateTaskMutation.isPending || !editingTaskText.trim() || (!task.completed && editingTaskAssigneeEmails.length === 0)} onClick={() => updateTaskMutation.mutate({ task, text: editingTaskText, assigneeEmails: editingTaskAssigneeEmails })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">Save</button>
+                      <button type="button" onClick={() => { setEditingTaskId(null); setEditingTaskText(''); setEditingTaskAssigneeEmails([]); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <label className="flex min-w-0 flex-1 items-start gap-3">
+                      <input type="checkbox" checked={task.completed} disabled={!canCurrentUserCompleteTask(task) || updateTaskMutation.isPending} onChange={(event) => updateTaskMutation.mutate({ task, completed: event.target.checked })} className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-900 accent-emerald-400 disabled:cursor-not-allowed disabled:opacity-50" />
+                      <span className="min-w-0">
+                        <span className={task.completed ? 'block text-slate-500 line-through' : 'block text-slate-200'}>{task.text}</span>
+                        <span className="mt-1 block text-xs text-slate-500">
+                          {task.assignees && task.assignees.length > 0
+                            ? `Assigned to ${task.assignees.map((assignee) => `${assignee.name} (${assignee.designation})`).join(', ')}`
+                            : task.assigneeName
+                              ? `Assigned to ${task.assigneeName}`
+                              : 'Unassigned'}
+                        </span>
+                      </span>
+                    </label>
+                    {canAddTasks || canDeleteTasks ? (
+                      <div className="flex shrink-0 gap-2">
+                        {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); setEditingTaskAssigneeEmails(task.assignees?.map((assignee) => assignee.email) ?? (task.assigneeEmail ? [task.assigneeEmail] : [])); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Edit</button> : null}
+                        {canDeleteTasks ? <button type="button" disabled={deleteTaskMutation.isPending} onClick={() => deleteTaskMutation.mutate(task)} className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No open tasks.</p>}
+          </div>
+        </div>
       </section>
 
-      <section className={activeProjectSection === 'questions' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
+      <section className={activeProjectSection === 'journal' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-white">Questions and update requests</h3>
-            <p className="mt-1 text-sm text-slate-400">PSG Wealth Insure and Colourpix users can ask, answer, and update project details in the same thread.</p>
+            <h3 className="text-lg font-semibold text-white">Journal</h3>
+            <p className="mt-1 text-sm text-slate-400">Every update, follow-up, question, and answer for this project lives in one place.</p>
           </div>
           {unreadAnswers.length > 0 ? <span className="rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100">{unreadAnswers.length} new answer{unreadAnswers.length === 1 ? '' : 's'}</span> : null}
         </div>
@@ -674,7 +725,42 @@ export function ProjectDetailPage() {
                 ) : null}
               </article>
             );
-          }) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No project questions yet.</p>}
+          }) : null}
+        </div>
+
+        <div className="mt-6 border-t border-white/10 pt-6">
+          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Follow-ups</h4>
+          <div className="mt-4 space-y-3">
+            {projectComments.length > 0 ? projectComments.map((comment) => (
+              <div key={`${comment.date}-${comment.author}-${comment.message}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <p className="font-medium text-white">{comment.author}</p>
+                  <p className="text-slate-500">{comment.date}</p>
+                </div>
+                <p className="mt-2 text-sm text-slate-300">{comment.message}</p>
+                {comment.assignees?.length ? <p className="mt-3 text-xs text-sky-100">Assigned to {comment.assignees.map((assignee) => `${assignee.name} (${assignee.designation})`).join(', ')}</p> : null}
+                {comment.taskId ? (() => {
+                  const linkedTask = selectedProject.tasks.find((task) => task.id === comment.taskId);
+                  return <p className={`mt-1 text-xs ${linkedTask?.completed ? 'text-emerald-200' : 'text-amber-200'}`}>{linkedTask?.completed ? 'Follow-up completed' : 'Follow-up open'}</p>;
+                })() : null}
+              </div>
+            )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No follow-ups recorded yet.</p>}
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-white/10 pt-6">
+          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Activity</h4>
+          <div className="mt-4 space-y-3">
+            {selectedProject.activity.length > 0 ? selectedProject.activity.map((item, index) => (
+              <div key={`${item.date}-${item.title}-${item.detail}-${index}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-medium text-white">{item.title}</p>
+                  <p className="shrink-0 text-xs text-slate-500">{item.date}</p>
+                </div>
+                <p className="mt-2 text-sm text-slate-300">{item.detail}</p>
+              </div>
+            )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No activity recorded yet.</p>}
+          </div>
         </div>
       </section>
 
@@ -713,60 +799,6 @@ export function ProjectDetailPage() {
           </button>
       </section>
 
-      <section className={activeProjectSection === 'tasks' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
-          <h3 className="text-lg font-semibold text-white">Tasks</h3>
-          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem_auto]">
-            <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder={canAddTasks ? 'Add next action...' : 'Task updates restricted'} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
-            <select multiple value={taskAssigneeEmails} disabled={!canAddTasks} onChange={(event) => setTaskAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
-              {assignableUsers.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
-            </select>
-            <button type="button" disabled={!canAddTasks || taskMutation.isPending || !taskText.trim() || taskAssigneeEmails.length === 0} onClick={() => taskMutation.mutate()} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
-              Add
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">Every open task needs at least one assignee. Designations come from each user profile title or role label.</p>
-          <div className="mt-4 space-y-2">
-            {adHocTasks.length > 0 ? adHocTasks.map((task) => (
-              <div key={task.id} className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200">
-                {editingTaskId === task.id ? (
-                  <div className="grid gap-3">
-                    <input value={editingTaskText} onChange={(event) => setEditingTaskText(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" />
-                    <select multiple value={editingTaskAssigneeEmails} onChange={(event) => setEditingTaskAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50">
-                      {users.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
-                    </select>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" disabled={updateTaskMutation.isPending || !editingTaskText.trim() || (!task.completed && editingTaskAssigneeEmails.length === 0)} onClick={() => updateTaskMutation.mutate({ task, text: editingTaskText, assigneeEmails: editingTaskAssigneeEmails })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">Save</button>
-                      <button type="button" onClick={() => { setEditingTaskId(null); setEditingTaskText(''); setEditingTaskAssigneeEmails([]); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <label className="flex min-w-0 flex-1 items-start gap-3">
-                      <input type="checkbox" checked={task.completed} disabled={!canCurrentUserCompleteTask(task) || updateTaskMutation.isPending} onChange={(event) => updateTaskMutation.mutate({ task, completed: event.target.checked })} className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-900 accent-emerald-400 disabled:cursor-not-allowed disabled:opacity-50" />
-                      <span className="min-w-0">
-                        <span className={task.completed ? 'block text-slate-500 line-through' : 'block text-slate-200'}>{task.text}</span>
-                        <span className="mt-1 block text-xs text-slate-500">
-                          {task.assignees && task.assignees.length > 0
-                            ? `Assigned to ${task.assignees.map((assignee) => `${assignee.name} (${assignee.designation})`).join(', ')}`
-                            : task.assigneeName
-                              ? `Assigned to ${task.assigneeName}`
-                              : 'Unassigned'}
-                        </span>
-                      </span>
-                    </label>
-                    {canAddTasks || canDeleteTasks ? (
-                      <div className="flex shrink-0 gap-2">
-                        {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); setEditingTaskAssigneeEmails(task.assignees?.map((assignee) => assignee.email) ?? (task.assigneeEmail ? [task.assigneeEmail] : [])); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Edit</button> : null}
-                        {canDeleteTasks ? <button type="button" disabled={deleteTaskMutation.isPending} onClick={() => deleteTaskMutation.mutate(task)} className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No open tasks.</p>}
-          </div>
-      </section>
-
       <section className={activeProjectSection === 'files' ? '' : 'hidden'}>
         <FileGrid
           files={selectedProject.files}
@@ -792,43 +824,6 @@ export function ProjectDetailPage() {
         </div>
         <textarea value={notesDraft} disabled={!canEditNotes || notesMutation.isPending} onChange={(event) => setNotesDraft(event.target.value)} rows={6} placeholder="Add project notes..." className="mt-5 w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm sm:leading-6" />
         {notesError instanceof Error ? <p className="mt-3 text-sm text-red-300">{notesError.message}</p> : null}
-      </section>
-
-      <section className={activeProjectSection === 'project-journal' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
-        <h3 className="text-lg font-semibold text-white">Project Journal</h3>
-        <div className="mt-4 space-y-3">
-          {selectedProject.activity.length > 0 ? selectedProject.activity.map((item, index) => (
-            <div key={`${item.date}-${item.title}-${item.detail}-${index}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-medium text-white">{item.title}</p>
-                <p className="shrink-0 text-xs text-slate-500">{item.date}</p>
-              </div>
-              <p className="mt-2 text-sm text-slate-300">{item.detail}</p>
-            </div>
-          )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No activity recorded yet.</p>}
-        </div>
-      </section>
-
-      <section className={activeProjectSection === 'project-update-history' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
-        <h3 className="text-lg font-semibold text-white">Project update history</h3>
-        <p className="mt-1 text-sm text-slate-400">Each update is retained here with its linked follow-up and owner.</p>
-        <div className="mt-4 space-y-4">
-          {projectComments.map((comment) => (
-            <div key={`${comment.date}-${comment.author}-${comment.message}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <p className="font-medium text-white">{comment.author}</p>
-                <p className="text-slate-500">{comment.date}</p>
-              </div>
-              <p className="mt-2 text-sm text-slate-300">{comment.message}</p>
-              {comment.assignees?.length ? <p className="mt-3 text-xs text-sky-100">Assigned to {comment.assignees.map((assignee) => `${assignee.name} (${assignee.designation})`).join(', ')}</p> : null}
-              {comment.taskId ? (() => {
-                const linkedTask = selectedProject.tasks.find((task) => task.id === comment.taskId);
-                return <p className={`mt-1 text-xs ${linkedTask?.completed ? 'text-emerald-200' : 'text-amber-200'}`}>{linkedTask?.completed ? 'Follow-up completed' : 'Follow-up open'}</p>;
-              })() : null}
-            </div>
-          ))}
-          {projectComments.length === 0 ? <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No comments recorded yet.</p> : null}
-        </div>
       </section>
     </div>
   );

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, FileText, Shield, Search, Users, MapPinned, ShieldCheck, LifeBuoy, UserCircle } from 'lucide-react';
+import { LayoutDashboard, KanbanSquare, FileText, Shield, Users, MapPinned } from 'lucide-react';
 import { AppShell } from './layouts/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -29,16 +29,9 @@ const navigation = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/branches', label: 'Branches', icon: MapPinned },
   { to: '/projects', label: 'Projects', icon: KanbanSquare },
-  { to: '/search', label: 'Search', icon: Search },
   { to: '/reports', label: 'Reports', icon: FileText },
-  { to: '/map', label: 'Map', icon: MapPinned },
-  { to: '/support', label: 'Support', icon: LifeBuoy },
-  { to: '/profile', label: 'Profile', icon: UserCircle },
   { to: '/users', label: 'Users', icon: Users },
-  { to: '/access-controls', label: 'Access Controls', icon: ShieldCheck },
   { to: '/settings', label: 'Settings', icon: Shield },
-  { to: '/about', label: 'About', icon: ShieldCheck },
-  { to: '/legal', label: 'Legal', icon: FileText },
 ];
 
 const routeTitles: Record<string, string> = {

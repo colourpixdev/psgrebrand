@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { FileText, Search, Shield } from 'lucide-react';
+import { FileText, MapPinned, Search, Shield } from 'lucide-react';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
@@ -284,9 +284,15 @@ export function ReportsPage() {
             <h2 className="text-2xl font-semibold text-white">Reports</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Generate branch-first reports that are practical for daily operations and management meetings.</p>
           </div>
-          <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
-            <p className="font-medium">{roleLabel}</p>
-            <p className="mt-1 text-sky-100/75">{user?.branch ? `${user.branch} scoped view` : 'Workspace reporting view'}</p>
+          <div className="flex flex-col items-end gap-3">
+            <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+              <p className="font-medium">{roleLabel}</p>
+              <p className="mt-1 text-sky-100/75">{user?.branch ? `${user.branch} scoped view` : 'Workspace reporting view'}</p>
+            </div>
+            <Link to="/map" className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10">
+              <MapPinned className="h-4 w-4" />
+              View branch map
+            </Link>
           </div>
         </div>
       </section>

@@ -52,6 +52,7 @@ export function AccessControlsPage() {
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, AccessDraft>>({});
   const [savedEmail, setSavedEmail] = useState<string | null>(null);
+  const [expandedAdvanced, setExpandedAdvanced] = useState<Record<string, boolean>>({});
 
   const { data, isLoading } = useQuery({
     queryKey: ['users'],
@@ -219,8 +220,8 @@ export function AccessControlsPage() {
           </section>
 
           <section className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft">
-            <h3 className="text-lg font-semibold text-white">3. Capability Overrides (Advanced)</h3>
-            <p className="mt-1 text-sm text-slate-400">Use overrides only when a user needs an exception beyond their assigned role.</p>
+            <h3 className="text-lg font-semibold text-white">3. Advanced Permissions</h3>
+            <p className="mt-1 text-sm text-slate-400">Only open this for a user if they need a specific exception beyond their assigned role. Most users never need this.</p>
             <div className="mt-4 space-y-4">
               {users.map((user) => {
                 const draft = drafts[user.email] ?? getDraft(user);
@@ -228,47 +229,62 @@ export function AccessControlsPage() {
                 const effectivePolicy = applyPolicyOverrides(basePolicy, draft.permissionOverrides);
                 const overrideCount = Object.keys(draft.permissionOverrides).length;
                 const isSaving = saveMutation.isPending && saveMutation.variables?.email === user.email;
+                const isExpanded = Boolean(expandedAdvanced[user.email]);
 
                 return (
                   <article key={`${user.email}-overrides`} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <h4 className="text-sm font-semibold text-white">{user.name}</h4>
-                        <p className="text-xs text-slate-500">Role: {roleLabels[draft.role]}</p>
+                        <p className="text-xs text-slate-500">Role: {roleLabels[draft.role]}{overrideCount > 0 ? ` · ${overrideCount} override${overrideCount === 1 ? '' : 's'} active` : ''}</p>
                       </div>
-                      <button type="button" disabled={isSaving} onClick={() => saveMutation.mutate({ email: user.email, draft })} className="rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
-                        {isSaving ? 'Saving...' : savedEmail === user.email ? 'Saved' : `Save overrides (${overrideCount})`}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedAdvanced((current) => ({ ...current, [user.email]: !isExpanded }))}
+                        className="rounded-xl border border-white/10 bg-slate-950/50 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
+                      >
+                        {isExpanded ? 'Hide advanced' : 'Advanced'}
                       </button>
                     </div>
 
-                    <div className="mt-4 grid gap-4 xl:grid-cols-2">
-                      {accessControlGroups.map((group) => (
-                        <section key={`${user.email}-${group.id}`} className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
-                          <h5 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">{group.label}</h5>
-                          <div className="mt-4 divide-y divide-white/10">
-                            {group.items.map((item) => {
-                              const checked = getPolicyValue(effectivePolicy, item.key);
-                              const baseChecked = getPolicyValue(basePolicy, item.key);
-                              const customized = draft.permissionOverrides[item.key] !== undefined;
+                    {isExpanded ? (
+                      <>
+                        <div className="mt-4 flex justify-end">
+                          <button type="button" disabled={isSaving} onClick={() => saveMutation.mutate({ email: user.email, draft })} className="rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
+                            {isSaving ? 'Saving...' : savedEmail === user.email ? 'Saved' : `Save overrides (${overrideCount})`}
+                          </button>
+                        </div>
 
-                              return (
-                                <div key={item.key} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
-                                  <div className="min-w-0">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <p className="text-sm font-medium text-white">{item.label}</p>
-                                      {customized ? <span className="rounded-full border border-sky-300/25 bg-sky-500/15 px-2 py-0.5 text-[0.68rem] font-semibold text-sky-100">Override</span> : null}
-                                      <span className="rounded-full border border-white/10 bg-slate-950/50 px-2 py-0.5 text-[0.68rem] text-slate-400">Default {baseChecked ? 'on' : 'off'}</span>
+                        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                          {accessControlGroups.map((group) => (
+                            <section key={`${user.email}-${group.id}`} className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                              <h5 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-400">{group.label}</h5>
+                              <div className="mt-4 divide-y divide-white/10">
+                                {group.items.map((item) => {
+                                  const checked = getPolicyValue(effectivePolicy, item.key);
+                                  const baseChecked = getPolicyValue(basePolicy, item.key);
+                                  const customized = draft.permissionOverrides[item.key] !== undefined;
+
+                                  return (
+                                    <div key={item.key} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                                      <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <p className="text-sm font-medium text-white">{item.label}</p>
+                                          {customized ? <span className="rounded-full border border-sky-300/25 bg-sky-500/15 px-2 py-0.5 text-[0.68rem] font-semibold text-sky-100">Override</span> : null}
+                                          <span className="rounded-full border border-white/10 bg-slate-950/50 px-2 py-0.5 text-[0.68rem] text-slate-400">Default {baseChecked ? 'on' : 'off'}</span>
+                                        </div>
+                                        <p className="mt-1 text-xs leading-5 text-slate-500">{item.description}</p>
+                                      </div>
+                                      <Toggle checked={checked} disabled={isSaving} onChange={(enabled) => setCapability(user, item.key, enabled)} />
                                     </div>
-                                    <p className="mt-1 text-xs leading-5 text-slate-500">{item.description}</p>
-                                  </div>
-                                  <Toggle checked={checked} disabled={isSaving} onChange={(enabled) => setCapability(user, item.key, enabled)} />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </section>
-                      ))}
-                    </div>
+                                  );
+                                })}
+                              </div>
+                            </section>
+                          ))}
+                        </div>
+                      </>
+                    ) : null}
                   </article>
                 );
               })}

@@ -1,185 +1,147 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { FileText } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
-import { buildBranchCodeMap, getBranchCodeForBranch } from '../utils/branchProjectIds';
 import type { Project } from '../types/domain';
-
-type JournalEntry = {
-  projectId: string;
-  branch: string;
-  title: string;
-  detail: string;
-  date: string;
-  timestamp: string;
-};
 
 function byUpdatedAtDesc(a: Project, b: Project) {
   return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '');
 }
 
-function journalEntries(projects: Project[]): JournalEntry[] {
-  return projects.flatMap((project) => [
-    ...project.activity.map((activity, index) => ({
-      projectId: project.id,
-      branch: project.branch,
-      title: activity.title,
-      detail: activity.detail,
-      date: activity.date,
-      timestamp: project.updatedAt || `activity-${index}`,
-    })),
-    ...project.comments.map((comment, index) => ({
-      projectId: project.id,
-      branch: project.branch,
-      title: comment.kind === 'question' ? 'Message request' : 'Journal message',
-      detail: comment.message,
-      date: comment.requestedAt || comment.date,
-      timestamp: comment.requestedAt || comment.date || `${project.updatedAt}-${index}`,
-    })),
-  ]).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+function isToday(dateValue: string) {
+  if (!dateValue) {
+    return false;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  return dateValue.slice(0, 10) === today;
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) {
+    return 'Good morning';
+  }
+  if (hour < 17) {
+    return 'Good afternoon';
+  }
+  return 'Good evening';
 }
 
-function downloadJournalPdf(entries: JournalEntry[]) {
-  const rows = entries.map((entry) => `
-    <tr>
-      <td>${escapeHtml(entry.date)}</td>
-      <td>${escapeHtml(entry.branch)}</td>
-      <td>${escapeHtml(entry.title)}</td>
-      <td>${escapeHtml(entry.detail)}</td>
-    </tr>
-  `).join('');
-  const html = `
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>PSG Rebrand journal log</title>
-        <style>
-          body { font-family: Arial, sans-serif; color: #111827; margin: 28px; }
-          h1 { margin: 0; font-size: 24px; }
-          p { color: #4b5563; }
-          table { border-collapse: collapse; width: 100%; font-size: 11px; }
-          th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; vertical-align: top; }
-          th { background: #e5e7eb; }
-        </style>
-      </head>
-      <body>
-        <h1>PSG Rebrand journal log</h1>
-        <p>Generated ${escapeHtml(new Date().toLocaleString())}. Includes ${entries.length} visible journal and message entr${entries.length === 1 ? 'y' : 'ies'}.</p>
-        <table>
-          <thead><tr><th>Date</th><th>Branch</th><th>Entry</th><th>Detail</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="4">No journal entries available.</td></tr>'}</tbody>
-        </table>
-        <script>window.addEventListener('load', () => setTimeout(() => window.print(), 150));</script>
-      </body>
-    </html>
-  `;
-  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
-  window.open(url, '_blank');
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+function latestUpdateSummary(project: Project) {
+  const latestActivity = [...project.activity].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))[0];
+  return latestActivity?.detail || latestActivity?.title || project.currentStage;
 }
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [quickSearch, setQuickSearch] = useState('');
   const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: getAllBranches });
-  const { data: projects = [] } = useQuery({
-    queryKey: ['projects'],
-    queryFn: getProjects,
-  });
+  const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: getProjects });
   const scopedProjects = filterProjectsForUser(projects, user);
-  const branchCodeById = useMemo(() => buildBranchCodeMap(branches), [branches]);
-  const userEmail = user?.email.toLowerCase() ?? '';
-  const userName = user?.name.toLowerCase() ?? '';
 
-  const officeRows = useMemo(() => branches.map((branch) => {
-    const branchProjects = scopedProjects
-      .filter((project) => project.branchId === branch.id || project.branch.toLowerCase() === branch.name.toLowerCase())
-      .sort(byUpdatedAtDesc);
-    const primaryContact = branch.contacts?.[0];
+  const stats = useMemo(() => {
+    const active = scopedProjects.filter((project) => project.status !== 'completed' && project.status !== 'cancelled').length;
+    const awaitingApproval = scopedProjects.filter((project) => project.currentStage === 'Awaiting Approval').length;
+    const installationsToday = scopedProjects.filter((project) => isToday(project.installationDate)).length;
+    const completed = scopedProjects.filter((project) => project.status === 'completed').length;
 
-    return {
-      branch,
-      branchCode: getBranchCodeForBranch(branch, branchCodeById),
-      currentProject: branchProjects[0],
-      outstandingTasks: branchProjects.reduce((count, project) => count + project.tasks.filter((task) => !task.completed).length, 0),
-      contact: primaryContact?.name || branch.contactName || 'Not set',
-      designation: primaryContact?.designation,
-    };
-  }).filter(({ currentProject }) => Boolean(currentProject)), [branchCodeById, branches, scopedProjects]);
+    return { active, awaitingApproval, installationsToday, completed };
+  }, [scopedProjects]);
 
-  const myTasks = scopedProjects.flatMap((project) => project.tasks
-    .filter((task) => {
-      if (task.completed) {
-        return false;
-      }
+  const myActions = useMemo(() => [
+    { label: 'Awaiting quotation', count: scopedProjects.filter((project) => project.currentStage === 'Quotation Requested').length, query: 'Quotation Requested' },
+    { label: 'Measurements required', count: scopedProjects.filter((project) => project.currentStage === 'Site Survey' || project.currentStage === 'Awaiting Information').length, query: 'Measurements' },
+    { label: 'Artwork approval outstanding', count: stats.awaitingApproval, query: 'Awaiting Approval' },
+    { label: 'Install booked today', count: stats.installationsToday, query: 'Installation Scheduled' },
+  ], [scopedProjects, stats.awaitingApproval, stats.installationsToday]);
 
-      const assignedByPrimary = (task.assigneeEmail?.toLowerCase() ?? '') === userEmail || (task.assigneeName?.toLowerCase() ?? '') === userName;
-      const assignedByList = task.assignees?.some((assignee) => assignee.email.toLowerCase() === userEmail || assignee.name.toLowerCase() === userName) ?? false;
-      return assignedByPrimary || assignedByList;
-    })
-    .map((task) => ({ ...task, projectId: project.id, branch: project.branch })))
-    .slice(0, 5);
-  const journal = journalEntries(scopedProjects);
-  const latestJournal = journal.slice(0, 8);
+  const recentlyUpdated = useMemo(() => [...scopedProjects].sort(byUpdatedAtDesc).slice(0, 5), [scopedProjects]);
+
+  function submitQuickSearch(event: FormEvent) {
+    event.preventDefault();
+    navigate(`/search?q=${encodeURIComponent(quickSearch.trim())}`);
+  }
 
   return (
     <div className="space-y-6">
-      <section className="flex flex-col gap-3 border-b border-white/10 pb-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">PSG Rebrand</p>
-          <h2 className="mt-1 text-2xl font-semibold text-white">Active rollout control board</h2>
-        </div>
-        <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">Manage offices</Link>
+      <section className="border-b border-white/10 pb-5">
+        <p className="text-xs uppercase tracking-[0.18em] text-slate-400">PSG Rebrand</p>
+        <h2 className="mt-1 text-2xl font-semibold text-white">{greeting()}, {user?.name?.split(' ')[0] || 'there'}</h2>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45 shadow-soft">
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
-          <div>
-            <h3 className="font-semibold text-white">Active office rollouts</h3>
-            <p className="mt-1 text-sm text-slate-400">{officeRows.length} office location{officeRows.length === 1 ? '' : 's'} with active work</p>
-          </div>
-          <Link to="/projects" className="text-sm font-semibold text-emerald-200 transition hover:text-emerald-100">Add project</Link>
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Total Branches</p>
+          <p className="mt-2 text-2xl font-semibold text-white">{branches.length}</p>
         </div>
-        {officeRows.length > 0 ? <div className="divide-y divide-white/10">
-          {officeRows.map(({ branch, branchCode, currentProject, outstandingTasks, contact, designation }) => (
-            <Link key={branch.id} to={`/branches/${branch.id}`} className="grid gap-2 px-5 py-4 transition hover:bg-white/5 md:grid-cols-[90px_1.25fr_1fr_1.1fr_110px] md:items-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-200">{branchCode}</p>
-              <div><p className="font-semibold text-white">{branch.name}</p><p className="mt-1 text-sm text-slate-400">{branch.division} · {branch.city || branch.town}, {branch.province}</p></div>
-              <div className="text-sm text-slate-300"><p>{contact}</p>{designation ? <p className="mt-1 text-xs text-slate-500">{designation}</p> : null}</div>
-              <div><p className="text-sm font-medium text-slate-200">{currentProject?.currentStage || 'No project started'}</p><p className="mt-1 text-xs text-slate-500">{currentProject ? currentProject.id : branch.physicalAddress}</p></div>
-              <p className="text-sm text-slate-300 md:text-right">{outstandingTasks} open task{outstandingTasks === 1 ? '' : 's'}</p>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Projects Active</p>
+          <p className="mt-2 text-2xl font-semibold text-white">{stats.active}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Awaiting Approval</p>
+          <p className="mt-2 text-2xl font-semibold text-white">{stats.awaitingApproval}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Installations Today</p>
+          <p className="mt-2 text-2xl font-semibold text-white">{stats.installationsToday}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Completed</p>
+          <p className="mt-2 text-2xl font-semibold text-white">{stats.completed}</p>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-white/10 bg-slate-950/45 p-5 shadow-soft">
+        <h3 className="font-semibold text-white">My Actions</h3>
+        <div className="mt-3 divide-y divide-white/10">
+          {myActions.map((action) => (
+            <Link
+              key={action.label}
+              to={`/search?q=${encodeURIComponent(action.query)}`}
+              className="flex items-center justify-between gap-3 py-3 first:pt-0 transition hover:text-sky-100"
+            >
+              <span className="text-sm text-slate-200">{action.label}</span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-300">{action.count}</span>
             </Link>
           ))}
-        </div> : <p className="px-5 py-10 text-sm text-slate-400">No rollout projects are active yet. Offices stay in the branch register until work begins.</p>}
+        </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-soft">
-          <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-white">My action queue</h3><span className="text-sm text-slate-400">{myTasks.length}</span></div>
-          <div className="mt-4 space-y-2">
-            {myTasks.length > 0 ? myTasks.map((task) => <Link key={`${task.projectId}-${task.id}`} to={`/projects/${task.projectId}`} className="block border-b border-white/10 py-3 last:border-0 transition hover:text-sky-100"><p className="text-sm font-medium text-white">{task.text}</p><p className="mt-1 text-xs text-slate-400">{task.branch}</p></Link>) : <p className="py-4 text-sm text-slate-400">No open tasks are assigned to {user?.name || 'you'}.</p>}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-soft">
-          <div className="flex items-center justify-between gap-3"><h3 className="font-semibold text-white">Daily journal and messages</h3><button type="button" onClick={() => downloadJournalPdf(journal)} className="inline-flex items-center gap-2 text-sm font-semibold text-sky-200 transition hover:text-sky-100"><FileText className="h-4 w-4" />Download PDF log</button></div>
-          <div className="mt-4 divide-y divide-white/10">
-            {latestJournal.length > 0 ? latestJournal.map((entry, index) => <Link key={`${entry.projectId}-${entry.timestamp}-${index}`} to={`/projects/${entry.projectId}`} className="block py-3 first:pt-0 transition hover:text-sky-100"><div className="flex items-start justify-between gap-3"><p className="text-sm font-medium text-white">{entry.title}</p><p className="shrink-0 text-xs text-slate-500">{entry.date}</p></div><p className="mt-1 text-xs text-slate-400">{entry.branch} · {entry.detail}</p></Link>) : <p className="py-4 text-sm text-slate-400">No journal or message updates yet.</p>}
-          </div>
+      <section className="rounded-2xl border border-white/10 bg-slate-950/45 p-5 shadow-soft">
+        <h3 className="font-semibold text-white">Recently Updated</h3>
+        <div className="mt-3 divide-y divide-white/10">
+          {recentlyUpdated.length > 0 ? recentlyUpdated.map((project) => (
+            <Link key={project.id} to={`/projects/${project.id}`} className="block py-3 first:pt-0 transition hover:text-sky-100">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-white">{project.branch}</p>
+                <p className="shrink-0 text-xs text-slate-500">{project.updatedAt || 'Unknown'}</p>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">{latestUpdateSummary(project)}</p>
+            </Link>
+          )) : <p className="py-4 text-sm text-slate-400">No recent updates yet.</p>}
         </div>
       </section>
+
+      <form onSubmit={submitQuickSearch} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <label className="flex items-center gap-3">
+          <Search className="h-4 w-4 shrink-0 text-slate-400" />
+          <input
+            type="search"
+            value={quickSearch}
+            onChange={(event) => setQuickSearch(event.target.value)}
+            placeholder="Search any branch..."
+            className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
+          />
+        </label>
+      </form>
     </div>
   );
 }

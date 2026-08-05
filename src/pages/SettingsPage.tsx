@@ -1,6 +1,8 @@
 import { CheckCircle2, Database, KeyRound, ShieldCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { hasSupabaseConfig } from '../lib/supabase';
+import { canManageAccessControls } from '../utils/permissions';
 
 const enablePreviewAuth = import.meta.env.DEV || import.meta.env.VITE_ENABLE_PREVIEW_AUTH === 'true';
 
@@ -16,6 +18,17 @@ export function SettingsPage() {
         <h2 className="text-2xl font-semibold text-white">Settings</h2>
         <p className="mt-2 text-sm text-slate-400">Configure authentication, password reset, audit logging, and Supabase environment settings.</p>
       </section>
+
+      {canManageAccessControls(user) ? (
+        <Link to="/access-controls" className="flex items-center justify-between gap-3 rounded-[2rem] border border-emerald-300/20 bg-emerald-500/10 p-6 shadow-soft transition hover:border-emerald-300/40">
+          <div>
+            <p className="text-sm uppercase tracking-[0.28em] text-emerald-200">Restricted</p>
+            <h3 className="mt-2 text-xl font-semibold text-white">Access Controls</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Assign user roles and manage per-user capability overrides.</p>
+          </div>
+          <ShieldCheck className="h-8 w-8 shrink-0 text-emerald-200" />
+        </Link>
+      ) : null}
 
       <section className="rounded-[2rem] border border-sky-400/20 bg-sky-500/10 p-6 shadow-soft">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
