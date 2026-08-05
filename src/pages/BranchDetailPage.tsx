@@ -5,6 +5,7 @@ import { getAllBranches } from '../services/branchService';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
+import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { buildBranchCodeMap, getBranchCodeForBranch } from '../utils/branchProjectIds';
 import type { Project, TaskAssignee } from '../types/domain';
 
@@ -81,7 +82,7 @@ export function BranchDetailPage() {
         name: branch.contactName,
         email: branch.contactEmail,
         phone: branch.contactPhone,
-        designation: 'Branch Contact',
+        designation: 'Contact Person',
       }]
       : [];
 
@@ -105,7 +106,7 @@ export function BranchDetailPage() {
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-soft">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold text-white">Branch participants</h3>
+          <h3 className="text-lg font-semibold text-white">Contact persons</h3>
           <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">Manage contacts</Link>
         </div>
         {branchParticipants.length > 0 ? (
@@ -119,7 +120,7 @@ export function BranchDetailPage() {
               </div>
             ))}
           </div>
-        ) : <p className="mt-4 text-sm text-slate-400">No branch participants have been added yet.</p>}
+        ) : <p className="mt-4 text-sm text-slate-400">No contact persons have been added yet.</p>}
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-soft">
@@ -132,24 +133,30 @@ export function BranchDetailPage() {
           {branchProjects.length > 0 ? branchProjects.map((project) => {
             const participants = projectParticipants(project);
             const pendingTasks = project.tasks.filter((task) => !task.completed);
+            const latestUpdates = [...project.comments].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')).slice(0, 5);
+            const latestActivity = filterActivityExcludingUser([...project.activity], user?.name)
+              .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')).slice(0, 5);
 
             return (
               <article key={project.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <Link to={`/projects/${project.id}`} className="text-base font-semibold text-sky-100 transition hover:text-sky-200">{project.id}</Link>
+                    <p className="text-base font-semibold text-white">{project.id}</p>
                     <p className="mt-1 text-sm text-slate-300">{project.currentStage} · {project.status.replace('_', ' ')}</p>
                     <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
                   </div>
                   <div className="text-sm text-slate-300">
                     <p>Manager: {project.manager || 'Not assigned'}</p>
-                    <p>{project.deliveryPartnerLabel}: {project.installer || 'Not assigned'}</p>
                   </div>
+                </div>
+
+                <div className="mt-3">
+                  <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View project details</Link>
                 </div>
 
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Participants</p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Assigned participants</p>
                     <div className="mt-2 space-y-1 text-sm text-slate-200">
                       {participants.length > 0 ? participants.map((participant) => (
                         <p key={`${project.id}-${participant.email}`}>{participant.name} · {participant.designation}</p>
@@ -171,6 +178,46 @@ export function BranchDetailPage() {
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Files</p>
                   <div className="mt-2 space-y-1 text-sm text-slate-200">
                     {project.files.length > 0 ? project.files.map((file) => <p key={`${project.id}-${file.path ?? file.name}`}>{file.name}</p>) : <p className="text-slate-400">No files uploaded yet.</p>}
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">All tasks</p>
+                  <div className="mt-2 space-y-2 text-sm text-slate-200">
+                    {project.tasks.length > 0 ? project.tasks.map((task) => (
+                      <div key={`${project.id}-${task.id}`} className="flex items-start justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/50 px-3 py-2">
+                        <p className={task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}>{task.text}</p>
+                        <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-300">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
+                      </div>
+                    )) : <p className="text-slate-400">No tasks added yet.</p>}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Latest updates</p>
+                    <div className="mt-2 space-y-2 text-sm text-slate-200">
+                      {latestUpdates.length > 0 ? latestUpdates.map((item, index) => (
+                        <div key={`${project.id}-${item.author}-${item.date}-${index}`} className="rounded-lg border border-white/10 bg-slate-950/50 px-3 py-2">
+                          <p className="text-xs text-slate-400">{item.date}</p>
+                          <p className="mt-1 font-medium text-white">{item.author}</p>
+                          <p className="mt-1 text-slate-300">{item.message}</p>
+                        </div>
+                      )) : <p className="text-slate-400">No updates captured yet.</p>}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Latest activity</p>
+                    <div className="mt-2 space-y-2 text-sm text-slate-200">
+                      {latestActivity.length > 0 ? latestActivity.map((item, index) => (
+                        <div key={`${project.id}-${item.title}-${item.date}-${index}`} className="rounded-lg border border-white/10 bg-slate-950/50 px-3 py-2">
+                          <p className="text-xs text-slate-400">{item.date}</p>
+                          <p className="mt-1 font-medium text-white">{item.title}</p>
+                          <p className="mt-1 text-slate-300">{item.detail}</p>
+                        </div>
+                      )) : <p className="text-slate-400">No activity recorded yet.</p>}
+                    </div>
                   </div>
                 </div>
               </article>

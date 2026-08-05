@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { inviteUser } from '../../services/userService';
 import { roleLabels } from '../../constants/portal';
+import { useSaveFeedback } from '../../contexts/SaveFeedbackContext';
 
 const userSchema = z.object({
   name: z.string().trim().min(2, 'Name is required'),
@@ -16,6 +17,7 @@ type UserFormValues = z.infer<typeof userSchema>;
 
 export function UserCreateForm() {
   const queryClient = useQueryClient();
+  const { showSuccess } = useSaveFeedback();
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<UserFormValues>({
     resolver: zodResolver(userSchema),
@@ -32,6 +34,7 @@ export function UserCreateForm() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['users'] });
       reset({ name: '', email: '', role: 'psg_head_office', branch: '' });
+      showSuccess('Invite sent.');
     },
   });
 

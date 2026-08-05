@@ -7,7 +7,7 @@ export interface CreateBranchInput {
   name: string;
   division: Division;
   province: string;
-  city?: string;
+  city?: string | null;
   town: string;
   physicalAddress: string;
   latitude?: number | null;
@@ -123,6 +123,16 @@ function isMissingBranchColumnError(errorMessage: string | undefined) {
   ].some((column) => normalizedMessage.includes(column));
 }
 
+function getMissingBranchColumns(errorMessage: string | undefined) {
+  if (!errorMessage) {
+    return [] as Array<'contact_name' | 'contact_email' | 'contact_phone' | 'city' | 'contacts'>;
+  }
+
+  const normalizedMessage = errorMessage.toLowerCase();
+  const supportedColumns = ['contact_name', 'contact_email', 'contact_phone', 'city', 'contacts'] as const;
+  return supportedColumns.filter((column) => normalizedMessage.includes(column));
+}
+
 function buildBranchInsertPayload(input: CreateBranchInput) {
   return {
     name: input.name,
@@ -140,9 +150,51 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
   };
 }
 
-function stripLegacyBranchColumns<T extends Record<string, unknown>>(payload: T) {
-  const { contact_name, contact_email, contact_phone, city, contacts, ...legacyPayload } = payload;
-  return legacyPayload;
+function omitBranchColumns<T extends Record<string, unknown>>(
+  payload: T,
+  columns: readonly ('contact_name' | 'contact_email' | 'contact_phone' | 'city' | 'contacts')[],
+) {
+  const nextPayload: Record<string, unknown> = { ...payload };
+  columns.forEach((column) => {
+    delete nextPayload[column];
+  });
+  return nextPayload;
+}
+
+async function saveBranchWithSchemaFallback(
+  mode: 'insert' | 'update',
+  payload: Record<string, unknown>,
+  id?: string,
+) {
+  let candidatePayload = { ...payload };
+  let attempts = 0;
+
+  while (attempts <= 5) {
+    const query = mode === 'insert'
+      ? supabase!.from('branches').insert([candidatePayload])
+      : supabase!.from('branches').update(candidatePayload).eq('id', id ?? '');
+
+    const result = await query.select().single();
+    if (!result.error) {
+      return result;
+    }
+
+    if (!isMissingBranchColumnError(result.error.message)) {
+      return result;
+    }
+
+    const missingColumns = getMissingBranchColumns(result.error.message);
+    if (missingColumns.length === 0) {
+      return result;
+    }
+
+    candidatePayload = omitBranchColumns(candidatePayload, missingColumns);
+    attempts += 1;
+  }
+
+  return mode === 'insert'
+    ? supabase!.from('branches').insert([candidatePayload]).select().single()
+    : supabase!.from('branches').update(candidatePayload).eq('id', id ?? '').select().single();
 }
 
 export async function getAllBranches(): Promise<Branch[]> {
@@ -205,22 +257,7 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
 
   const insertPayload = buildBranchInsertPayload(input);
 
-  let { data, error } = await supabase
-    .from('branches')
-    .insert([insertPayload])
-    .select()
-    .single();
-
-  if (error && isMissingBranchColumnError(error.message)) {
-    const fallbackResult = await supabase
-      .from('branches')
-      .insert([stripLegacyBranchColumns(insertPayload)])
-      .select()
-      .single();
-
-    data = fallbackResult.data;
-    error = fallbackResult.error;
-  }
+  const { data, error } = await saveBranchWithSchemaFallback('insert', insertPayload);
 
   if (error) {
     console.error('Failed to create branch:', error);
@@ -301,19 +338,7 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
   if (input.contactPhone !== undefined) updates.contact_phone = input.contactPhone;
   if (input.contacts !== undefined) updates.contacts = input.contacts;
 
-  let { data, error } = await supabase.from('branches').update(updates).eq('id', id).select().single();
-
-  if (error && isMissingBranchColumnError(error.message)) {
-    const fallbackResult = await supabase
-      .from('branches')
-      .update(stripLegacyBranchColumns(updates))
-      .eq('id', id)
-      .select()
-      .single();
-
-    data = fallbackResult.data;
-    error = fallbackResult.error;
-  }
+  const { data, error } = await saveBranchWithSchemaFallback('update', updates, id);
 
   if (error) {
     console.error('Failed to update branch:', error);

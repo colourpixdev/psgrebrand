@@ -64,7 +64,6 @@ export interface Project {
   projectType: ProjectTemplateId;
   projectTypeName: string;
   siteLabel: string;
-  deliveryPartnerLabel: string;
   province: string;
   town: string;
   physicalAddress: string;
@@ -72,7 +71,6 @@ export interface Project {
   longitude: number | null;
   manager: string;
   managerEmail: string;
-  installer: string;
   designer: string;
   currentStage: ProjectStage;
   status: ProjectStatus;
@@ -83,9 +81,6 @@ export interface Project {
   progress: number;
   branchManagerViewOnly: boolean;
   notes: string;
-  signageContactName?: string;
-  signageContactEmail?: string;
-  signageContactPhone?: string;
   files: ProjectFile[];
   tasks: TaskItem[];
   comments: CommentItem[];

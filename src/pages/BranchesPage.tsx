@@ -4,10 +4,59 @@ import { getAllBranches, createBranch, updateBranch, deleteBranch } from '../ser
 import { getProjects } from '../services/portalService';
 import type { Branch, ContactPerson, Division, Project } from '../types/domain';
 import { useAuth } from '../contexts/AuthContext';
+import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { filterProjectsForUser } from '../utils/permissions';
 import { buildBranchCodeMap, getBranchCodeForBranch } from '../utils/branchProjectIds';
 
 const divisions: Division[] = ['Wealth', 'Insure', 'Wealth Insure', 'Asset', 'Trust'];
+
+function isPrimaryContactDesignation(designation: string) {
+  const normalized = designation.trim().toLowerCase();
+  return normalized === 'branch contact' || normalized === 'contact person';
+}
+
+function hasLegacyPrimaryContact(branch: Pick<Branch, 'contactName' | 'contactEmail' | 'contactPhone'>) {
+  return Boolean(branch.contactName?.trim() || branch.contactEmail?.trim() || branch.contactPhone?.trim());
+}
+
+function getEditablePrimaryContact(branch: Branch) {
+  if (hasLegacyPrimaryContact(branch)) {
+    return {
+      name: branch.contactName ?? '',
+      email: branch.contactEmail,
+      phone: branch.contactPhone,
+      designation: branch.contacts?.[0]?.designation ?? 'Contact Person',
+    } satisfies ContactPerson;
+  }
+
+  return branch.contacts?.find((contact) => isPrimaryContactDesignation(contact.designation));
+}
+
+function getBranchPrimaryContact(branch: Branch) {
+  return getEditablePrimaryContact(branch) ?? branch.contacts?.[0];
+}
+
+function getAdditionalBranchContacts(branch: Branch) {
+  const primaryContact = getEditablePrimaryContact(branch);
+
+  if (!primaryContact) {
+    return branch.contacts ?? [];
+  }
+
+  let skippedPrimary = false;
+  return (branch.contacts ?? []).filter((contact) => {
+    if (!skippedPrimary
+      && contact.name === primaryContact.name
+      && (contact.email ?? '') === (primaryContact.email ?? '')
+      && (contact.phone ?? '') === (primaryContact.phone ?? '')
+      && contact.designation === primaryContact.designation) {
+      skippedPrimary = true;
+      return false;
+    }
+
+    return true;
+  });
+}
 
 function ParticipantFields({ contacts, onChange }: { contacts: ContactPerson[]; onChange: (contacts: ContactPerson[]) => void }) {
   function updateContact(index: number, field: keyof ContactPerson, value: string) {
@@ -18,10 +67,10 @@ function ParticipantFields({ contacts, onChange }: { contacts: ContactPerson[]; 
     <div className="mb-6 border-t border-white/10 pt-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-slate-200">Additional branch participants</p>
-          <p className="mt-1 text-xs text-slate-500">Add other office contacts and their designations.</p>
+          <p className="text-sm font-medium text-slate-200">Additional contact persons</p>
+          <p className="mt-1 text-xs text-slate-500">Add other contact persons and their designations.</p>
         </div>
-        <button type="button" onClick={() => onChange([...contacts, { name: '', email: '', phone: '', designation: '' }])} className="rounded-xl border border-sky-400/30 px-3 py-2 text-sm text-sky-200 transition hover:bg-sky-400/10">Add participant</button>
+        <button type="button" onClick={() => onChange([...contacts, { name: '', email: '', phone: '', designation: '' }])} className="rounded-xl border border-sky-400/30 px-3 py-2 text-sm text-sky-200 transition hover:bg-sky-400/10">Add contact person</button>
       </div>
       <div className="mt-3 space-y-3">
         {contacts.map((contact, index) => (
@@ -54,7 +103,6 @@ export function BranchesPage() {
     name: '',
     division: 'Wealth' as Division,
     province: '',
-    city: '',
     town: '',
     physicalAddress: '',
     latitude: '',
@@ -69,7 +117,6 @@ export function BranchesPage() {
     name: '',
     division: 'Wealth' as Division,
     province: '',
-    city: '',
     town: '',
     physicalAddress: '',
     latitude: '',
@@ -81,6 +128,7 @@ export function BranchesPage() {
     contacts: [] as ContactPerson[],
   });
   const { user } = useAuth();
+  const { showSuccess } = useSaveFeedback();
 
   const isAdmin = user?.role === 'colourpix_admin';
 
@@ -138,7 +186,7 @@ export function BranchesPage() {
         name: formData.name,
         division: formData.division,
         province: formData.province,
-        city: formData.city,
+        city: null,
         town: formData.town,
         physicalAddress: formData.physicalAddress,
         latitude: formData.latitude ? parseFloat(formData.latitude) : null,
@@ -151,7 +199,7 @@ export function BranchesPage() {
             name: formData.contactName.trim(),
             email: formData.contactEmail.trim() || undefined,
             phone: formData.contactPhone.trim() || undefined,
-            designation: formData.contactDesignation.trim() || 'Branch Contact',
+            designation: formData.contactDesignation.trim() || 'Contact Person',
           }] : []),
           ...formData.contacts.filter((contact) => contact.name.trim()),
         ],
@@ -161,7 +209,6 @@ export function BranchesPage() {
         name: '',
         division: 'Wealth',
         province: '',
-        city: '',
         town: '',
         physicalAddress: '',
         latitude: '',
@@ -175,6 +222,7 @@ export function BranchesPage() {
       setShowForm(false);
       setError(null);
       setSuccessMessage(`Branch \"${formData.name}\" was created successfully.`);
+      showSuccess('Branch saved.');
       await loadBranches();
     } catch (err) {
       setSuccessMessage(null);
@@ -186,17 +234,11 @@ export function BranchesPage() {
 
   function beginEdit(branch: Branch) {
     setEditingBranchId(branch.id);
-    const existingContacts = branch.contacts?.length
-      ? branch.contacts
-      : branch.contactName
-        ? [{ name: branch.contactName, email: branch.contactEmail, phone: branch.contactPhone, designation: 'Branch Contact' }]
-        : [];
-    const primaryContact = existingContacts[0];
+    const primaryContact = getEditablePrimaryContact(branch);
     setEditData({
       name: branch.name,
       division: branch.division,
       province: branch.province,
-      city: branch.city ?? '',
       town: branch.town,
       physicalAddress: branch.physicalAddress,
       latitude: branch.latitude?.toString() ?? '',
@@ -205,7 +247,7 @@ export function BranchesPage() {
       contactEmail: primaryContact?.email ?? branch.contactEmail ?? '',
       contactPhone: primaryContact?.phone ?? branch.contactPhone ?? '',
       contactDesignation: primaryContact?.designation ?? '',
-      contacts: existingContacts.slice(1),
+      contacts: getAdditionalBranchContacts(branch),
     });
     setError(null);
     setSuccessMessage(null);
@@ -217,7 +259,6 @@ export function BranchesPage() {
       name: '',
       division: 'Wealth',
       province: '',
-      city: '',
       town: '',
       physicalAddress: '',
       latitude: '',
@@ -245,7 +286,7 @@ export function BranchesPage() {
         name: editData.name,
         division: editData.division,
         province: editData.province,
-        city: editData.city,
+        city: null,
         town: editData.town,
         physicalAddress: editData.physicalAddress,
         latitude: editData.latitude ? parseFloat(editData.latitude) : null,
@@ -258,7 +299,7 @@ export function BranchesPage() {
             name: editData.contactName.trim(),
             email: editData.contactEmail.trim() || undefined,
             phone: editData.contactPhone.trim() || undefined,
-            designation: editData.contactDesignation.trim() || 'Branch Contact',
+            designation: editData.contactDesignation.trim() || 'Contact Person',
           }] : []),
           ...editData.contacts.filter((contact) => contact.name.trim()),
         ],
@@ -268,6 +309,7 @@ export function BranchesPage() {
       cancelEdit();
       setError(null);
       setSuccessMessage(`Branch \"${updatedName}\" was updated successfully.`);
+      showSuccess('Branch updated.');
       await loadBranches();
     } catch (err) {
       setSuccessMessage(null);
@@ -289,6 +331,7 @@ export function BranchesPage() {
       if (deletedBranchName) {
         setSuccessMessage(`Branch \"${deletedBranchName}\" was removed successfully.`);
       }
+      showSuccess('Branch removed.');
       await loadBranches();
     } catch (err) {
       setSuccessMessage(null);
@@ -328,7 +371,7 @@ export function BranchesPage() {
     }
 
     return branches.filter((branch) => {
-      return [branch.name, branch.division, branch.province, branch.city ?? '', branch.town, branch.physicalAddress]
+      return [branch.name, branch.division, branch.province, branch.town, branch.physicalAddress]
         .join(' ')
         .toLowerCase()
         .includes(query);
@@ -442,16 +485,6 @@ export function BranchesPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">City</label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
-                  placeholder="e.g., Cape Town"
-                />
-              </div>
-              <div>
                 <label className="mb-1 block text-sm font-medium text-slate-300">Town *</label>
                 <input
                   type="text"
@@ -533,7 +566,7 @@ export function BranchesPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">Contact Designation</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">Contact Person designation</label>
                 <input
                   type="text"
                   value={formData.contactDesignation}
@@ -585,6 +618,7 @@ export function BranchesPage() {
             {filteredBranches.map((branch) => {
               const isEditing = editingBranchId === branch.id;
               const openProjects = getOpenProjectsForBranch(branch);
+              const primaryContact = getBranchPrimaryContact(branch);
 
               if (isEditing && isAdmin) {
                 return (
@@ -619,13 +653,6 @@ export function BranchesPage() {
                         placeholder="Province"
                         className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                         required
-                      />
-                      <input
-                        type="text"
-                        value={editData.city}
-                        onChange={(e) => setEditData({ ...editData, city: e.target.value })}
-                        placeholder="City"
-                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
                       />
                       <input
                         type="text"
@@ -690,7 +717,7 @@ export function BranchesPage() {
                         type="text"
                         value={editData.contactDesignation}
                         onChange={(e) => setEditData({ ...editData, contactDesignation: e.target.value })}
-                        placeholder="Contact designation"
+                        placeholder="Contact person designation"
                         className="rounded-lg border border-slate-300 px-3 py-2"
                       />
                     </div>
@@ -725,8 +752,9 @@ export function BranchesPage() {
                   <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_1fr_auto] lg:items-start">
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{getBranchCodeForBranch(branch, branchCodeById)}</p>
-                      <Link to={`/branches/${branch.id}`} className="mt-1 block text-lg font-semibold text-white transition hover:text-sky-100">{branch.name}</Link>
-                      <p className="mt-1 text-sm text-slate-400">{branch.city ? `${branch.city}, ` : ''}{branch.town}, {branch.province}</p>
+                      <p className="mt-1 text-lg font-semibold text-white">{branch.name}</p>
+                      <Link to={`/branches/${branch.id}`} className="mt-3 inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View branch details</Link>
+                      <p className="mt-1 text-sm text-slate-400">{branch.town}, {branch.province}</p>
                       <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
                     </div>
 
@@ -739,10 +767,10 @@ export function BranchesPage() {
 
                     <div>
                       <p className="text-xs uppercase tracking-wide text-slate-500">Contact</p>
-                      <p className="mt-1 text-sm text-slate-300">{branch.contactName || 'Not set'}</p>
-                      {branch.contacts?.[0]?.designation ? <p className="text-xs text-slate-400">{branch.contacts[0].designation}</p> : null}
-                      {branch.contactEmail ? <p className="text-xs text-slate-400">{branch.contactEmail}</p> : null}
-                      {branch.contactPhone ? <p className="text-xs text-slate-400">{branch.contactPhone}</p> : null}
+                      <p className="mt-1 text-sm text-slate-300">{primaryContact?.name || 'Not set'}</p>
+                      {primaryContact?.designation ? <p className="text-xs text-slate-400">{primaryContact.designation}</p> : null}
+                      {primaryContact?.email ? <p className="text-xs text-slate-400">{primaryContact.email}</p> : null}
+                      {primaryContact?.phone ? <p className="text-xs text-slate-400">{primaryContact.phone}</p> : null}
                     </div>
 
                     {isAdmin ? (
@@ -783,16 +811,12 @@ export function BranchesPage() {
                       </div>
 
                       <div className="mt-3">
-                        <Link to={`/branches/${branch.id}`} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">Open full branch details</Link>
+                        <Link to={`/branches/${branch.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View branch details</Link>
                       </div>
 
                       <div className="mt-3 space-y-2">
                         {openProjects.map((project) => (
-                          <Link
-                            key={project.id}
-                            to={`/projects/${project.id}`}
-                            className="block rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 transition hover:border-sky-300/40 hover:bg-slate-900"
-                          >
+                          <div key={project.id} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-semibold text-white">{project.id}</p>
@@ -804,7 +828,8 @@ export function BranchesPage() {
                                 {project.status.replace('_', ' ')}
                               </span>
                             </div>
-                          </Link>
+                            <Link to={`/projects/${project.id}`} className="mt-2 inline-flex items-center justify-center rounded-lg border border-sky-300/35 bg-sky-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View project details</Link>
+                          </div>
                         ))}
                       </div>
                     </div>

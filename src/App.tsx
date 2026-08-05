@@ -2,35 +2,35 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { LayoutDashboard, KanbanSquare, FileText, Shield, Users, MapPinned, Map } from 'lucide-react';
 import { AppShell } from './layouts/AppShell';
+import { SaveFeedbackProvider } from './contexts/SaveFeedbackContext';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
 import { canAccessRoute } from './utils/permissions';
 import { productBrand } from './constants/branding';
+import { lazyWithChunkReload } from './utils/chunkRecovery';
 
-const DashboardPage = lazy(() => import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
-const MapPage = lazy(() => import('./pages/MapPage').then((module) => ({ default: module.MapPage })));
-const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage').then((module) => ({ default: module.ProjectDetailPage })));
-const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then((module) => ({ default: module.ProjectsPage })));
-const BranchDetailPage = lazy(() => import('./pages/BranchDetailPage').then((module) => ({ default: module.BranchDetailPage })));
-const ReportsPage = lazy(() => import('./pages/ReportsPage').then((module) => ({ default: module.ReportsPage })));
-const SearchPage = lazy(() => import('./pages/SearchPage').then((module) => ({ default: module.SearchPage })));
-const SettingsPage = lazy(() => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })));
-const UsersPage = lazy(() => import('./pages/UsersPage').then((module) => ({ default: module.UsersPage })));
-const SupportPage = lazy(() => import('./pages/SupportPage').then((module) => ({ default: module.SupportPage })));
-const ProfilePage = lazy(() => import('./pages/ProfilePage').then((module) => ({ default: module.ProfilePage })));
-const AboutPage = lazy(() => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
-const LegalPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.LegalPage })));
-const AccessControlsPage = lazy(() => import('./pages/AccessControlsPage').then((module) => ({ default: module.AccessControlsPage })));
-const BranchesPage = lazy(() => import('./pages/BranchesPage').then((module) => ({ default: module.BranchesPage })));
-const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then((module) => ({ default: module.AuthCallbackPage })));
+const DashboardPage = lazyWithChunkReload('dashboard', () => import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
+const MapPage = lazyWithChunkReload('map', () => import('./pages/MapPage').then((module) => ({ default: module.MapPage })));
+const ProjectDetailPage = lazyWithChunkReload('project-detail', () => import('./pages/ProjectDetailPage').then((module) => ({ default: module.ProjectDetailPage })));
+const ProjectsPage = lazyWithChunkReload('projects', () => import('./pages/ProjectsPage').then((module) => ({ default: module.ProjectsPage })));
+const BranchDetailPage = lazyWithChunkReload('branch-detail', () => import('./pages/BranchDetailPage').then((module) => ({ default: module.BranchDetailPage })));
+const SearchPage = lazyWithChunkReload('search', () => import('./pages/SearchPage').then((module) => ({ default: module.SearchPage })));
+const SettingsPage = lazyWithChunkReload('settings', () => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })));
+const UsersPage = lazyWithChunkReload('users', () => import('./pages/UsersPage').then((module) => ({ default: module.UsersPage })));
+const SupportPage = lazyWithChunkReload('support', () => import('./pages/SupportPage').then((module) => ({ default: module.SupportPage })));
+const ProfilePage = lazyWithChunkReload('profile', () => import('./pages/ProfilePage').then((module) => ({ default: module.ProfilePage })));
+const AboutPage = lazyWithChunkReload('about', () => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
+const LegalPage = lazyWithChunkReload('legal', () => import('./pages/LegalPage').then((module) => ({ default: module.LegalPage })));
+const AccessControlsPage = lazyWithChunkReload('access-controls', () => import('./pages/AccessControlsPage').then((module) => ({ default: module.AccessControlsPage })));
+const BranchesPage = lazyWithChunkReload('branches', () => import('./pages/BranchesPage').then((module) => ({ default: module.BranchesPage })));
+const AuthCallbackPage = lazyWithChunkReload('auth-callback', () => import('./pages/AuthCallbackPage').then((module) => ({ default: module.AuthCallbackPage })));
 
 const navigation = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/branches', label: 'Branches', icon: MapPinned },
   { to: '/projects', label: 'Projects', icon: KanbanSquare },
   { to: '/map', label: 'Map', icon: Map },
-  { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/settings', label: 'Settings', icon: Shield },
 ];
@@ -39,7 +39,6 @@ const routeTitles: Record<string, string> = {
   '/': 'Dashboard',
   '/projects': 'Projects',
   '/branches': 'Branches',
-  '/reports': 'Reports',
   '/users': 'Users',
   '/access-controls': 'Access Controls',
   '/settings': 'Settings',
@@ -172,7 +171,6 @@ function AppRoutes() {
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/branches" element={<BranchesPage />} />
           <Route path="/branches/:branchId" element={<BranchDetailPage />} />
-          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/access-controls" element={<AccessControlsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
@@ -191,7 +189,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <SaveFeedbackProvider>
+        <AppRoutes />
+      </SaveFeedbackProvider>
     </AuthProvider>
   );
 }

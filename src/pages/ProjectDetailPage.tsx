@@ -4,10 +4,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { Timeline } from '../components/timeline/Timeline';
 import { roleLabels } from '../constants/portal';
-import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectSignageContact, updateProjectSummary, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectSummary, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById } from '../services/branchService';
 import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
+import { filterActivityExcludingUser } from '../utils/activityFilter';
+import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { canViewProject, getRolePolicy } from '../utils/permissions';
 import type { CommentItem, Project, ProjectFile, ProjectStatus, ProjectStage, TaskAssignee, TaskItem } from '../types/domain';
 
@@ -66,14 +68,12 @@ export function ProjectDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showSuccess } = useSaveFeedback();
   const queryClient = useQueryClient();
   const [activeProjectSection, setActiveProjectSection] = useState<ProjectSectionId>('timeline');
   const [commentMessage, setCommentMessage] = useState('');
   const [journalTaskId, setJournalTaskId] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
-  const [signageContactNameDraft, setSignageContactNameDraft] = useState('');
-  const [signageContactEmailDraft, setSignageContactEmailDraft] = useState('');
-  const [signageContactPhoneDraft, setSignageContactPhoneDraft] = useState('');
   const [currentStageDraft, setCurrentStageDraft] = useState<ProjectStage>('New Project');
   const [targetDateDraft, setTargetDateDraft] = useState('');
   const [installationDateDraft, setInstallationDateDraft] = useState('');
@@ -125,9 +125,6 @@ export function ProjectDetailPage() {
   useEffect(() => {
     if (project) {
       setNotesDraft(project.notes);
-      setSignageContactNameDraft(project.signageContactName ?? '');
-      setSignageContactEmailDraft(project.signageContactEmail ?? '');
-      setSignageContactPhoneDraft(project.signageContactPhone ?? '');
       setCurrentStageDraft(project.currentStage);
       setTargetDateDraft(project.targetDate);
       setInstallationDateDraft(project.installationDate);
@@ -135,12 +132,16 @@ export function ProjectDetailPage() {
     }
   }, [project]);
 
-  const syncProject = async (updatedProject: Project) => {
+  const syncProject = async (updatedProject: Project, successMessage?: string) => {
     queryClient.setQueryData(['project', projectId], updatedProject);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['projects'] }),
       queryClient.invalidateQueries({ queryKey: ['portal-summary'] }),
     ]);
+
+    if (successMessage) {
+      showSuccess(successMessage);
+    }
   };
 
   const taskUpdateMutation = useMutation({
@@ -153,7 +154,7 @@ export function ProjectDetailPage() {
     onSuccess: async (updatedProject) => {
       setCommentMessage('');
       setJournalTaskId('');
-      await syncProject(updatedProject);
+      await syncProject(updatedProject, 'Update saved.');
     },
   });
 
@@ -163,7 +164,7 @@ export function ProjectDetailPage() {
       actor: user?.name ?? 'Workspace user',
       notes: notesDraft,
     }),
-    onSuccess: syncProject,
+    onSuccess: (updatedProject) => syncProject(updatedProject, 'Notes saved.'),
   });
 
   const projectSummaryMutation = useMutation({
@@ -175,18 +176,7 @@ export function ProjectDetailPage() {
       installationDate: installationDateDraft,
       completionDate: completionDateDraft,
     }),
-    onSuccess: syncProject,
-  });
-
-  const signageContactMutation = useMutation({
-    mutationFn: () => updateProjectSignageContact({
-      projectId: projectId ?? '',
-      actor: user?.name ?? 'Workspace user',
-      signageContactName: signageContactNameDraft,
-      signageContactEmail: signageContactEmailDraft,
-      signageContactPhone: signageContactPhoneDraft,
-    }),
-    onSuccess: syncProject,
+    onSuccess: (updatedProject) => syncProject(updatedProject, 'Project summary fields saved.'),
   });
 
   const questionMutation = useMutation({
@@ -200,7 +190,7 @@ export function ProjectDetailPage() {
     onSuccess: async (updatedProject) => {
       setCommentMessage('');
       setJournalTaskId('');
-      await syncProject(updatedProject);
+      await syncProject(updatedProject, 'Request sent.');
     },
   });
 
@@ -219,7 +209,7 @@ export function ProjectDetailPage() {
     onSuccess: async (updatedProject) => {
       setAnsweringQuestionId(null);
       setAnswerMessage('');
-      await syncProject(updatedProject);
+      await syncProject(updatedProject, 'Answer saved.');
     },
   });
 
@@ -228,7 +218,7 @@ export function ProjectDetailPage() {
       projectId: projectId ?? '',
       questionId: question.id ?? '',
     }),
-    onSuccess: syncProject,
+    onSuccess: (updatedProject) => syncProject(updatedProject, 'Answer marked as read.'),
   });
 
   const taskMutation = useMutation({
@@ -260,7 +250,7 @@ export function ProjectDetailPage() {
     onSuccess: async (updatedProject) => {
       setTaskText('');
       setTaskAssigneeEmails([]);
-      await syncProject(updatedProject);
+      await syncProject(updatedProject, 'Task added.');
     },
   });
 
@@ -287,7 +277,7 @@ export function ProjectDetailPage() {
       setEditingTaskId(null);
       setEditingTaskText('');
       setEditingTaskAssigneeEmails([]);
-      await syncProject(updatedProject);
+      await syncProject(updatedProject, 'Task saved.');
     },
   });
 
@@ -320,7 +310,7 @@ export function ProjectDetailPage() {
 
       return working;
     },
-    onSuccess: syncProject,
+    onSuccess: (updatedProject) => syncProject(updatedProject, 'Project task updated.'),
   });
 
   const addStageMutation = useMutation({
@@ -345,7 +335,7 @@ export function ProjectDetailPage() {
 
       return working;
     },
-    onSuccess: syncProject,
+    onSuccess: (updatedProject) => syncProject(updatedProject, 'Project stage added.'),
   });
 
   const removeStageMutation = useMutation({
@@ -372,7 +362,7 @@ export function ProjectDetailPage() {
 
       return working;
     },
-    onSuccess: syncProject,
+    onSuccess: (updatedProject) => syncProject(updatedProject, 'Project stage removed.'),
   });
 
   const deleteTaskMutation = useMutation({
@@ -384,7 +374,7 @@ export function ProjectDetailPage() {
     onSuccess: async (updatedProject) => {
       setEditingTaskId(null);
       setEditingTaskText('');
-      await syncProject(updatedProject);
+      await syncProject(updatedProject, 'Task deleted.');
     },
   });
 
@@ -395,6 +385,7 @@ export function ProjectDetailPage() {
         queryClient.invalidateQueries({ queryKey: ['projects'] }),
         queryClient.invalidateQueries({ queryKey: ['portal-summary'] }),
       ]);
+      showSuccess('Project deleted.');
       navigate('/projects', { replace: true });
     },
   });
@@ -406,6 +397,7 @@ export function ProjectDetailPage() {
         queryClient.invalidateQueries({ queryKey: ['project', projectId] }),
         queryClient.invalidateQueries({ queryKey: ['projects'] }),
       ]);
+      showSuccess('File uploaded.');
     },
   });
 
@@ -436,7 +428,7 @@ export function ProjectDetailPage() {
       nextName,
       actor: user?.name ?? 'Workspace user',
     }),
-    onSuccess: syncProject,
+    onSuccess: (updatedProject) => syncProject(updatedProject, 'File renamed.'),
   });
 
   const deleteFileMutation = useMutation({
@@ -446,7 +438,7 @@ export function ProjectDetailPage() {
       fileName: file.name,
       actor: user?.name ?? 'Workspace user',
     }),
-    onSuccess: syncProject,
+    onSuccess: (updatedProject) => syncProject(updatedProject, 'File deleted.'),
   });
 
   const previewMutation = useMutation({
@@ -460,7 +452,7 @@ export function ProjectDetailPage() {
 
   const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error ?? deleteFileMutation.error;
   const workflowError = timelineTaskMutation.error ?? addStageMutation.error ?? removeStageMutation.error ?? taskUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
-  const notesError = notesMutation.error ?? signageContactMutation.error;
+  const notesError = notesMutation.error;
   const rolePolicy = getRolePolicy(user);
   const canAdministerProjectDetails = Boolean(user?.isPlatformOwner);
   const canUploadFiles = canAdministerProjectDetails && Boolean(rolePolicy?.files.canUploadFiles);
@@ -471,7 +463,12 @@ export function ProjectDetailPage() {
   const canAddTasks = Boolean(rolePolicy?.tasks.canCreateTasks);
   const canCompleteTasks = Boolean(rolePolicy?.tasks.canCompleteTasks);
   const canAssignTasks = Boolean(rolePolicy?.tasks.canAssignTasks || rolePolicy?.tasks.canReassignTasks);
-  const canDeleteTasks = canAdministerProjectDetails && Boolean(rolePolicy?.tasks.canDeleteTasks);
+  const isBranchContact = Boolean(branch && user && (
+    (branch.contactEmail && user.email && branch.contactEmail.toLowerCase() === user.email.toLowerCase()) ||
+    (branch.contacts && branch.contacts.some((c) => c.email && user.email && c.email.toLowerCase() === user.email.toLowerCase()))
+  ));
+
+  const canDeleteTasks = (canAdministerProjectDetails && Boolean(rolePolicy?.tasks.canDeleteTasks)) || isBranchContact;
   const canDeleteProject = Boolean(rolePolicy?.projectAccess.canDeleteProjects);
   const canCreateAssignedUpdate = canAddComments;
   const canUseConversationComposer = canCreateAssignedUpdate || canAskColourpix;
@@ -550,13 +547,10 @@ export function ProjectDetailPage() {
     || targetDateDraft.trim() !== selectedProject.targetDate.trim()
     || installationDateDraft.trim() !== selectedProject.installationDate.trim()
     || completionDateDraft.trim() !== selectedProject.completionDate.trim();
-  const hasSignageContactChange = signageContactNameDraft.trim() !== (selectedProject.signageContactName ?? '').trim()
-    || signageContactEmailDraft.trim() !== (selectedProject.signageContactEmail ?? '').trim()
-    || signageContactPhoneDraft.trim() !== (selectedProject.signageContactPhone ?? '').trim();
   const branchParticipants = branch?.contacts?.length
     ? branch.contacts
     : branch?.contactName
-      ? [{ name: branch.contactName, email: branch.contactEmail, phone: branch.contactPhone, designation: 'Branch Contact' }]
+      ? [{ name: branch.contactName, email: branch.contactEmail, phone: branch.contactPhone, designation: 'Contact Person' }]
       : [];
 
   return (
@@ -566,7 +560,7 @@ export function ProjectDetailPage() {
         <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Project ID {selectedProject.id}</p>
         <h2 className="mt-2 text-3xl font-semibold text-white">{selectedProject.branch}</h2>
         <p className="mt-2 text-sm text-slate-400">
-          {selectedProject.town}, {selectedProject.province} · Manager {selectedProject.manager} · {selectedProject.deliveryPartnerLabel} {selectedProject.installer}
+          {selectedProject.town}, {selectedProject.province} · Manager {selectedProject.manager}
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-4 text-sm text-slate-300">
           {canEditNotes ? (
@@ -603,7 +597,7 @@ export function ProjectDetailPage() {
         </div>
         {canEditNotes ? (
           <div className="mt-3 flex">
-            <button type="button" disabled={projectSummaryMutation.isPending || !hasSummaryChange} onClick={() => projectSummaryMutation.mutate()} className="rounded-2xl bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={projectSummaryMutation.isPending} onClick={() => projectSummaryMutation.mutate()} className="rounded-2xl bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">
               {projectSummaryMutation.isPending ? 'Saving summary...' : 'Save summary fields'}
             </button>
           </div>
@@ -621,7 +615,7 @@ export function ProjectDetailPage() {
           <div className="mt-5 border-t border-white/10 pt-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Branch and contact persons</h3>
-              <Link to={`/branches/${branch.id}`} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">View branch</Link>
+              <Link to={`/branches/${branch.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/30 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View branch details</Link>
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-4 text-sm text-slate-300">
               <div>Branch: <span className="text-white">{branch.name}</span></div>
@@ -643,46 +637,6 @@ export function ProjectDetailPage() {
             ) : <p className="mt-4 text-sm text-slate-400">No branch contact persons have been added yet.</p>}
           </div>
         ) : null}
-
-        <div className="mt-5 border-t border-white/10 pt-5">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Signage company contact</h3>
-          <p className="mt-1 text-xs text-slate-500">Keep {selectedProject.installer || 'the signage company'}'s contact person on hand for quick follow-up.</p>
-          {canEditNotes ? (
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-              <label className="grid gap-2 text-sm text-slate-300">
-                Contact name
-                <input value={signageContactNameDraft} onChange={(event) => setSignageContactNameDraft(event.target.value)} placeholder="e.g. John from ABC Signage" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50" />
-              </label>
-              <label className="grid gap-2 text-sm text-slate-300">
-                Email
-                <input type="email" value={signageContactEmailDraft} onChange={(event) => setSignageContactEmailDraft(event.target.value)} placeholder="name@company.co.za" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50" />
-              </label>
-              <label className="grid gap-2 text-sm text-slate-300">
-                Phone
-                <input value={signageContactPhoneDraft} onChange={(event) => setSignageContactPhoneDraft(event.target.value)} placeholder="071 234 5678" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50" />
-              </label>
-            </div>
-          ) : (
-            <div className="mt-3 grid gap-2 text-sm text-slate-300">
-              <p>Contact name: <span className="text-white">{selectedProject.signageContactName || 'Not captured'}</span></p>
-              <p>Email: <span className="text-white">{selectedProject.signageContactEmail || 'Not captured'}</span></p>
-              <p>Phone: <span className="text-white">{selectedProject.signageContactPhone || 'Not captured'}</span></p>
-            </div>
-          )}
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            {(selectedProject.signageContactEmail || selectedProject.signageContactPhone) ? (
-              <div className="flex flex-wrap gap-3">
-                {selectedProject.signageContactEmail ? <a href={`mailto:${selectedProject.signageContactEmail}`} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">Email {selectedProject.signageContactName || 'contact'}</a> : null}
-                {selectedProject.signageContactPhone ? <a href={`tel:${selectedProject.signageContactPhone}`} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">Call {selectedProject.signageContactName || 'contact'}</a> : null}
-              </div>
-            ) : null}
-            {canEditNotes ? (
-              <button type="button" disabled={signageContactMutation.isPending || !hasSignageContactChange} onClick={() => signageContactMutation.mutate()} className="rounded-2xl bg-sky-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
-                {signageContactMutation.isPending ? 'Saving...' : 'Save signage contact'}
-              </button>
-            ) : null}
-          </div>
-        </div>
 
         {canDeleteProject ? (
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-red-400/15 pt-5">
@@ -1032,7 +986,7 @@ export function ProjectDetailPage() {
         <div className="mt-6 border-t border-white/10 pt-6">
           <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Activity</h4>
           <div className="mt-4 space-y-3">
-            {selectedProject.activity.length > 0 ? selectedProject.activity.map((item, index) => (
+            {filterActivityExcludingUser(selectedProject.activity, user?.name).length > 0 ? filterActivityExcludingUser(selectedProject.activity, user?.name).map((item, index) => (
               <div key={`${item.date}-${item.title}-${item.detail}-${index}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-sm font-medium text-white">{item.title}</p>
@@ -1068,7 +1022,7 @@ export function ProjectDetailPage() {
             <h3 className="text-lg font-semibold text-white">Summary</h3>
             <p className="mt-1 text-sm text-slate-400">Edit the project summary here. Saved changes are written to the project activity log.</p>
           </div>
-          <button type="button" disabled={!canEditNotes || notesMutation.isPending || !hasNotesChange} onClick={() => notesMutation.mutate()} className="w-fit rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="button" disabled={!canEditNotes || notesMutation.isPending} onClick={() => notesMutation.mutate()} className="w-fit rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
             {notesMutation.isPending ? 'Saving summary...' : 'Save summary'}
           </button>
         </div>

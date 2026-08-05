@@ -5,7 +5,6 @@ export type ProjectTemplate = {
   name: string;
   description: string;
   siteLabel: string;
-  deliveryPartnerLabel: string;
   defaultStages: readonly ProjectStage[];
 };
 
@@ -15,7 +14,6 @@ export const projectTemplates: Record<ProjectTemplateId, ProjectTemplate> = {
     name: 'Signage rollout',
     description: 'Multi-site signage, graphics, approvals, production, installation, photos, and signoff.',
     siteLabel: 'Site / branch',
-    deliveryPartnerLabel: 'Installation partner',
     defaultStages: [
       'New Project',
       'Awaiting Information',
@@ -42,7 +40,6 @@ export const projectTemplates: Record<ProjectTemplateId, ProjectTemplate> = {
     name: 'General rollout',
     description: 'Repeatable project delivery across locations, departments, customers, or operational sites.',
     siteLabel: 'Site / location',
-    deliveryPartnerLabel: 'Delivery partner',
     defaultStages: ['New Project', 'Awaiting Information', 'Awaiting Approval', 'Approved', 'Production', 'Installation Scheduled', 'Installed', 'Client Signoff', 'Completed'],
   },
   service_delivery: {
@@ -50,7 +47,6 @@ export const projectTemplates: Record<ProjectTemplateId, ProjectTemplate> = {
     name: 'Service delivery',
     description: 'Customer work requests, supplier updates, operational tasks, approvals, and closeout records.',
     siteLabel: 'Customer / site',
-    deliveryPartnerLabel: 'Service partner',
     defaultStages: ['New Project', 'Awaiting Information', 'Quotation Requested', 'Quotation Received', 'Approved', 'Installation Scheduled', 'Completed'],
   },
 };

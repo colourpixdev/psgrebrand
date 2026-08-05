@@ -4,6 +4,7 @@ import { CheckCircle2, ShieldCheck, Users } from 'lucide-react';
 import { roleLabels } from '../constants/portal';
 import { getUsersResult, updateUserAccessControls } from '../services/userService';
 import type { Role, UserRecord } from '../types/domain';
+import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { accessControlGroups, applyPolicyOverrides, getBaseRolePolicy, getPolicyValue } from '../utils/permissions';
 
 type AccessDraft = {
@@ -50,6 +51,7 @@ function Toggle({ checked, disabled, onChange }: { checked: boolean; disabled?: 
 
 export function AccessControlsPage() {
   const queryClient = useQueryClient();
+  const { showSuccess } = useSaveFeedback();
   const [drafts, setDrafts] = useState<Record<string, AccessDraft>>({});
   const [savedEmail, setSavedEmail] = useState<string | null>(null);
   const [expandedAdvanced, setExpandedAdvanced] = useState<Record<string, boolean>>({});
@@ -83,6 +85,7 @@ export function AccessControlsPage() {
     onSuccess: async (updatedUser) => {
       setSavedEmail(updatedUser.email);
       await queryClient.invalidateQueries({ queryKey: ['users'] });
+      showSuccess('Access controls saved.');
     },
   });
 

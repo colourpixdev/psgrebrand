@@ -21,10 +21,7 @@ export function ProjectCard({ project, user }: { project: Project; user?: UserRe
   const outstandingTasks = project.tasks.filter((task) => !task.completed).length;
 
   return (
-    <Link
-      to={`/projects/${project.id}`}
-      className="block rounded-2xl border border-white/10 bg-slate-950/60 p-4 transition hover:-translate-y-0.5 hover:border-sky-400/30"
-    >
+    <article className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 transition hover:-translate-y-0.5 hover:border-sky-400/30">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-xs uppercase tracking-[0.18em] text-slate-500">{project.branchCode ? `${project.branchCode} - ${project.id}` : project.id}</p>
@@ -48,13 +45,18 @@ export function ProjectCard({ project, user }: { project: Project; user?: UserRe
 
       <div className="mt-4 grid gap-1 text-sm text-slate-300">
         <p className="truncate">Manager: {project.manager}</p>
-        <p className="truncate">{project.deliveryPartnerLabel}: {project.installer}</p>
         <p>Target: {project.targetDate}</p>
+      </div>
+
+      <div className="mt-4">
+        <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">
+          View project details
+        </Link>
       </div>
 
       <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
         <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-400" style={{ width: `${project.progress}%` }} />
       </div>
-    </Link>
+    </article>
   );
 }

@@ -10,6 +10,7 @@ import { timelineStages } from '../../constants/portal';
 import { defaultGraphicsPartner, defaultWorkspace } from '../../constants/workspaces';
 import { defaultProjectTemplate, projectTemplateOptions } from '../../constants/projectTemplates';
 import { buildBranchCodeMap, createNextProjectId, getBranchCodeForBranch } from '../../utils/branchProjectIds';
+import { useSaveFeedback } from '../../contexts/SaveFeedbackContext';
 
 const optionalText = z.string().optional().default('');
 const optionalEmail = z.string().trim().refine((value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), 'Enter a valid manager email');
@@ -25,7 +26,6 @@ const projectSchema = z.object({
   branch: optionalText,
   manager: optionalText,
   managerEmail: optionalEmail,
-  installer: optionalText,
   designer: optionalText,
   currentStage: z.string().min(1, 'Stage is required'),
   status: z.enum(['completed', 'busy', 'in_progress', 'awaiting_approval', 'delayed', 'on_hold', 'cancelled']),
@@ -101,6 +101,7 @@ function projectSaveNextStep(error: unknown) {
 
 export function ProjectCreateForm() {
   const queryClient = useQueryClient();
+  const { showSuccess } = useSaveFeedback();
   const [searchParams] = useSearchParams();
   const preselectedBranchId = searchParams.get('branchId') ?? '';
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -130,7 +131,6 @@ export function ProjectCreateForm() {
       branch: '',
       manager: '',
       managerEmail: '',
-      installer: '',
       designer: '',
       currentStage: 'New Project',
       status: 'in_progress',
@@ -148,6 +148,7 @@ export function ProjectCreateForm() {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['portal-summary'] });
       setSuccessMessage('Project was added successfully.');
+      showSuccess('Project created.');
       const selected = branches.find((branch) => branch.id === watch('branchId'));
       const nextCode = selected ? getBranchCodeForBranch(selected, codeByBranchId) : '';
       const nextProjectId = nextCode ? createNextProjectId(nextCode, projects) : '';
@@ -163,7 +164,6 @@ export function ProjectCreateForm() {
         branch: selected?.name ?? '',
         manager: '',
         managerEmail: '',
-        installer: '',
         designer: '',
         currentStage: 'New Project',
         status: 'in_progress',
@@ -297,11 +297,6 @@ export function ProjectCreateForm() {
           Contact email <span className="text-xs text-slate-500">Optional</span>
           <input {...register('managerEmail')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
           {errors.managerEmail ? <span className="text-xs text-red-300">{errors.managerEmail.message}</span> : null}
-        </label>
-
-        <label className="grid gap-2 text-sm text-slate-300">
-          Delivery partner <span className="text-xs text-slate-500">Optional</span>
-          <input {...register('installer')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
         </label>
 
         <label className="grid gap-2 text-sm text-slate-300">

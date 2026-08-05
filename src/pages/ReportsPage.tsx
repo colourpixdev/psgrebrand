@@ -112,10 +112,20 @@ function downloadExcel(projects: Project[], reportName: string) {
   URL.revokeObjectURL(url);
 }
 
-function branchDetailHtml(projects: Project[], reportName: string, branchName: string) {
+function branchDetailHtml(projects: Project[], reportName: string, branchName: string, userName?: string) {
   const cards = projects.map((project) => {
     const pendingTasks = project.tasks.filter((task) => !task.completed);
     const participants = project.tasks.flatMap((task) => task.assignees ?? []);
+    // filter out current user's activity when generating reports
+    const activityItems = (userName
+      ? project.activity.filter((item) => {
+        const normalized = userName.trim().toLowerCase();
+        const title = (item.title ?? '').toLowerCase();
+        const detail = (item.detail ?? '').toLowerCase();
+        return !title.includes(normalized) && !detail.includes(normalized);
+      })
+      : project.activity
+    ).slice(0, 5);
 
     return `
       <section class="card">
@@ -131,7 +141,7 @@ function branchDetailHtml(projects: Project[], reportName: string, branchName: s
         <p><strong>Files:</strong> ${project.files.length ? escapeHtml(project.files.map((file) => file.name).join(', ')) : 'No files uploaded'}</p>
         <p><strong>Latest journal items:</strong></p>
         <ul>
-          ${(project.activity.slice(0, 5).map((item) => `<li>${escapeHtml(item.title)} - ${escapeHtml(item.detail)}</li>`).join('')) || '<li>No journal entries</li>'}
+          ${(activityItems.map((item) => `<li>${escapeHtml(item.title)} - ${escapeHtml(item.detail)}</li>`).join('')) || '<li>No journal entries</li>'}
         </ul>
       </section>
     `;
@@ -162,9 +172,9 @@ function branchDetailHtml(projects: Project[], reportName: string, branchName: s
   `;
 }
 
-function openPdfReport(projects: Project[], reportName: string, reportType: ReportType, selectedBranchName: string) {
+function openPdfReport(projects: Project[], reportName: string, reportType: ReportType, selectedBranchName: string, userName?: string) {
   const html = reportType === 'single-branch-detail'
-    ? branchDetailHtml(projects, reportName, selectedBranchName)
+    ? branchDetailHtml(projects, reportName, selectedBranchName, userName)
     : `
     <!doctype html>
     <html>
@@ -231,7 +241,6 @@ export function ReportsPage() {
       project.town,
       project.province,
       project.manager,
-      project.installer,
       project.currentStage,
       project.status,
     ].some((value) => includesText(value, normalizedQuery));
@@ -380,7 +389,7 @@ export function ReportsPage() {
               <FileText className="h-4 w-4" />
               Excel report
             </button>
-            <button type="button" disabled={!canExportReports || (reportType === 'single-branch-detail' && branchName === 'all')} onClick={() => openPdfReport(exportProjects, reportName, reportType, branchName)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!canExportReports || (reportType === 'single-branch-detail' && branchName === 'all')} onClick={() => openPdfReport(exportProjects, reportName, reportType, branchName, user?.name)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">
               <FileText className="h-4 w-4" />
               PDF report
             </button>
@@ -417,7 +426,7 @@ export function ReportsPage() {
                 <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
-                  <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-semibold text-sky-100 hover:text-sky-200">{project.id}</Link></td>
+                  <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-lg border border-sky-300/35 bg-sky-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View project details</Link></td>
                   <td className="px-5 py-4"><Link to="/branches" className="hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectTypeName}</td>
                   <td className="px-5 py-4">{project.town}, {project.province}</td>

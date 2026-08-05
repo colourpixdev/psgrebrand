@@ -384,7 +384,19 @@ export function canViewProject(user: UserRecord | null | undefined, project: Pro
     return Boolean(user.branch && project.branch.toLowerCase() === user.branch.toLowerCase());
   }
 
-  return project.installer.toLowerCase() === user.name.toLowerCase() || project.installer.toLowerCase() === user.branch?.toLowerCase();
+  if (user.role === 'sign_company') {
+    const assignedToUser = project.tasks.some((task) =>
+      task.assignees?.some((assignee) => assignee.email.toLowerCase() === user.email.toLowerCase() || assignee.name.toLowerCase() === user.name.toLowerCase()),
+    );
+
+    if (assignedToUser) {
+      return true;
+    }
+
+    return Boolean(user.branch && project.branch.toLowerCase() === user.branch.toLowerCase());
+  }
+
+  return false;
 }
 
 export function filterProjectsForUser(projects: Project[], user: UserRecord | null | undefined) {
@@ -410,7 +422,7 @@ export function canChangeProjectStage(user: UserRecord | null | undefined, proje
   }
 
   if (user.role === 'sign_company') {
-    const installerTransitions: Partial<Record<Project['currentStage'], Project['currentStage'][]>> = {
+    const deliveryTransitions: Partial<Record<Project['currentStage'], Project['currentStage'][]>> = {
       Production: ['Installation Scheduled'],
       'Installation Scheduled': ['Installation In Progress'],
       'Installation In Progress': ['Installed'],
@@ -418,7 +430,7 @@ export function canChangeProjectStage(user: UserRecord | null | undefined, proje
       'Client Signoff': ['Completed'],
     };
 
-    return installerTransitions[project.currentStage]?.includes(nextStage) ?? false;
+    return deliveryTransitions[project.currentStage]?.includes(nextStage) ?? false;
   }
 
   if (user.role === 'psg_head_office') {
@@ -446,7 +458,7 @@ export function getWorkflowDenialReason(user: UserRecord | null | undefined, pro
 
   if (next.currentStage !== project.currentStage && !canChangeProjectStage(user, project, next.currentStage)) {
     if (user.role === 'sign_company') {
-      return 'Installers may only move projects through installation and signoff milestones.';
+      return 'Delivery partners may only move projects through installation and signoff milestones.';
     }
 
     if (user.role === 'psg_head_office') {

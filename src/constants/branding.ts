@@ -5,7 +5,7 @@
   licensee: 'Platform owner',
   customer: 'PSG Wealth Insure',
   partner: 'Colourpix CC',
-  workspace: 'Colourpix / PSG Wealth Insure Workspace',
+  workspace: 'PSG Rebrand Workspace',
   licenseStatus: 'Licensed',
   version: import.meta.env.VITE_APP_VERSION ?? '0.0.0',
   poweredBy: 'Powered by PSG Rebrand',

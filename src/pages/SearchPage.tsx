@@ -25,7 +25,6 @@ export function SearchPage() {
           p.branch.toLowerCase().includes(q) ||
           p.town.toLowerCase().includes(q) ||
           p.province.toLowerCase().includes(q) ||
-          p.installer.toLowerCase().includes(q) ||
           p.id.toLowerCase().includes(q) ||
           p.currentStage.toLowerCase().includes(q) ||
           p.projectTypeName.toLowerCase().includes(q) ||
@@ -42,7 +41,7 @@ export function SearchPage() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="e.g. Hermanus, delayed, delivery partner, PSG-00123..."
+          placeholder="e.g. Hermanus, delayed, stage, PSG-00123..."
           className="mt-4 w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400/50 md:max-w-lg"
         />
         {q ? (
@@ -61,12 +60,11 @@ export function SearchPage() {
                 <p className="mt-1 text-sm text-slate-400">{project.id}</p>
                 <p className="mt-3 text-xs uppercase tracking-[0.2em] text-teal-200/80">{project.projectTypeName}</p>
                 <p className="mt-3 text-sm text-slate-300">{project.town}, {project.province}</p>
-                <p className="text-sm text-slate-300">{project.deliveryPartnerLabel}: {project.installer}</p>
                 <p className="text-sm text-slate-300">Stage: {project.currentStage}</p>
                 <p className="text-sm text-slate-300">Status: {project.status}</p>
                 <span className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white">
                   <FileText className="h-4 w-4" />
-                  Open project details
+                  View project details
                 </span>
               </Link>
             </article>

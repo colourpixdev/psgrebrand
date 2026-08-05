@@ -61,10 +61,16 @@ export function FileGrid({
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const requestedThumbnailKeys = useRef(new Set<string>());
 
-  const rootFiles = files.filter((file) => !file.taskId);
+  const sortedFiles = [...files].sort((a, b) => {
+    const byDate = (b.uploadedAt ?? '').localeCompare(a.uploadedAt ?? '');
+    return byDate !== 0 ? byDate : a.name.localeCompare(b.name);
+  });
+
+  const rootFiles = sortedFiles.filter((file) => !file.taskId);
   const folders = taskFolders
-    .map((folder) => ({ ...folder, files: files.filter((file) => file.taskId === folder.id) }))
-    .filter((folder) => folder.files.length > 0);
+    .map((folder) => ({ ...folder, files: sortedFiles.filter((file) => file.taskId === folder.id) }))
+    .filter((folder) => folder.files.length > 0)
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   useEffect(() => {
     if (!getThumbnailUrl) {
@@ -177,40 +183,52 @@ export function FileGrid({
 
       {uploadError ? <p className="mt-3 text-sm text-red-300">{uploadError}</p> : null}
 
-      {folders.length > 0 ? (
-        <div className="mt-4 space-y-3">
-          {folders.map((folder) => {
-            const isOpen = openFolderIds.includes(folder.id);
+      <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">General uploads</p>
+          <span className="text-xs text-slate-500">{rootFiles.length} file{rootFiles.length === 1 ? '' : 's'}</span>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {rootFiles.length > 0 ? rootFiles.map((file) => renderFileCard(file)) : (
+            <div className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-5 text-sm text-slate-400 sm:col-span-2">
+              {folders.length > 0 ? 'No general files uploaded yet.' : 'No files uploaded yet.'}
+            </div>
+          )}
+        </div>
+      </div>
 
-            return (
-              <div key={folder.id} className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
-                <button
-                  type="button"
-                  onClick={() => setOpenFolderIds((current) => (isOpen ? current.filter((id) => id !== folder.id) : [...current, folder.id]))}
-                  className="flex w-full items-center gap-3 text-left"
-                >
-                  <FileText className="h-4 w-4 shrink-0 text-amber-200" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{folder.label}</span>
-                  <span className="shrink-0 text-xs text-slate-400">{folder.files.length} file{folder.files.length === 1 ? '' : 's'}</span>
-                </button>
-                {isOpen ? (
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    {folder.files.map((file) => renderFileCard(file))}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
+      {folders.length > 0 ? (
+        <div className="mt-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Task folders</p>
+            <span className="text-xs text-slate-500">{folders.length} folder{folders.length === 1 ? '' : 's'}</span>
+          </div>
+          <div className="space-y-3">
+            {folders.map((folder) => {
+              const isOpen = openFolderIds.includes(folder.id);
+
+              return (
+                <div key={folder.id} className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                  <button
+                    type="button"
+                    onClick={() => setOpenFolderIds((current) => (isOpen ? current.filter((id) => id !== folder.id) : [...current, folder.id]))}
+                    className="flex w-full items-center gap-3 text-left"
+                  >
+                    <FileText className="h-4 w-4 shrink-0 text-amber-200" />
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{folder.label}</span>
+                    <span className="shrink-0 text-xs text-slate-400">{folder.files.length} file{folder.files.length === 1 ? '' : 's'}</span>
+                  </button>
+                  {isOpen ? (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      {folder.files.map((file) => renderFileCard(file))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : null}
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {rootFiles.length > 0 ? rootFiles.map((file) => renderFileCard(file)) : (
-          <div className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-5 text-sm text-slate-400 sm:col-span-2">
-            {folders.length > 0 ? 'No general files uploaded yet.' : 'No files uploaded yet.'}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

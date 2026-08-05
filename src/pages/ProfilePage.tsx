@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Building2, CheckCircle2, UserCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { defaultWorkspace } from '../constants/workspaces';
 import { getInitials, getProfileIdentity } from '../utils/profileIdentity';
 
@@ -19,6 +20,7 @@ type ProfileValues = z.infer<typeof profileSchema>;
 
 export function ProfilePage() {
   const { user, roleLabel, updateProfileIdentity } = useAuth();
+  const { showSuccess } = useSaveFeedback();
   const [notice, setNotice] = useState<string | null>(null);
   const identity = getProfileIdentity(user);
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<ProfileValues>({
@@ -44,6 +46,7 @@ export function ProfilePage() {
     });
 
     setNotice(saveTarget === 'supabase' ? 'Profile identity saved to your account.' : 'Profile identity saved on this device.');
+    showSuccess('Profile saved.');
   });
 
   return (

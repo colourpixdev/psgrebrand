@@ -274,9 +274,9 @@ export function MapPage() {
                               <Link
                                 key={project.id}
                                 to={`/projects/${project.id}`}
-                                className="block rounded px-2 py-1 text-blue-600 hover:bg-blue-50"
+                                className="inline-flex items-center justify-center rounded-md border border-sky-300/50 bg-sky-500/15 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700 transition hover:bg-sky-500/25"
                               >
-                                {project.branch} · {project.currentStage}
+                                View project details
                               </Link>
                             ))
                           ) : (
@@ -298,9 +298,8 @@ export function MapPage() {
                     {project.physicalAddress ? <p className="mt-1 text-xs text-slate-600">{project.physicalAddress}</p> : null}
                     <p className="mt-2 text-xs"><strong>Stage:</strong> {project.currentStage}</p>
                     <p className="text-xs"><strong>Status:</strong> {statusStyles[project.status].label}</p>
-                    <p className="text-xs"><strong>Installer:</strong> {project.installer}</p>
                     <Link className="mt-3 inline-flex rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-500" to={`/projects/${project.id}`}>
-                      Open project details
+                      View project details
                     </Link>
                   </div>
                 </Popup>
@@ -339,7 +338,7 @@ export function MapPage() {
                     <p className="mt-1 text-sm text-slate-400">{project.town}, {project.province}</p>
                     {project.physicalAddress ? <p className="mt-1 text-xs text-slate-500">{project.physicalAddress}</p> : null}
                     <p className="mt-2 text-xs text-slate-300">{project.currentStage} · {statusStyles[project.status].label}</p>
-                    <p className="mt-3 text-xs font-semibold text-sky-200">Open project details</p>
+                    <p className="mt-3 inline-flex rounded-lg border border-sky-300/35 bg-sky-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-100">View project details</p>
                   </div>
                 </div>
               </Link>
