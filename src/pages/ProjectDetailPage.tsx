@@ -520,34 +520,6 @@ export function ProjectDetailPage() {
         </nav>
       </section>
 
-      <section id="project-note" className="rounded-3xl border border-sky-400/20 bg-sky-500/10 p-6 shadow-soft scroll-mt-24">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-sky-200">Project follow-up</p>
-            <h3 className="mt-2 text-lg font-semibold text-white">Leave an accountable project update</h3>
-            <p className="mt-1 text-sm leading-6 text-slate-300">Each update is written to the project journal and assigned as an open follow-up until the assignee completes it.</p>
-          </div>
-          <Link to="/search" className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10">Find another project</Link>
-        </div>
-
-        <div className="mt-5 grid gap-3">
-          <label className="grid gap-2 text-sm text-slate-300">
-            Update or follow-up
-            <textarea value={commentMessage} disabled={!canCreateAssignedUpdate} onChange={(event) => setCommentMessage(event.target.value)} rows={3} placeholder={canCreateAssignedUpdate ? 'Example: Expecting delays because of the weather forecast this weekend.' : 'Project update tasks are restricted'} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm sm:leading-6" />
-          </label>
-          <label className="grid gap-2 text-sm text-slate-300">
-            Assign to
-            <select multiple value={commentAssigneeEmails} disabled={!canCreateAssignedUpdate} onChange={(event) => setCommentAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
-              {assignableUsers.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
-            </select>
-          </label>
-          <p className="text-xs text-slate-400">Assign yourself for a personal reminder, or add the people responsible for resolving this follow-up.</p>
-          <button type="button" disabled={!canCreateAssignedUpdate || assignedUpdateMutation.isPending || !commentMessage.trim() || commentAssigneeEmails.length === 0} onClick={() => assignedUpdateMutation.mutate()} className="w-fit rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
-            {assignedUpdateMutation.isPending ? 'Saving follow-up...' : 'Save and assign follow-up'}
-          </button>
-        </div>
-      </section>
-
       <section className={activeProjectSection === 'timeline' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
         <Timeline
           stages={timelineStages}
@@ -640,6 +612,24 @@ export function ProjectDetailPage() {
             <p className="mt-1 text-sm text-slate-400">Every update, follow-up, question, and answer for this project lives in one place.</p>
           </div>
           {unreadAnswers.length > 0 ? <span className="rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100">{unreadAnswers.length} new answer{unreadAnswers.length === 1 ? '' : 's'}</span> : null}
+        </div>
+
+        <div className="mt-5 grid gap-3 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-sky-200">Add a journal entry</p>
+          <label className="grid gap-2 text-sm text-slate-300">
+            Update or follow-up
+            <textarea value={commentMessage} disabled={!canCreateAssignedUpdate} onChange={(event) => setCommentMessage(event.target.value)} rows={3} placeholder={canCreateAssignedUpdate ? 'Example: Expecting delays because of the weather forecast this weekend.' : 'Project update tasks are restricted'} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm sm:leading-6" />
+          </label>
+          <label className="grid gap-2 text-sm text-slate-300">
+            Assign to (optional)
+            <select multiple value={commentAssigneeEmails} disabled={!canCreateAssignedUpdate} onChange={(event) => setCommentAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
+              {assignableUsers.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
+            </select>
+          </label>
+          <p className="text-xs text-slate-400">Assign yourself for a personal reminder, add the people responsible for resolving this follow-up, or leave unassigned for a plain journal note.</p>
+          <button type="button" disabled={!canCreateAssignedUpdate || assignedUpdateMutation.isPending || !commentMessage.trim()} onClick={() => assignedUpdateMutation.mutate()} className="w-fit rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
+            {assignedUpdateMutation.isPending ? 'Saving entry...' : commentAssigneeEmails.length > 0 ? 'Save and assign follow-up' : 'Save journal entry'}
+          </button>
         </div>
 
         {canAskColourpix ? (

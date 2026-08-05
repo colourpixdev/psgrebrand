@@ -1059,9 +1059,6 @@ export async function addAssignedProjectUpdate(input: AddAssignedProjectUpdateIn
   if (!message) {
     throw new Error('Project update cannot be empty.');
   }
-  if (assignees.length === 0) {
-    throw new Error('Assign this project update to at least one person.');
-  }
 
   await hydrateAuthSession();
 
@@ -1073,7 +1070,7 @@ export async function addAssignedProjectUpdate(input: AddAssignedProjectUpdateIn
   const now = new Date().toISOString();
   const taskId = createTaskId();
   const primaryAssignee = assignees[assignees.length - 1];
-  const task: TaskItem = {
+  const task: TaskItem | null = assignees.length > 0 ? {
     id: taskId,
     text: message,
     completed: false,
@@ -1081,18 +1078,18 @@ export async function addAssignedProjectUpdate(input: AddAssignedProjectUpdateIn
     assigneeEmail: primaryAssignee.email,
     assignees,
     createdAt: now,
-  };
+  } : null;
   const comment: CommentItem = {
     id: taskId,
-    taskId,
+    taskId: task ? taskId : undefined,
     kind: 'comment',
     date: todayLabel(),
     author: input.author,
     message,
-    assignees,
+    assignees: assignees.length > 0 ? assignees : undefined,
   };
   const activity = [
-    createActivity('Assigned project update', `${input.author} assigned an update to ${summarizeAssignees(assignees)}.`),
+    createActivity('Project journal entry', assignees.length > 0 ? `${input.author} assigned an update to ${summarizeAssignees(assignees)}.` : `${input.author} added a journal entry.`),
     ...existingProject.activity,
   ];
 
@@ -1100,13 +1097,14 @@ export async function addAssignedProjectUpdate(input: AddAssignedProjectUpdateIn
     .from('projects')
     .update({
       comments: [comment, ...existingProject.comments],
-      tasks: [task, ...existingProject.tasks],
+      tasks: task ? [task, ...existingProject.tasks] : existingProject.tasks,
       activity,
       updated_at: now,
     })
     .eq('id', input.projectId)
     .select('*')
     .single();
+
 
   if (error || !data) {
     throw error ?? new Error('Unable to save assigned project update.');
