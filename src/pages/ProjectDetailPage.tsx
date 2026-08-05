@@ -5,6 +5,7 @@ import { FileGrid } from '../components/uploads/FileGrid';
 import { Timeline } from '../components/timeline/Timeline';
 import { roleLabels, timelineStages } from '../constants/portal';
 import { addAssignedProjectUpdate, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { getBranchById } from '../services/branchService';
 import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
 import { canViewProject, getAllowedStageOptions, getRolePolicy, getWorkflowDenialReason } from '../utils/permissions';
@@ -94,6 +95,11 @@ export function ProjectDetailPage() {
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: getUsers,
+  });
+  const { data: branch } = useQuery({
+    queryKey: ['branch', project?.branchId],
+    queryFn: () => getBranchById(project?.branchId ?? ''),
+    enabled: Boolean(project?.branchId),
   });
 
   function getAssignee(email: string) {
@@ -518,6 +524,11 @@ export function ProjectDetailPage() {
   const workflowDenialReason = getWorkflowDenialReason(user, selectedProject, { currentStage: stage, status, progress });
   const hasWorkflowChange = stage !== selectedProject.currentStage || status !== selectedProject.status || progress !== selectedProject.progress;
   const canSubmitWorkflow = canAdministerProjectDetails && hasWorkflowChange && !workflowDenialReason;
+  const branchParticipants = branch?.contacts?.length
+    ? branch.contacts
+    : branch?.contactName
+      ? [{ name: branch.contactName, email: branch.contactEmail, phone: branch.contactPhone, designation: 'Branch Contact' }]
+      : [];
 
   return (
     <div className="space-y-6">
@@ -538,6 +549,33 @@ export function ProjectDetailPage() {
           <div>Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>
           <div className="md:col-span-4">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
         </div>
+
+        {branch ? (
+          <div className="mt-5 border-t border-white/10 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Branch and contact persons</h3>
+              <Link to={`/branches/${branch.id}`} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">View branch</Link>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-4 text-sm text-slate-300">
+              <div>Branch: <span className="text-white">{branch.name}</span></div>
+              <div>Division: <span className="text-white">{branch.division}</span></div>
+              <div>Town/Province: <span className="text-white">{branch.town}, {branch.province}</span></div>
+              <div className="md:col-span-4">Branch address: <span className="text-white">{branch.physicalAddress || 'Not captured'}</span></div>
+            </div>
+            {branchParticipants.length > 0 ? (
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {branchParticipants.map((participant, index) => (
+                  <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3">
+                    <p className="font-medium text-white">{participant.name}</p>
+                    <p className="mt-1 text-sm text-slate-400">{participant.designation}</p>
+                    {participant.email ? <p className="mt-2 text-xs text-slate-400">{participant.email}</p> : null}
+                    {participant.phone ? <p className="mt-1 text-xs text-slate-400">{participant.phone}</p> : null}
+                  </div>
+                ))}
+              </div>
+            ) : <p className="mt-4 text-sm text-slate-400">No branch contact persons have been added yet.</p>}
+          </div>
+        ) : null}
         {canDeleteProject ? (
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-red-400/15 pt-5">
             <button
