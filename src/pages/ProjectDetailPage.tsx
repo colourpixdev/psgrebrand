@@ -30,26 +30,23 @@ const projectSections: Array<{ id: ProjectSectionId; number: string; label: stri
   { id: 'notes', number: '05', label: 'Notes' },
 ];
 
-function calculateTimelineWorkflow(project: Project, changedStage: ProjectStage, completed: boolean) {
-  const activeIndex = timelineStages.indexOf(project.currentStage);
-  const completedStages = new Set<ProjectStage>();
+function getStagePlan(project: Project): ProjectStage[] {
+  const stageTasks = project.tasks.filter((task) => Boolean(task.stage));
+  return stageTasks.length > 0 ? stageTasks.map((task) => task.stage as ProjectStage) : [...timelineStages];
+}
 
-  timelineStages.forEach((timelineStage, index) => {
+function deriveWorkflowFromStagePlan(project: Project, stagePlan: readonly ProjectStage[]) {
+  const completedStages = new Set<ProjectStage>();
+  stagePlan.forEach((timelineStage) => {
     const stageTask = project.tasks.find((task) => task.stage === timelineStage);
-    if (stageTask?.completed || (activeIndex > 0 && index < activeIndex)) {
+    if (stageTask?.completed) {
       completedStages.add(timelineStage);
     }
   });
 
-  if (completed) {
-    completedStages.add(changedStage);
-  } else {
-    completedStages.delete(changedStage);
-  }
-
-  const completedCount = timelineStages.filter((timelineStage) => completedStages.has(timelineStage)).length;
-  const currentStage = timelineStages.find((timelineStage) => !completedStages.has(timelineStage)) ?? timelineStages[timelineStages.length - 1];
-  const status: ProjectStatus = completedCount === timelineStages.length
+  const completedCount = stagePlan.filter((timelineStage) => completedStages.has(timelineStage)).length;
+  const currentStage = stagePlan.find((timelineStage) => !completedStages.has(timelineStage)) ?? stagePlan[stagePlan.length - 1] ?? project.currentStage;
+  const status: ProjectStatus = stagePlan.length > 0 && completedCount === stagePlan.length
     ? 'completed'
     : currentStage === 'Awaiting Approval'
       ? 'awaiting_approval'
@@ -58,7 +55,7 @@ function calculateTimelineWorkflow(project: Project, changedStage: ProjectStage,
   return {
     currentStage,
     status,
-    progress: Math.round((completedCount / timelineStages.length) * 100),
+    progress: stagePlan.length > 0 ? Math.round((completedCount / stagePlan.length) * 100) : project.progress,
   };
 }
 
@@ -258,10 +255,31 @@ export function ProjectDetailPage() {
     },
   });
 
+  async function ensureStagesMaterialized(currentProject: Project): Promise<Project> {
+    const hasStageTasks = currentProject.tasks.some((task) => task.stage);
+    if (hasStageTasks) {
+      return currentProject;
+    }
+
+    const activeIndex = timelineStages.indexOf(currentProject.currentStage);
+    let working = currentProject;
+    for (let index = 0; index < timelineStages.length; index += 1) {
+      working = await upsertProjectStageTask({
+        projectId: projectId ?? '',
+        stage: timelineStages[index],
+        completed: activeIndex > 0 && index < activeIndex,
+        actor: user?.name ?? 'Workspace user',
+      });
+    }
+
+    return working;
+  }
+
   const timelineTaskMutation = useMutation({
     mutationFn: async ({ stage: timelineStage, completed, assigneeEmail }: { stage: ProjectStage; completed?: boolean; assigneeEmail?: string }) => {
+      let working = await ensureStagesMaterialized(selectedProject);
       const assignee = assigneeEmail !== undefined ? getAssignee(assigneeEmail) : undefined;
-      let updatedProject = await upsertProjectStageTask({
+      working = await upsertProjectStageTask({
         projectId: projectId ?? '',
         stage: timelineStage,
         completed,
@@ -270,18 +288,69 @@ export function ProjectDetailPage() {
         actor: user?.name ?? 'Workspace user',
       });
 
-      if (completed !== undefined) {
-        const workflow = calculateTimelineWorkflow(updatedProject, timelineStage, completed);
-        updatedProject = await updateProjectWorkflow({
+      const stagePlan = getStagePlan(working);
+      const workflow = deriveWorkflowFromStagePlan(working, stagePlan);
+      working = await updateProjectWorkflow({
+        projectId: projectId ?? '',
+        currentStage: workflow.currentStage,
+        status: workflow.status,
+        progress: workflow.progress,
+        actor: user?.name ?? 'Workspace user',
+      });
+
+      return working;
+    },
+    onSuccess: syncProject,
+  });
+
+  const addStageMutation = useMutation({
+    mutationFn: async (stageName: string) => {
+      let working = await ensureStagesMaterialized(selectedProject);
+      working = await upsertProjectStageTask({
+        projectId: projectId ?? '',
+        stage: stageName,
+        completed: false,
+        actor: user?.name ?? 'Workspace user',
+      });
+
+      const stagePlan = getStagePlan(working);
+      const workflow = deriveWorkflowFromStagePlan(working, stagePlan);
+      working = await updateProjectWorkflow({
+        projectId: projectId ?? '',
+        currentStage: workflow.currentStage,
+        status: workflow.status,
+        progress: workflow.progress,
+        actor: user?.name ?? 'Workspace user',
+      });
+
+      return working;
+    },
+    onSuccess: syncProject,
+  });
+
+  const removeStageMutation = useMutation({
+    mutationFn: async (stageName: string) => {
+      let working = await ensureStagesMaterialized(selectedProject);
+      const stageTask = working.tasks.find((task) => task.stage === stageName);
+      if (stageTask) {
+        working = await deleteProjectTask({
           projectId: projectId ?? '',
-          currentStage: workflow.currentStage,
-          status: workflow.status,
-          progress: workflow.progress,
+          taskId: stageTask.id,
           actor: user?.name ?? 'Workspace user',
         });
       }
 
-      return updatedProject;
+      const stagePlan = getStagePlan(working);
+      const workflow = deriveWorkflowFromStagePlan(working, stagePlan);
+      working = await updateProjectWorkflow({
+        projectId: projectId ?? '',
+        currentStage: workflow.currentStage,
+        status: workflow.status,
+        progress: workflow.progress,
+        actor: user?.name ?? 'Workspace user',
+      });
+
+      return working;
     },
     onSuccess: syncProject,
   });
@@ -360,7 +429,7 @@ export function ProjectDetailPage() {
   });
 
   const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error;
-  const workflowError = workflowMutation.error ?? timelineTaskMutation.error ?? assignedUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
+  const workflowError = workflowMutation.error ?? timelineTaskMutation.error ?? addStageMutation.error ?? removeStageMutation.error ?? assignedUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
   const notesError = notesMutation.error;
   const rolePolicy = getRolePolicy(user);
   const canAdministerProjectDetails = Boolean(user?.isPlatformOwner);
@@ -440,9 +509,11 @@ export function ProjectDetailPage() {
   const unreadAnswers = projectQuestions.filter((question) => question.status === 'answered' && question.unreadForRequester && isQuestionRequester(question));
   const adHocTasks = selectedProject.tasks.filter((task) => !task.stage);
   const canUpdateTimelineStages = canViewProject(user, selectedProject);
+  const canManageStages = canAdministerProjectDetails && canAddTasks;
+  const stagePlan = getStagePlan(selectedProject);
   const canEditNotes = canViewProject(user, selectedProject);
   const hasNotesChange = notesDraft.trim() !== selectedProject.notes.trim();
-  const allowedStageOptions = getAllowedStageOptions(user, selectedProject, timelineStages);
+  const allowedStageOptions = getAllowedStageOptions(user, selectedProject, stagePlan);
   const hasAllowedStageChange = allowedStageOptions.some((item) => item !== selectedProject.currentStage);
   const workflowDenialReason = getWorkflowDenialReason(user, selectedProject, { currentStage: stage, status, progress });
   const hasWorkflowChange = stage !== selectedProject.currentStage || status !== selectedProject.status || progress !== selectedProject.progress;
@@ -522,15 +593,18 @@ export function ProjectDetailPage() {
 
       <section className={activeProjectSection === 'timeline' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
         <Timeline
-          stages={timelineStages}
+          stages={stagePlan}
           activeStage={selectedProject.currentStage}
           tasks={selectedProject.tasks}
           users={users}
           canCompleteStages={canUpdateTimelineStages}
           canAssignStages={canAdministerProjectDetails && canAssignTasks}
-          isUpdating={timelineTaskMutation.isPending}
+          canManageStages={canManageStages}
+          isUpdating={timelineTaskMutation.isPending || addStageMutation.isPending || removeStageMutation.isPending}
           onToggleStage={(timelineStage, completed) => timelineTaskMutation.mutate({ stage: timelineStage, completed })}
           onAssignStage={(timelineStage, assigneeEmail) => timelineTaskMutation.mutate({ stage: timelineStage, assigneeEmail })}
+          onAddStage={(stageName) => addStageMutation.mutate(stageName)}
+          onRemoveStage={(timelineStage) => removeStageMutation.mutate(timelineStage)}
         />
 
         <div className="mt-6 border-t border-white/10 pt-6">
@@ -643,7 +717,7 @@ export function ProjectDetailPage() {
                 Related stage
                 <select value={questionStage} onChange={(event) => setQuestionStage(event.target.value as '' | ProjectStage)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
                   <option value="">General update</option>
-                  {timelineStages.map((item) => <option key={item} value={item}>{item}</option>)}
+                  {stagePlan.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </label>
             </div>
@@ -705,7 +779,7 @@ export function ProjectDetailPage() {
                           <label className="grid gap-2 text-sm text-slate-300">
                             Answer stage
                             <select value={answerStage} onChange={(event) => setAnswerStage(event.target.value as ProjectStage)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-                              {timelineStages.map((item) => <option key={item} value={item}>{item}</option>)}
+                              {stagePlan.map((item) => <option key={item} value={item}>{item}</option>)}
                             </select>
                           </label>
                           <label className="grid gap-2 text-sm text-slate-300">

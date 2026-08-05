@@ -2,7 +2,6 @@ import { supabase } from '../lib/supabase';
 import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectTemplateId, Role, TaskAssignee, TaskItem, UserRecord } from '../types/domain';
 import { defaultWorkspace, rolloutAppEmail } from '../constants/workspaces';
 import { defaultProjectTemplate, getProjectTemplate } from '../constants/projectTemplates';
-import { timelineStages } from '../constants/portal';
 
 export interface PortalSummary {
   metrics: Array<{ label: string; value: number }>;
@@ -117,7 +116,7 @@ function taskSlug(value: string) {
 }
 
 function isTimelineStage(value: unknown): value is Project['currentStage'] {
-  return typeof value === 'string' && timelineStages.includes(value as Project['currentStage']);
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
 function normalizeTaskAssignees(candidate: Partial<TaskItem>): TaskAssignee[] | undefined {
@@ -1478,10 +1477,6 @@ export async function upsertProjectStageTask(input: UpsertProjectStageTaskInput)
     : undefined;
   const resolvedAssignees = assignees ?? fallbackAssignee;
   const primaryAssignee = resolvedAssignees?.[resolvedAssignees.length - 1];
-
-  if (!completed && !resolvedAssignees?.length) {
-    throw new Error('Assign every open task to at least one person.');
-  }
 
   const nextTask: TaskItem = {
     id: existingTask?.id ?? createTaskId(),

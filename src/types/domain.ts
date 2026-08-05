@@ -13,28 +13,8 @@ export interface Workspace {
 
 export type ProjectTemplateId = 'signage_rollout' | 'general_rollout' | 'service_delivery';
 
-export type ProjectStage =
-  | 'New Project'
-  | 'Awaiting Information'
-  | 'Site Survey'
-  | 'Measurements Received'
-  | 'Artwork In Progress'
-  | 'Artwork Sent'
-  | 'Awaiting Approval'
-  | 'Approved'
-  | 'Quotation Requested'
-  | 'Quotation Received'
-  | 'PO Issued'
-  | 'Production'
-  | 'Installation Scheduled'
-  | 'Installation In Progress'
-  | 'Installed'
-  | 'Photos Uploaded'
-  | 'Client Signoff'
-  | 'Completed'
-  | 'On Hold'
-  | 'Delayed'
-  | 'Cancelled';
+// Free text: projects can add/remove their own timeline stages, so this is no longer a fixed set.
+export type ProjectStage = string;
 
 export type ProjectStatus = 'completed' | 'busy' | 'in_progress' | 'awaiting_approval' | 'delayed' | 'on_hold' | 'cancelled';
 
