@@ -95,6 +95,7 @@ export interface ProjectFile {
   size?: number;
   type?: string;
   uploadedAt?: string;
+  taskId?: string;
 }
 
 export type TaskStatus = 'open' | 'busy' | 'done';

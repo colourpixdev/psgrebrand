@@ -884,7 +884,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   return mapProjectRow(data as ProjectRow);
 }
 
-export async function uploadProjectFile(projectId: string, file: File, currentFiles: ProjectFile[]): Promise<ProjectFile[]> {
+export async function uploadProjectFile(projectId: string, file: File, currentFiles: ProjectFile[], taskId?: string): Promise<ProjectFile[]> {
   const client = supabase;
 
   if (!client) {
@@ -915,6 +915,7 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
       size: file.size,
       type: file.type || undefined,
       uploadedAt: new Date().toISOString(),
+      taskId,
     },
   ];
 

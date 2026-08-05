@@ -368,7 +368,7 @@ export function ProjectDetailPage() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => uploadProjectFile(projectId ?? '', file, project?.files ?? []),
+    mutationFn: ({ file, taskId }: { file: File; taskId?: string }) => uploadProjectFile(projectId ?? '', file, project?.files ?? [], taskId),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['project', projectId] }),
@@ -526,6 +526,13 @@ export function ProjectDetailPage() {
           <div>Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>
           <div className="md:col-span-4">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
         </div>
+
+        {selectedProject.notes.trim() ? (
+          <div className="mt-5 border-t border-white/10 pt-5">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Description</h3>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">{selectedProject.notes}</p>
+          </div>
+        ) : null}
 
         {branch ? (
           <div className="mt-5 border-t border-white/10 pt-5">
@@ -688,6 +695,29 @@ export function ProjectDetailPage() {
                     ) : null}
                   </div>
                 )}
+                {editingTaskId !== task.id && canUploadFiles ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-white/10 pt-3">
+                    <span className="text-xs text-slate-500">
+                      {selectedProject.files.filter((file) => file.taskId === task.id).length} file{selectedProject.files.filter((file) => file.taskId === task.id).length === 1 ? '' : 's'} in this task's folder
+                    </span>
+                    <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-white/10 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
+                      {uploadMutation.isPending ? 'Uploading...' : 'Upload image'}
+                      <input
+                        type="file"
+                        disabled={uploadMutation.isPending}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = '';
+                          if (file) {
+                            uploadMutation.mutate({ file, taskId: task.id });
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                ) : null}
               </div>
               );
             }) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No open tasks.</p>}
@@ -875,10 +905,11 @@ export function ProjectDetailPage() {
       <section className={activeProjectSection === 'files' ? '' : 'hidden'}>
         <FileGrid
           files={selectedProject.files}
+          taskFolders={selectedProject.tasks.map((task) => ({ id: task.id, label: task.text }))}
           isUploading={uploadMutation.isPending || previewMutation.isPending || downloadMutation.isPending}
           uploadError={fileError instanceof Error ? fileError.message : null}
           canUpload={canUploadFiles}
-          onUpload={(file) => uploadMutation.mutate(file)}
+          onUpload={(file, taskId) => uploadMutation.mutate({ file, taskId })}
           onPreview={(file: ProjectFile) => previewMutation.mutate(file)}
           onDownload={(file: ProjectFile) => downloadMutation.mutate(file)}
           onRename={(file: ProjectFile, nextName) => renameFileMutation.mutate({ file, nextName })}
