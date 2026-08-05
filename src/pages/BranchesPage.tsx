@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { getAllBranches, createBranch, updateBranch, deleteBranch } from '../services/branchService';
 import { getProjects } from '../services/portalService';
 import type { Branch, ContactPerson, Division, Project } from '../types/domain';
@@ -125,6 +125,7 @@ export function BranchesPage() {
     contactDesignation: '',
     contacts: [] as ContactPerson[],
   });
+  const location = useLocation();
   const { user } = useAuth();
   const { showSuccess } = useSaveFeedback();
 
@@ -401,6 +402,24 @@ export function BranchesPage() {
 
     return openProjectsByBranch[branch.name.trim().toLowerCase()] ?? [];
   }
+
+  useEffect(() => {
+    if (!location.hash || filteredBranches.length === 0) {
+      return;
+    }
+
+    const anchorId = location.hash.slice(1);
+    if (!anchorId) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const element = document.getElementById(anchorId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }, [location.hash, filteredBranches]);
 
   return (
     <div className="min-h-screen p-6 md:p-8">
@@ -745,7 +764,7 @@ export function BranchesPage() {
                   <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_1fr_auto] lg:items-start">
                     <div>
                       <p className="mt-1 text-lg font-semibold text-white">{branch.name}</p>
-                      <Link to={`/branches/${branch.id}`} className="mt-3 inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Open branch project</Link>
+                      <Link to={`/branches/${branch.id}`} className="mt-3 inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Open branch record</Link>
                       <p className="mt-1 text-sm text-slate-400">{branch.town}, {branch.province}</p>
                       <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
                     </div>
@@ -763,6 +782,14 @@ export function BranchesPage() {
                       {primaryContact?.designation ? <p className="text-xs text-slate-400">{primaryContact.designation}</p> : null}
                       {primaryContact?.email ? <p className="text-xs text-slate-400">{primaryContact.email}</p> : null}
                       {primaryContact?.phone ? <p className="text-xs text-slate-400">{primaryContact.phone}</p> : null}
+                    </div>
+
+                    <div>
+                      {getOpenProjectsForBranch(branch).length > 0 ? (
+                        <span className="inline-flex rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-200 ring-1 ring-white/10">
+                          {getOpenProjectsForBranch(branch).length} active project{getOpenProjectsForBranch(branch).length === 1 ? '' : 's'}
+                        </span>
+                      ) : null}
                     </div>
 
                     {isAdmin ? (
@@ -793,44 +820,6 @@ export function BranchesPage() {
                     ) : null}
                   </div>
 
-                  {openProjects.length > 0 ? (
-                    <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs uppercase tracking-wide text-slate-500">Open rebrand updates</p>
-                        <span className="rounded-full bg-slate-900/70 px-2.5 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
-                          {openProjects.length}
-                        </span>
-                      </div>
-
-                      <div className="mt-3">
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Link to={`/branches/${branch.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View branch details</Link>
-                          {canCreateProjects ? (
-                            <Link to={`/projects?branchId=${encodeURIComponent(branch.id)}`} className="inline-flex items-center justify-center rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Add project</Link>
-                          ) : null}
-                        </div>
-
-                        <div className="mt-3 space-y-2">
-                          {openProjects.map((project) => (
-                            <div key={project.id} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-semibold text-white">{project.id}</p>
-                                  <p className="truncate text-xs text-slate-400">
-                                    {project.currentStage} · {project.town}, {project.province}
-                                  </p>
-                                </div>
-                                <span className="shrink-0 rounded-full bg-sky-400/20 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-sky-200 ring-1 ring-sky-300/20">
-                                  {project.status.replace('_', ' ')}
-                                </span>
-                              </div>
-                              <Link to={`/branches/${encodeURIComponent(branch.id)}`} className="mt-2 inline-flex items-center justify-center rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Open branch hub</Link>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
               );
             })}
