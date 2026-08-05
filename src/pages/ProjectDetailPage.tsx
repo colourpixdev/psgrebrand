@@ -523,7 +523,7 @@ export function ProjectDetailPage() {
 
         {selectedProject.notes.trim() ? (
           <div className="mt-5 border-t border-white/10 pt-5">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Description</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Quick summary</h3>
             <p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">{selectedProject.notes}</p>
           </div>
         ) : null}
