@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { Timeline } from '../components/timeline/Timeline';
-import { roleLabels, timelineStages } from '../constants/portal';
+import { roleLabels } from '../constants/portal';
 import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectSignageContact, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById } from '../services/branchService';
 import { getUsers } from '../services/userService';
@@ -30,8 +30,11 @@ const projectSections: Array<{ id: ProjectSectionId; number: string; label: stri
 ];
 
 function getStagePlan(project: Project): ProjectStage[] {
-  const stageTasks = project.tasks.filter((task) => Boolean(task.stage));
-  return stageTasks.length > 0 ? stageTasks.map((task) => task.stage as ProjectStage) : [...timelineStages];
+  const mergedStages = project.tasks
+    .map((task) => (task.stage ?? task.text).trim())
+    .filter((stage): stage is ProjectStage => Boolean(stage));
+
+  return mergedStages.length > 0 ? mergedStages : [project.currentStage];
 }
 
 function deriveWorkflowFromStagePlan(project: Project, stagePlan: readonly ProjectStage[]) {
@@ -82,6 +85,7 @@ export function ProjectDetailPage() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskText, setEditingTaskText] = useState('');
   const [editingTaskAssigneeEmails, setEditingTaskAssigneeEmails] = useState<string[]>([]);
+  const [expandedTaskUpdateTaskIds, setExpandedTaskUpdateTaskIds] = useState<string[]>([]);
   const [deleteConfirmationArmed, setDeleteConfirmationArmed] = useState(false);
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', projectId],
@@ -208,11 +212,24 @@ export function ProjectDetailPage() {
 
   const taskMutation = useMutation({
     mutationFn: () => {
+      const normalizedTaskText = taskText.trim();
+      if (!normalizedTaskText) {
+        throw new Error('Task cannot be empty.');
+      }
+      const duplicateTask = selectedProject.tasks.some((existingTask) => {
+        const existingKey = (existingTask.stage ?? existingTask.text).trim().toLowerCase();
+        return existingKey === normalizedTaskText.toLowerCase();
+      });
+      if (duplicateTask) {
+        throw new Error('This task/stage already exists. Use a unique name.');
+      }
+
       const assignees = buildTaskAssignees(taskAssigneeEmails);
       const primaryAssignee = assignees[assignees.length - 1];
       return addProjectTask({
         projectId: projectId ?? '',
-        task: taskText,
+        task: normalizedTaskText,
+        stage: normalizedTaskText,
         actor: user?.name ?? 'Workspace user',
         assigneeName: primaryAssignee?.name,
         assigneeEmail: primaryAssignee?.email,
@@ -230,12 +247,14 @@ export function ProjectDetailPage() {
     mutationFn: ({ task, text, completed, status, assigneeEmails }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; assigneeEmails?: string[] }) => {
       const assignees = assigneeEmails !== undefined ? buildTaskAssignees(assigneeEmails) : undefined;
       const primaryAssignee = assignees?.[assignees.length - 1];
+      const nextText = text?.trim();
       return updateProjectTask({
         projectId: projectId ?? '',
         taskId: task.id,
-        text,
+        text: nextText,
         completed,
         status,
+        stage: nextText || undefined,
         assigneeName: assigneeEmails !== undefined ? primaryAssignee?.name : undefined,
         assigneeEmail: assigneeEmails !== undefined ? primaryAssignee?.email : undefined,
         assignees,
@@ -252,23 +271,7 @@ export function ProjectDetailPage() {
   });
 
   async function ensureStagesMaterialized(currentProject: Project): Promise<Project> {
-    const hasStageTasks = currentProject.tasks.some((task) => task.stage);
-    if (hasStageTasks) {
-      return currentProject;
-    }
-
-    const activeIndex = timelineStages.indexOf(currentProject.currentStage);
-    let working = currentProject;
-    for (let index = 0; index < timelineStages.length; index += 1) {
-      working = await upsertProjectStageTask({
-        projectId: projectId ?? '',
-        stage: timelineStages[index],
-        completed: activeIndex > 0 && index < activeIndex,
-        actor: user?.name ?? 'Workspace user',
-      });
-    }
-
-    return working;
+    return currentProject;
   }
 
   const timelineTaskMutation = useMutation({
@@ -515,9 +518,9 @@ export function ProjectDetailPage() {
   const projectComments = selectedProject.comments.filter((comment) => comment.kind !== 'question');
   const isQuestionRequester = (question: CommentItem) => (question.requesterEmail ? question.requesterEmail === user?.email : question.author === user?.name);
   const unreadAnswers = projectQuestions.filter((question) => question.status === 'answered' && question.unreadForRequester && isQuestionRequester(question));
-  const adHocTasks = selectedProject.tasks.filter((task) => !task.stage);
+  const mergedTasks = selectedProject.tasks;
   const canUpdateTimelineStages = canViewProject(user, selectedProject);
-  const canManageStages = canAdministerProjectDetails && canAddTasks;
+  const canManageStages = false;
   const stagePlan = getStagePlan(selectedProject);
   const canEditNotes = canViewProject(user, selectedProject);
   const hasNotesChange = notesDraft.trim() !== selectedProject.notes.trim();
@@ -704,8 +707,10 @@ export function ProjectDetailPage() {
           </div>
           <p className="mt-2 text-xs text-slate-500">Every open task needs at least one assignee. Designations come from each user profile title or role label. Click the status button to move a task from Open to Busy to Done.</p>
           <div className="mt-4 space-y-2">
-            {adHocTasks.length > 0 ? adHocTasks.map((task) => {
+            {mergedTasks.length > 0 ? mergedTasks.map((task) => {
               const taskStatus = getTaskStatus(task);
+              const taskUpdates = projectComments.filter((comment) => comment.taskId === task.id);
+              const isTaskUpdatesOpen = expandedTaskUpdateTaskIds.includes(task.id);
               const statusStyles: Record<'open' | 'busy' | 'done', string> = {
                 open: 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10',
                 busy: 'border-amber-400/30 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25',
@@ -748,12 +753,17 @@ export function ProjectDetailPage() {
                         </span>
                       </span>
                     </div>
-                    {canAddTasks || canDeleteTasks ? (
-                      <div className="flex shrink-0 gap-2">
-                        {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); setEditingTaskAssigneeEmails(task.assignees?.map((assignee) => assignee.email) ?? (task.assigneeEmail ? [task.assigneeEmail] : [])); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Edit</button> : null}
-                        {canDeleteTasks ? <button type="button" disabled={deleteTaskMutation.isPending} onClick={() => deleteTaskMutation.mutate(task)} className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
-                      </div>
-                    ) : null}
+                    <div className="flex shrink-0 gap-2">
+                      {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); setEditingTaskAssigneeEmails(task.assignees?.map((assignee) => assignee.email) ?? (task.assigneeEmail ? [task.assigneeEmail] : [])); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Edit</button> : null}
+                      {canDeleteTasks ? <button type="button" disabled={deleteTaskMutation.isPending} onClick={() => deleteTaskMutation.mutate(task)} className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedTaskUpdateTaskIds((current) => current.includes(task.id) ? current.filter((id) => id !== task.id) : [...current, task.id])}
+                        className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20"
+                      >
+                        {isTaskUpdatesOpen ? 'Hide updates' : 'View updates'}{taskUpdates.length > 0 ? ` (${taskUpdates.length})` : ''}
+                      </button>
+                    </div>
                   </div>
                 )}
                 {editingTaskId !== task.id && canUploadFiles ? (
@@ -779,9 +789,29 @@ export function ProjectDetailPage() {
                     </label>
                   </div>
                 ) : null}
+                {editingTaskId !== task.id && isTaskUpdatesOpen ? (
+                  <div className="mt-3 border-t border-white/10 pt-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100">Task updates</p>
+                    {taskUpdates.length > 0 ? (
+                      <div className="mt-2 space-y-2">
+                        {taskUpdates.map((update, index) => (
+                          <div key={`${update.date}-${update.author}-${index}`} className="rounded-xl border border-white/10 bg-slate-950/55 p-3">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <p className="font-semibold text-white">{update.author}</p>
+                              <p className="text-slate-500">{update.date}</p>
+                            </div>
+                            <p className="mt-1 text-sm text-slate-300">{update.message}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-xs text-slate-500">No updates have been added to this task yet.</p>
+                    )}
+                  </div>
+                ) : null}
               </div>
               );
-            }) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No open tasks.</p>}
+            }) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No tasks yet. Add a task to create the first timeline stage.</p>}
           </div>
         </div>
       </section>
