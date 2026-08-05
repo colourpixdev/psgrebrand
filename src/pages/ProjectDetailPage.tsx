@@ -737,7 +737,7 @@ export function ProjectDetailPage() {
         </nav>
       </section>
 
-      <section className={activeProjectSection === 'taskUpdates' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
+      <section className={activeProjectSection === 'timeline' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         {workflowError instanceof Error ? <p className="mb-4 text-sm text-red-300">{workflowError.message}</p> : null}
         <Timeline
           stages={stagePlan}
@@ -876,7 +876,7 @@ export function ProjectDetailPage() {
         </div>
       </section>
 
-      <section className={activeProjectSection === 'timeline' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
+      <section className={activeProjectSection === 'taskUpdates' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-white">Task conversations</h3>
