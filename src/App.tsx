@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, FileText, Shield, Users, MapPinned } from 'lucide-react';
+import { LayoutDashboard, KanbanSquare, FileText, Shield, Users, MapPinned, Map } from 'lucide-react';
 import { AppShell } from './layouts/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -29,6 +29,7 @@ const navigation = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/branches', label: 'Branches', icon: MapPinned },
   { to: '/projects', label: 'Projects', icon: KanbanSquare },
+  { to: '/map', label: 'Map', icon: Map },
   { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/settings', label: 'Settings', icon: Shield },
