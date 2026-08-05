@@ -62,6 +62,7 @@ export function BranchDetailPage() {
       .sort(byUpdatedAtDesc);
   }, [branch, scopedProjects]);
 
+  const branchProject = branchProjects[0];
   const outstandingTasks = branchProjects.reduce((count, project) => count + project.tasks.filter((task) => !task.completed).length, 0);
   const totalFiles = branchProjects.reduce((count, project) => count + project.files.length, 0);
 
@@ -130,7 +131,12 @@ export function BranchDetailPage() {
             {canCreateProjects ? (
               <Link to={`/projects?branchId=${encodeURIComponent(branch.id)}`} className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">Add project</Link>
             ) : null}
-            <Link to="/projects" className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">Open branch project</Link>
+            <Link
+              to={branchProject ? `/projects/${encodeURIComponent(branchProject.id)}` : `/projects?branchId=${encodeURIComponent(branch.id)}`}
+              className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+            >
+              Open branch project
+            </Link>
           </div>
         </div>
 

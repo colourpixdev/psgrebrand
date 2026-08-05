@@ -217,6 +217,7 @@ export type CreateProjectInput = {
   physicalAddress: string;
   manager?: string;
   managerEmail?: string;
+  installer?: string;
   designer?: string;
   currentStage: Project['currentStage'];
   status: Project['status'];
@@ -742,6 +743,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     longitude: null,
     manager: optionalProjectValue(input.manager),
     manager_email: optionalProjectValue(input.managerEmail, ''),
+    installer: optionalProjectValue(input.installer),
     designer: optionalProjectValue(input.designer),
     current_stage: input.currentStage,
     status: input.status,

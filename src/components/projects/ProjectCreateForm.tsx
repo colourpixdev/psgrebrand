@@ -23,6 +23,7 @@ const projectSchema = z.object({
   branch: optionalText,
   manager: optionalText,
   managerEmail: optionalEmail,
+  installer: optionalText,
   designer: optionalText,
   currentStage: z.string().min(1, 'Stage is required'),
   status: z.enum(['completed', 'busy', 'in_progress', 'awaiting_approval', 'delayed', 'on_hold', 'cancelled']),
@@ -120,6 +121,7 @@ export function ProjectCreateForm() {
       branch: '',
       manager: '',
       managerEmail: '',
+      installer: '',
       designer: '',
       currentStage: 'New Project',
       status: 'in_progress',
@@ -149,6 +151,7 @@ export function ProjectCreateForm() {
         branch: selected?.name ?? '',
         manager: '',
         managerEmail: '',
+        installer: '',
         designer: '',
         currentStage: 'New Project',
         status: 'in_progress',
@@ -263,7 +266,10 @@ export function ProjectCreateForm() {
           <input {...register('managerEmail')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
           {errors.managerEmail ? <span className="text-xs text-red-300">{errors.managerEmail.message}</span> : null}
         </label>
-
+        <label className="grid gap-2 text-sm text-slate-300">
+          Installer <span className="text-xs text-slate-500">Optional</span>
+          <input {...register('installer')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
+        </label>
         <label className="grid gap-2 text-sm text-slate-300">
           Designer <span className="text-xs text-slate-500">Optional</span>
           <input {...register('designer')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
