@@ -88,6 +88,36 @@ function writeLocalBranches(branches: Branch[]) {
   localStorage.setItem(branchesStorageKey, JSON.stringify(branches));
 }
 
+function mergeLocalBranchMetadata(branch: Branch): Branch {
+  const storedBranch = readLocalBranches().find((item) => item.id === branch.id);
+
+  if (!storedBranch) {
+    return branch;
+  }
+
+  return {
+    ...branch,
+    contactName: branch.contactName ?? storedBranch.contactName,
+    contactEmail: branch.contactEmail ?? storedBranch.contactEmail,
+    contactPhone: branch.contactPhone ?? storedBranch.contactPhone,
+    contacts: branch.contacts?.length ? branch.contacts : storedBranch.contacts,
+    updatedAt: branch.updatedAt || storedBranch.updatedAt,
+  };
+}
+
+function saveBranchToLocalShadow(branch: Branch) {
+  const branches = readLocalBranches();
+  const existingIndex = branches.findIndex((item) => item.id === branch.id);
+
+  if (existingIndex >= 0) {
+    branches[existingIndex] = branch;
+  } else {
+    branches.push(branch);
+  }
+
+  writeLocalBranches(branches);
+}
+
 function shouldFallbackToLocal(errorMessage: string | undefined) {
   if (!errorMessage) {
     return false;
@@ -133,7 +163,19 @@ function getMissingBranchColumns(errorMessage: string | undefined) {
   return supportedColumns.filter((column) => normalizedMessage.includes(column));
 }
 
+function getPrimaryContactFromContacts(input: Pick<CreateBranchInput, 'contactName' | 'contactEmail' | 'contactPhone' | 'contacts'>) {
+  const primaryContact = input.contacts?.find((contact) => contact.name?.trim()) ?? undefined;
+
+  return {
+    contactName: input.contactName?.trim() || primaryContact?.name?.trim() || null,
+    contactEmail: input.contactEmail?.trim() || primaryContact?.email?.trim() || null,
+    contactPhone: input.contactPhone?.trim() || primaryContact?.phone?.trim() || null,
+  };
+}
+
 function buildBranchInsertPayload(input: CreateBranchInput) {
+  const syncedContactFields = getPrimaryContactFromContacts(input);
+
   return {
     name: input.name,
     division: input.division,
@@ -143,9 +185,9 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
     physical_address: input.physicalAddress,
     latitude: input.latitude ?? null,
     longitude: input.longitude ?? null,
-    contact_name: input.contactName ?? null,
-    contact_email: input.contactEmail ?? null,
-    contact_phone: input.contactPhone ?? null,
+    contact_name: syncedContactFields.contactName,
+    contact_email: syncedContactFields.contactEmail,
+    contact_phone: syncedContactFields.contactPhone,
     contacts: input.contacts ?? null,
   };
 }
@@ -209,7 +251,7 @@ export async function getAllBranches(): Promise<Branch[]> {
     return readLocalBranches().sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  return data.map(rowToBranch);
+  return data.map((row) => mergeLocalBranchMetadata(rowToBranch(row))).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function getBranchById(id: string): Promise<Branch | null> {
@@ -226,7 +268,7 @@ export async function getBranchById(id: string): Promise<Branch | null> {
     return branch ?? null;
   }
 
-  return rowToBranch(data);
+  return mergeLocalBranchMetadata(rowToBranch(data));
 }
 
 export async function createBranch(input: CreateBranchInput): Promise<Branch | null> {
@@ -285,11 +327,13 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
       updatedAt: now,
     };
 
-    writeLocalBranches([...readLocalBranches(), nextBranch]);
+    saveBranchToLocalShadow(nextBranch);
     return nextBranch;
   }
 
-  return rowToBranch(data);
+  const savedBranch = rowToBranch(data);
+  saveBranchToLocalShadow(savedBranch);
+  return savedBranch;
 }
 
 export async function updateBranch(id: string, input: Partial<CreateBranchInput>): Promise<Branch | null> {
@@ -302,6 +346,13 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
     }
 
     const existing = branches[index];
+    const syncedContactFields = getPrimaryContactFromContacts({
+      contactName: input.contactName ?? existing.contactName ?? null,
+      contactEmail: input.contactEmail ?? existing.contactEmail ?? null,
+      contactPhone: input.contactPhone ?? existing.contactPhone ?? null,
+      contacts: input.contacts ?? existing.contacts,
+    });
+
     const updatedBranch: Branch = {
       ...existing,
       name: input.name ?? existing.name,
@@ -312,9 +363,9 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
       physicalAddress: input.physicalAddress ?? existing.physicalAddress,
       latitude: input.latitude !== undefined ? input.latitude : existing.latitude,
       longitude: input.longitude !== undefined ? input.longitude : existing.longitude,
-      contactName: input.contactName !== undefined ? input.contactName ?? undefined : existing.contactName,
-      contactEmail: input.contactEmail !== undefined ? input.contactEmail ?? undefined : existing.contactEmail,
-      contactPhone: input.contactPhone !== undefined ? input.contactPhone ?? undefined : existing.contactPhone,
+      contactName: syncedContactFields.contactName ?? undefined,
+      contactEmail: syncedContactFields.contactEmail ?? undefined,
+      contactPhone: syncedContactFields.contactPhone ?? undefined,
       contacts: input.contacts !== undefined ? input.contacts ?? undefined : existing.contacts,
       updatedAt: new Date().toISOString(),
     };
@@ -324,6 +375,7 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
     return updatedBranch;
   }
 
+  const syncedContactFields = getPrimaryContactFromContacts(input as Pick<CreateBranchInput, 'contactName' | 'contactEmail' | 'contactPhone' | 'contacts'>);
   const updates: Record<string, unknown> = {};
   if (input.name !== undefined) updates.name = input.name;
   if (input.division !== undefined) updates.division = input.division;
@@ -333,9 +385,15 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
   if (input.physicalAddress !== undefined) updates.physical_address = input.physicalAddress;
   if (input.latitude !== undefined) updates.latitude = input.latitude;
   if (input.longitude !== undefined) updates.longitude = input.longitude;
-  if (input.contactName !== undefined) updates.contact_name = input.contactName;
-  if (input.contactEmail !== undefined) updates.contact_email = input.contactEmail;
-  if (input.contactPhone !== undefined) updates.contact_phone = input.contactPhone;
+  if (input.contactName !== undefined || input.contacts !== undefined) {
+    updates.contact_name = syncedContactFields.contactName;
+  }
+  if (input.contactEmail !== undefined || input.contacts !== undefined) {
+    updates.contact_email = syncedContactFields.contactEmail;
+  }
+  if (input.contactPhone !== undefined || input.contacts !== undefined) {
+    updates.contact_phone = syncedContactFields.contactPhone;
+  }
   if (input.contacts !== undefined) updates.contacts = input.contacts;
 
   const { data, error } = await saveBranchWithSchemaFallback('update', updates, id);
@@ -345,7 +403,9 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
     throw new Error(error.message || 'Failed to update branch');
   }
 
-  return rowToBranch(data);
+  const updatedBranch = rowToBranch(data);
+  saveBranchToLocalShadow(updatedBranch);
+  return updatedBranch;
 }
 
 export async function deleteBranch(id: string): Promise<boolean> {

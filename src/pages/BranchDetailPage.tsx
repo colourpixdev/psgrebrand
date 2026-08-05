@@ -91,6 +91,9 @@ export function BranchDetailPage() {
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
+            <div className="mb-3">
+              <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">← Back to branches</Link>
+            </div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Branch {branchCode}</p>
             <h2 className="mt-2 text-3xl font-semibold text-white">{branch.name}</h2>
             <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
@@ -107,7 +110,7 @@ export function BranchDetailPage() {
       <section className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-soft">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-lg font-semibold text-white">Contact persons</h3>
-          <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">Manage contacts</Link>
+          <Link to={`/branches#branch-${branch.id}`} className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">Manage contacts</Link>
         </div>
         {branchParticipants.length > 0 ? (
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">

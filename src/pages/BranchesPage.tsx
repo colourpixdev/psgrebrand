@@ -96,9 +96,9 @@ export function BranchesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortOption, setSortOption] = useState<'name'>('name');
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
   const [pendingDeleteBranch, setPendingDeleteBranch] = useState<Branch | null>(null);
-  const [deleteConfirmCount, setDeleteConfirmCount] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
     division: 'Wealth' as Division,
@@ -326,7 +326,6 @@ export function BranchesPage() {
       const deletedBranchName = pendingDeleteBranch?.name;
       await deleteBranch(id);
       setPendingDeleteBranch(null);
-      setDeleteConfirmCount(1);
       setError(null);
       if (deletedBranchName) {
         setSuccessMessage(`Branch \"${deletedBranchName}\" was removed successfully.`);
@@ -343,21 +342,14 @@ export function BranchesPage() {
 
   function requestDelete(branch: Branch) {
     setPendingDeleteBranch(branch);
-    setDeleteConfirmCount(1);
   }
 
   function cancelDelete() {
     setPendingDeleteBranch(null);
-    setDeleteConfirmCount(1);
   }
 
   async function confirmDeleteStep() {
     if (!pendingDeleteBranch) {
-      return;
-    }
-
-    if (deleteConfirmCount < 3) {
-      setDeleteConfirmCount((count) => count + 1);
       return;
     }
 
@@ -366,17 +358,19 @@ export function BranchesPage() {
 
   const filteredBranches = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
-    if (!query) {
-      return branches;
+    let results = branches;
+
+    if (query) {
+      results = results.filter((branch) => {
+        return [branch.name, branch.division, branch.province, branch.town, branch.physicalAddress]
+          .join(' ')
+          .toLowerCase()
+          .includes(query);
+      });
     }
 
-    return branches.filter((branch) => {
-      return [branch.name, branch.division, branch.province, branch.town, branch.physicalAddress]
-        .join(' ')
-        .toLowerCase()
-        .includes(query);
-    });
-  }, [branches, searchTerm]);
+    return [...results].sort((a, b) => a.name.localeCompare(b.name));
+  }, [branches, searchTerm, sortOption]);
 
   const branchCodeById = useMemo(() => buildBranchCodeMap(branches), [branches]);
 
@@ -590,16 +584,29 @@ export function BranchesPage() {
         )}
 
         <div className="mb-6 rounded-3xl border border-white/10 bg-slate-950/50 p-4 shadow-soft">
-          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name, division, province, town, or address"
-              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white placeholder:text-slate-500 outline-none focus:border-sky-400/50"
-            />
-            <p className="text-sm text-slate-400">Showing {filteredBranches.length} of {branches.length} branches</p>
+          <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr] xl:items-end">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-300">Search</label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by branch name, town, or address"
+                className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white placeholder:text-slate-500 outline-none focus:border-sky-400/50"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-300">Sort by</label>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
+                className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
+              >
+                <option value="name">Branch name</option>
+              </select>
+            </div>
           </div>
+          <div className="mt-4 text-sm text-slate-400">Showing {filteredBranches.length} of {branches.length} branches</div>
         </div>
 
         {loading ? (
@@ -748,7 +755,7 @@ export function BranchesPage() {
               }
 
               return (
-                <div key={branch.id} className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft">
+                <div id={`branch-${branch.id}`} key={branch.id} className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft">
                   <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_1fr_auto] lg:items-start">
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{getBranchCodeForBranch(branch, branchCodeById)}</p>
@@ -848,9 +855,8 @@ export function BranchesPage() {
                 You are about to remove <span className="font-semibold">{pendingDeleteBranch.name}</span>.
               </p>
               <p className="mt-1 text-sm text-slate-400">
-                To avoid accidental deletion, click <span className="font-semibold">Yes</span> three times.
+                This action cannot be undone.
               </p>
-              <p className="mt-3 text-sm text-red-300">Confirmation step: {deleteConfirmCount} of 3</p>
 
               <div className="mt-6 flex gap-3">
                 <button
@@ -859,7 +865,7 @@ export function BranchesPage() {
                   className="rounded-xl border border-red-400/30 bg-red-600 px-4 py-2 text-white transition hover:bg-red-500 disabled:opacity-50"
                   disabled={saving}
                 >
-                  {saving ? 'Removing...' : `Yes (${deleteConfirmCount}/3)`}
+                  {saving ? 'Removing...' : 'Yes, remove branch'}
                 </button>
                 <button
                   type="button"
