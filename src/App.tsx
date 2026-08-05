@@ -170,7 +170,7 @@ function AppRoutes() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/projects" element={<Navigate to="/branches" replace />} />
+          <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/branches" element={<BranchesPage />} />
           <Route path="/branches/:branchId" element={<BranchDetailPage />} />

@@ -188,7 +188,7 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
     contact_name: syncedContactFields.contactName,
     contact_email: syncedContactFields.contactEmail,
     contact_phone: syncedContactFields.contactPhone,
-    contacts: input.contacts ?? null,
+    contacts: input.contacts ?? [],
   };
 }
 
@@ -230,6 +230,14 @@ async function saveBranchWithSchemaFallback(
       return result;
     }
 
+    // Do not silently drop legacy contact columns. If the database schema is missing
+    // contact_name/contact_email/contact_phone, we want the caller to see that error
+    // rather than silently ignoring the branch contact update.
+    const droppingLegacyContactColumns = missingColumns.some((column) => column !== 'contacts');
+    if (droppingLegacyContactColumns) {
+      return result;
+    }
+
     candidatePayload = omitBranchColumns(candidatePayload, missingColumns);
     attempts += 1;
   }
@@ -240,18 +248,23 @@ async function saveBranchWithSchemaFallback(
 }
 
 export async function getAllBranches(): Promise<Branch[]> {
+  const localBranches = readLocalBranches();
+
   if (!supabase) {
-    return readLocalBranches().sort((a, b) => a.name.localeCompare(b.name));
+    return localBranches.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   const { data, error } = await supabase.from('branches').select('*').order('name');
 
   if (error) {
     console.error('Failed to fetch branches:', error);
-    return readLocalBranches().sort((a, b) => a.name.localeCompare(b.name));
+    return localBranches.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  return data.map((row) => mergeLocalBranchMetadata(rowToBranch(row))).sort((a, b) => a.name.localeCompare(b.name));
+  const serverBranches = data.map((row) => mergeLocalBranchMetadata(rowToBranch(row)));
+  const localOnlyBranches = localBranches.filter((localBranch) => !serverBranches.some((serverBranch) => serverBranch.id === localBranch.id));
+
+  return [...serverBranches, ...localOnlyBranches].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function getBranchById(id: string): Promise<Branch | null> {

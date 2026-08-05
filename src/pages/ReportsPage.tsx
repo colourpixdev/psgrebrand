@@ -152,10 +152,9 @@ function branchDetailHtml(projects: Project[], reportName: string, branchName: s
     <html>
       <head>
         <meta charset="utf-8" />
-        <title>${escapeHtml(reportName)}</title>
+        <title>PSG Rebrand Report</title>
         <style>
           body { font-family: Arial, sans-serif; color: #111827; margin: 28px; }
-          h1 { margin-bottom: 2px; }
           .meta { color: #4b5563; margin-bottom: 20px; }
           .card { border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
           ul { margin: 8px 0 0 16px; }
@@ -163,7 +162,6 @@ function branchDetailHtml(projects: Project[], reportName: string, branchName: s
         </style>
       </head>
       <body>
-        <h1>${escapeHtml(reportName)}</h1>
         <p class="meta">Branch: ${escapeHtml(branchName)} | Projects: ${escapeHtml(projects.length)} | Generated: ${escapeHtml(new Date().toLocaleDateString())}</p>
         ${cards}
         <script>window.addEventListener('load', () => setTimeout(() => window.print(), 150));</script>
@@ -180,7 +178,7 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
     <html>
       <head>
         <meta charset="utf-8" />
-        <title>${escapeHtml(reportName)}</title>
+        <title>PSG Rebrand Report</title>
         <style>
           body { font-family: Arial, sans-serif; color: #111827; margin: 32px; }
           table { border-collapse: collapse; width: 100%; font-size: 11px; }
@@ -189,7 +187,6 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
         </style>
       </head>
       <body>
-        <h1>${escapeHtml(reportName)}</h1>
         <p>${projects.length} project${projects.length === 1 ? '' : 's'} exported on ${new Date().toLocaleDateString()}</p>
         <table>
           <thead><tr>${['Project ID', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Progress', 'Target'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>

@@ -5,7 +5,7 @@ import { getProjects } from '../services/portalService';
 import type { Branch, ContactPerson, Division, Project } from '../types/domain';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
-import { filterProjectsForUser } from '../utils/permissions';
+import { can, filterProjectsForUser } from '../utils/permissions';
 
 const divisions: Division[] = ['Wealth', 'Insure', 'Wealth Insure', 'Asset', 'Trust'];
 
@@ -369,6 +369,8 @@ export function BranchesPage() {
 
     return [...results].sort((a, b) => a.name.localeCompare(b.name));
   }, [branches, searchTerm]);
+
+  const canCreateProjects = can(user, 'create_project');
 
   const openProjectsByBranch = useMemo(() => {
     return projects.reduce<Record<string, Project[]>>((acc, project) => {
@@ -801,26 +803,31 @@ export function BranchesPage() {
                       </div>
 
                       <div className="mt-3">
-                        <Link to={`/branches/${branch.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View branch details</Link>
-                      </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Link to={`/branches/${branch.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View branch details</Link>
+                          {canCreateProjects ? (
+                            <Link to={`/projects?branchId=${encodeURIComponent(branch.id)}`} className="inline-flex items-center justify-center rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Add project</Link>
+                          ) : null}
+                        </div>
 
-                      <div className="mt-3 space-y-2">
-                        {openProjects.map((project) => (
-                          <div key={project.id} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-white">{project.id}</p>
-                                <p className="truncate text-xs text-slate-400">
-                                  {project.currentStage} · {project.town}, {project.province}
-                                </p>
+                        <div className="mt-3 space-y-2">
+                          {openProjects.map((project) => (
+                            <div key={project.id} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-white">{project.id}</p>
+                                  <p className="truncate text-xs text-slate-400">
+                                    {project.currentStage} · {project.town}, {project.province}
+                                  </p>
+                                </div>
+                                <span className="shrink-0 rounded-full bg-sky-400/20 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-sky-200 ring-1 ring-sky-300/20">
+                                  {project.status.replace('_', ' ')}
+                                </span>
                               </div>
-                              <span className="shrink-0 rounded-full bg-sky-400/20 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-sky-200 ring-1 ring-sky-300/20">
-                                {project.status.replace('_', ' ')}
-                              </span>
+                              <Link to={`/branches/${encodeURIComponent(branch.id)}`} className="mt-2 inline-flex items-center justify-center rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Open branch hub</Link>
                             </div>
-                            <Link to={`/branches/${encodeURIComponent(branch.id)}`} className="mt-2 inline-flex items-center justify-center rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Open branch hub</Link>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ) : null}

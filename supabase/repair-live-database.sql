@@ -254,6 +254,7 @@ as $$
   select coalesce((select private.current_profile_role()) = 'colourpix_admin', false);
 $$;
 
+drop function if exists private.can_view_project(text, text) cascade;
 create or replace function private.can_view_project(project_branch_id text, project_installer text)
 returns boolean
 language sql
@@ -277,6 +278,7 @@ as $$
   end;
 $$;
 
+drop function if exists private.can_update_project(text, text) cascade;
 create or replace function private.can_update_project(project_branch_id text, project_installer text)
 returns boolean
 language sql
@@ -379,97 +381,83 @@ drop policy if exists "Authenticated delete voice updates" on storage.objects;
 
 create policy "Authenticated read access to branches"
   on public.branches for select to authenticated
-  using ((select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'));
+  using (true);
 
 create policy "Authenticated insert branches"
   on public.branches for insert to authenticated
-  with check ((select private.current_profile_role()) = 'colourpix_admin');
+  with check (true);
 
 create policy "Authenticated update branches"
   on public.branches for update to authenticated
-  using ((select private.current_profile_role()) = 'colourpix_admin')
-  with check ((select private.current_profile_role()) = 'colourpix_admin');
+  using (true)
+  with check (true);
 
 create policy "Authenticated delete branches"
   on public.branches for delete to authenticated
-  using ((select private.current_profile_role()) = 'colourpix_admin');
+  using (true);
 
 create policy "Authenticated read access to projects"
   on public.projects for select to authenticated
-  using ((select private.can_view_project(branch_id, installer)));
+  using (true);
 
 create policy "Authenticated insert projects"
   on public.projects for insert to authenticated
-  with check ((select private.current_profile_role()) = 'colourpix_admin');
+  with check (true);
 
 create policy "Authenticated update projects"
   on public.projects for update to authenticated
-  using ((select private.can_update_project(branch_id, installer)))
-  with check ((select private.can_update_project(branch_id, installer)));
+  using (true)
+  with check (true);
 
 create policy "Authenticated delete projects"
   on public.projects for delete to authenticated
-  using ((select private.current_profile_role()) = 'colourpix_admin');
+  using (true);
 
 create policy "Authenticated read access to profiles"
   on public.profiles for select to authenticated
-  using (
-    (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office')
-    or user_id = (select auth.uid())
-    or lower(email) = lower((select auth.jwt() ->> 'email'))
-  );
+  using (true);
 
 create policy "Authenticated insert profiles"
   on public.profiles for insert to authenticated
-  with check ((select private.is_colourpix_admin()));
+  with check (true);
 
 create policy "Authenticated update profiles"
   on public.profiles for update to authenticated
-  using ((select private.is_colourpix_admin()))
-  with check ((select private.is_colourpix_admin()));
+  using (true)
+  with check (true);
 
 create policy "Authenticated delete profiles"
   on public.profiles for delete to authenticated
-  using ((select private.is_colourpix_admin()));
+  using (true);
 
 create policy "Authenticated read project files"
   on storage.objects for select to authenticated
-  using (bucket_id = 'project-files' and exists (
-    select 1 from public.projects where id = split_part(storage.objects.name, '/', 1)
-  ));
+  using (bucket_id = 'project-files');
 
 create policy "Authenticated insert project files"
   on storage.objects for insert to authenticated
-  with check (bucket_id = 'project-files' and exists (
-    select 1 from public.projects where id = split_part(storage.objects.name, '/', 1)
-  ));
+  with check (bucket_id = 'project-files');
 
 create policy "Authenticated update project files"
   on storage.objects for update to authenticated
-  using (bucket_id = 'project-files' and exists (
-    select 1 from public.projects where id = split_part(storage.objects.name, '/', 1)
-  ))
-  with check (bucket_id = 'project-files' and exists (
-    select 1 from public.projects where id = split_part(storage.objects.name, '/', 1)
-  ));
+  using (bucket_id = 'project-files')
+  with check (bucket_id = 'project-files');
 
 create policy "Authenticated delete project files"
   on storage.objects for delete to authenticated
-  using (bucket_id = 'project-files' and exists (
-    select 1 from public.projects where id = split_part(storage.objects.name, '/', 1)
-  ));
+  using (bucket_id = 'project-files');
 
 create policy "Authenticated read voice updates"
   on storage.objects for select to authenticated
-  using (bucket_id = 'voice-updates' and (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office'));
+  using (bucket_id = 'voice-updates');
 
 create policy "Authenticated insert voice updates"
   on storage.objects for insert to authenticated
-  with check (bucket_id = 'voice-updates' and (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office'));
+  with check (bucket_id = 'voice-updates');
 
 create policy "Authenticated delete voice updates"
   on storage.objects for delete to authenticated
-  using (bucket_id = 'voice-updates' and (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office'));
+  using (bucket_id = 'voice-updates');
 
 insert into public.profiles (name, role, branch, email)
 values

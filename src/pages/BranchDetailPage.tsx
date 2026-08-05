@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { getAllBranches } from '../services/branchService';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
-import { filterProjectsForUser } from '../utils/permissions';
+import { can, filterProjectsForUser } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import type { Project, TaskAssignee } from '../types/domain';
 
@@ -50,6 +50,7 @@ export function BranchDetailPage() {
   });
 
   const branch = branches.find((item) => item.id === (branchId ?? ''));
+  const canCreateProjects = can(user, 'create_project');
   const scopedProjects = filterProjectsForUser(projects, user);
   const branchProjects = useMemo(() => {
     if (!branch) {
@@ -125,7 +126,12 @@ export function BranchDetailPage() {
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-lg font-semibold text-white">Branch rebrand updates</h3>
-          <Link to={`/branches/${encodeURIComponent(branch.id)}`} className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">Open branch project</Link>
+          <div className="flex flex-wrap gap-2">
+            {canCreateProjects ? (
+              <Link to={`/projects?branchId=${encodeURIComponent(branch.id)}`} className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">Add project</Link>
+            ) : null}
+            <Link to="/projects" className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">Open branch project</Link>
+          </div>
         </div>
 
         <div className="mt-4 space-y-4">
