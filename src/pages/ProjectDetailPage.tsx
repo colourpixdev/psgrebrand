@@ -21,13 +21,12 @@ const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-type ProjectSectionId = 'timeline' | 'journal' | 'files' | 'notes';
+type ProjectSectionId = 'timeline' | 'files' | 'notes';
 
 const projectSections: Array<{ id: ProjectSectionId; number: string; label: string }> = [
-  { id: 'timeline', number: '01', label: 'Timeline and tasks' },
-  { id: 'journal', number: '02', label: 'Journal' },
-  { id: 'files', number: '03', label: 'Files' },
-  { id: 'notes', number: '04', label: 'Notes' },
+  { id: 'timeline', number: '01', label: 'Workboard' },
+  { id: 'files', number: '02', label: 'Files' },
+  { id: 'notes', number: '03', label: 'Notes' },
 ];
 
 function getStagePlan(project: Project): ProjectStage[] {
@@ -71,8 +70,6 @@ export function ProjectDetailPage() {
   const [signageContactNameDraft, setSignageContactNameDraft] = useState('');
   const [signageContactEmailDraft, setSignageContactEmailDraft] = useState('');
   const [signageContactPhoneDraft, setSignageContactPhoneDraft] = useState('');
-  const [questionMessage, setQuestionMessage] = useState('');
-  const [questionTaskId, setQuestionTaskId] = useState('');
   const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
   const [answerMessage, setAnswerMessage] = useState('');
   const [answerStage, setAnswerStage] = useState<ProjectStage>('New Project');
@@ -172,12 +169,12 @@ export function ProjectDetailPage() {
       projectId: projectId ?? '',
       author: user?.name ?? 'Workspace user',
       authorEmail: user?.email ?? '',
-      message: questionMessage,
-      taskId: questionTaskId || undefined,
+      message: commentMessage,
+      taskId: journalTaskId || undefined,
     }),
     onSuccess: async (updatedProject) => {
-      setQuestionMessage('');
-      setQuestionTaskId('');
+      setCommentMessage('');
+      setJournalTaskId('');
       await syncProject(updatedProject);
     },
   });
@@ -452,7 +449,8 @@ export function ProjectDetailPage() {
   const canAssignTasks = Boolean(rolePolicy?.tasks.canAssignTasks || rolePolicy?.tasks.canReassignTasks);
   const canDeleteTasks = canAdministerProjectDetails && Boolean(rolePolicy?.tasks.canDeleteTasks);
   const canDeleteProject = Boolean(rolePolicy?.projectAccess.canDeleteProjects);
-  const canCreateAssignedUpdate = canAddComments && canAddTasks;
+  const canCreateAssignedUpdate = canAddComments;
+  const canUseConversationComposer = canCreateAssignedUpdate || canAskColourpix;
   const assignableUsers = canAssignTasks ? users : users.filter((item) => item.email.toLowerCase() === user?.email.toLowerCase());
 
   function canCurrentUserCompleteTask(task: TaskItem) {
@@ -533,8 +531,9 @@ export function ProjectDetailPage() {
       : [];
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
+    <div className="relative space-y-6">
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 rounded-[2.5rem] bg-[radial-gradient(circle_at_20%_15%,rgba(34,211,238,0.25),transparent_55%),radial-gradient(circle_at_85%_20%,rgba(56,189,248,0.22),transparent_50%)]" />
+      <section className="rounded-[2rem] border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
         <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Project ID {selectedProject.id}</p>
         <h2 className="mt-2 text-3xl font-semibold text-white">{selectedProject.branch}</h2>
         <p className="mt-2 text-sm text-slate-400">
@@ -648,7 +647,7 @@ export function ProjectDetailPage() {
         ) : null}
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-slate-950/75 p-4 shadow-soft">
+      <section className="rounded-[2rem] border border-cyan-300/20 bg-slate-950/80 p-4 shadow-soft">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-teal-200/80">Project menu</p>
@@ -664,18 +663,18 @@ export function ProjectDetailPage() {
               onClick={() => setActiveProjectSection(item.id)}
               className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-3 py-2 text-left text-sm font-semibold transition sm:px-4 ${
                 activeProjectSection === item.id
-                  ? 'border-sky-300/40 bg-sky-500/15 text-sky-100'
-                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-sky-300/30 hover:bg-sky-500/10 hover:text-white'
+                  ? 'border-cyan-300/50 bg-cyan-400/20 text-cyan-100'
+                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-white'
               }`}
             >
-              <span className="text-xs text-sky-200">#{item.number}</span>
+              <span className="text-xs text-cyan-200">#{item.number}</span>
               <span>{item.label}</span>
             </button>
           ))}
         </nav>
       </section>
 
-      <section className={activeProjectSection === 'timeline' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
+      <section className={activeProjectSection === 'timeline' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         {workflowError instanceof Error ? <p className="mb-4 text-sm text-red-300">{workflowError.message}</p> : null}
         <Timeline
           stages={stagePlan}
@@ -787,52 +786,41 @@ export function ProjectDetailPage() {
         </div>
       </section>
 
-      <section className={activeProjectSection === 'journal' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
+      <section className={activeProjectSection === 'timeline' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-white">Journal</h3>
-            <p className="mt-1 text-sm text-slate-400">Every update, follow-up, question, and answer for this project lives in one place.</p>
+            <h3 className="text-lg font-semibold text-white">Task conversations</h3>
+            <p className="mt-1 text-sm text-slate-300">Updates and requests are now merged into one task-linked stream.</p>
           </div>
           {unreadAnswers.length > 0 ? <span className="rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100">{unreadAnswers.length} new answer{unreadAnswers.length === 1 ? '' : 's'}</span> : null}
         </div>
 
-        <div className="mt-5 grid gap-3 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
-          <p className="text-xs uppercase tracking-[0.24em] text-sky-200">Add a task update</p>
-          <label className="grid gap-2 text-sm text-slate-300">
-            Related task
-            <select value={journalTaskId} disabled={!canCreateAssignedUpdate} onChange={(event) => setJournalTaskId(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
-              <option value="">General update (not tied to a task)</option>
-              {selectedProject.tasks.map((item) => <option key={item.id} value={item.id}>{item.text}{item.stage ? ' · stage' : ''}</option>)}
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm text-slate-300">
-            Update
-            <textarea value={commentMessage} disabled={!canCreateAssignedUpdate} onChange={(event) => setCommentMessage(event.target.value)} rows={3} placeholder={canCreateAssignedUpdate ? 'Example: Waiting for measurements.' : 'Project update tasks are restricted'} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm sm:leading-6" />
-          </label>
-          <p className="text-xs text-slate-400">Pick the task this update is about, or leave it as a general update for a plain journal note.</p>
-          <button type="button" disabled={!canCreateAssignedUpdate || taskUpdateMutation.isPending || !commentMessage.trim()} onClick={() => taskUpdateMutation.mutate()} className="w-fit rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
-            {taskUpdateMutation.isPending ? 'Saving update...' : journalTaskId ? 'Save task update' : 'Save journal entry'}
-          </button>
-        </div>
-
-        {canAskColourpix ? (
-          <div className="mt-5 grid gap-3 rounded-2xl border border-sky-400/15 bg-sky-500/10 p-4">
-            <div className="grid gap-3 md:grid-cols-[1fr_220px]">
-              <label className="grid gap-2 text-sm text-slate-300">
-                Question or update request
-                <textarea value={questionMessage} onChange={(event) => setQuestionMessage(event.target.value)} rows={3} placeholder="Please confirm whether artwork approval is still blocking this stage." className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50" />
-              </label>
-              <label className="grid content-start gap-2 text-sm text-slate-300">
-                Related task
-                <select value={questionTaskId} onChange={(event) => setQuestionTaskId(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-                  <option value="">General update (not tied to a task)</option>
-                  {selectedProject.tasks.map((task) => <option key={task.id} value={task.id}>{task.text}</option>)}
-                </select>
-              </label>
+        {canUseConversationComposer ? (
+          <div className="mt-5 grid gap-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4">
+            <label className="grid gap-2 text-sm text-slate-200">
+              Related task
+              <select value={journalTaskId} onChange={(event) => setJournalTaskId(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/50">
+                <option value="">General update (not tied to a task)</option>
+                {selectedProject.tasks.map((item) => <option key={item.id} value={item.id}>{item.text}{item.stage ? ' · stage' : ''}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm text-slate-200">
+              Message
+              <textarea value={commentMessage} onChange={(event) => setCommentMessage(event.target.value)} rows={3} placeholder="Share an update or ask for action on this task." className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/50 sm:text-sm sm:leading-6" />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {canCreateAssignedUpdate ? (
+                <button type="button" disabled={taskUpdateMutation.isPending || !commentMessage.trim()} onClick={() => taskUpdateMutation.mutate()} className="rounded-2xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">
+                  {taskUpdateMutation.isPending ? 'Saving update...' : journalTaskId ? 'Save task update' : 'Save general update'}
+                </button>
+              ) : null}
+              {canAskColourpix ? (
+                <button type="button" disabled={questionMutation.isPending || !commentMessage.trim()} onClick={() => questionMutation.mutate()} className="rounded-2xl border border-cyan-300/35 bg-cyan-400/10 px-5 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50">
+                  {questionMutation.isPending ? 'Sending request...' : 'Send request'}
+                </button>
+              ) : null}
             </div>
-            <button type="button" disabled={questionMutation.isPending || !questionMessage.trim()} onClick={() => questionMutation.mutate()} className="w-fit rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
-              {questionMutation.isPending ? 'Sending question...' : 'Send question'}
-            </button>
+            <p className="text-xs text-slate-300/80">One composer, two actions: save an update or send a request. Both can be linked to the same task.</p>
           </div>
         ) : null}
 
@@ -984,7 +972,7 @@ export function ProjectDetailPage() {
         />
       </section>
 
-      <section className={activeProjectSection === 'notes' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
+      <section className={activeProjectSection === 'notes' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-white">Notes</h3>

@@ -21,7 +21,7 @@ export function Timeline({ stages, activeStage, tasks, users, canCompleteStages,
   const [newStageName, setNewStageName] = useState('');
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft">
+    <div className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
       <h3 className="text-lg font-semibold text-white">Timeline</h3>
       <p className="mt-1 text-sm text-slate-400">Tick a stage as done, or remove stages that don't apply and add your own.</p>
       <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -35,7 +35,7 @@ export function Timeline({ stages, activeStage, tasks, users, canCompleteStages,
             <article
               key={stage}
               className={`rounded-2xl border p-4 text-sm ${
-                active ? 'border-sky-400/40 bg-sky-500/10 text-sky-100' : complete ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100' : 'border-white/10 bg-slate-950/40 text-slate-300'
+                active ? 'border-cyan-300/50 bg-cyan-400/15 text-cyan-100' : complete ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100' : 'border-cyan-200/10 bg-slate-950/45 text-slate-300'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -50,7 +50,7 @@ export function Timeline({ stages, activeStage, tasks, users, canCompleteStages,
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-white">{stage}</p>
-                      {active && !complete ? <span className="rounded-full border border-sky-400/25 bg-sky-500/15 px-2 py-0.5 text-[0.68rem] font-semibold text-sky-100">Busy</span> : null}
+                      {active && !complete ? <span className="rounded-full border border-cyan-300/30 bg-cyan-500/15 px-2 py-0.5 text-[0.68rem] font-semibold text-cyan-100">Busy</span> : null}
                       {complete ? <span className="rounded-full border border-emerald-400/25 bg-emerald-500/15 px-2 py-0.5 text-[0.68rem] font-semibold text-emerald-100">Done</span> : null}
                     </div>
                     {canManageStages ? (
@@ -70,7 +70,7 @@ export function Timeline({ stages, activeStage, tasks, users, canCompleteStages,
                       value={assigneeEmail}
                       disabled={!canAssignStages || isUpdating}
                       onChange={(event) => onAssignStage(stage, event.target.value)}
-                      className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-xs text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-xs text-white outline-none focus:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value="">Unassigned</option>
                       {users.map((item) => <option key={item.email} value={item.email}>{item.name}</option>)}
@@ -89,7 +89,7 @@ export function Timeline({ stages, activeStage, tasks, users, canCompleteStages,
             value={newStageName}
             onChange={(event) => setNewStageName(event.target.value)}
             placeholder="Add a custom stage..."
-            className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
+            className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/50"
           />
           <button
             type="button"
@@ -98,7 +98,7 @@ export function Timeline({ stages, activeStage, tasks, users, canCompleteStages,
               onAddStage(newStageName.trim());
               setNewStageName('');
             }}
-            className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-2xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Add stage
           </button>
