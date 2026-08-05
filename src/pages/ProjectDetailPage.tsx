@@ -8,7 +8,7 @@ import { addAssignedProjectUpdate, addProjectTask, answerProjectQuestion, askPro
 import { getBranchById } from '../services/branchService';
 import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
-import { canViewProject, getAllowedStageOptions, getRolePolicy, getWorkflowDenialReason } from '../utils/permissions';
+import { canViewProject, getRolePolicy } from '../utils/permissions';
 import type { CommentItem, Project, ProjectFile, ProjectStatus, ProjectStage, TaskAssignee, TaskItem } from '../types/domain';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
@@ -21,14 +21,13 @@ const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-type ProjectSectionId = 'timeline' | 'journal' | 'workflow-actions' | 'files' | 'notes';
+type ProjectSectionId = 'timeline' | 'journal' | 'files' | 'notes';
 
 const projectSections: Array<{ id: ProjectSectionId; number: string; label: string }> = [
   { id: 'timeline', number: '01', label: 'Timeline and tasks' },
   { id: 'journal', number: '02', label: 'Journal' },
-  { id: 'workflow-actions', number: '03', label: 'Workflow Actions' },
-  { id: 'files', number: '04', label: 'Files' },
-  { id: 'notes', number: '05', label: 'Notes' },
+  { id: 'files', number: '03', label: 'Files' },
+  { id: 'notes', number: '04', label: 'Notes' },
 ];
 
 function getStagePlan(project: Project): ProjectStage[] {
@@ -65,9 +64,6 @@ export function ProjectDetailPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [stage, setStage] = useState<ProjectStage>('New Project');
-  const [status, setStatus] = useState<ProjectStatus>('in_progress');
-  const [progress, setProgress] = useState(0);
   const [activeProjectSection, setActiveProjectSection] = useState<ProjectSectionId>('timeline');
   const [commentMessage, setCommentMessage] = useState('');
   const [commentAssigneeEmails, setCommentAssigneeEmails] = useState<string[]>([]);
@@ -119,9 +115,6 @@ export function ProjectDetailPage() {
 
   useEffect(() => {
     if (project) {
-      setStage(project.currentStage);
-      setStatus(project.status);
-      setProgress(project.progress);
       setNotesDraft(project.notes);
     }
   }, [project]);
@@ -139,17 +132,6 @@ export function ProjectDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['portal-summary'] }),
     ]);
   };
-
-  const workflowMutation = useMutation({
-    mutationFn: () => updateProjectWorkflow({
-      projectId: projectId ?? '',
-      currentStage: stage,
-      status,
-      progress,
-      actor: user?.name ?? 'Workspace user',
-    }),
-    onSuccess: syncProject,
-  });
 
   const assignedUpdateMutation = useMutation({
     mutationFn: () => addAssignedProjectUpdate({
@@ -435,7 +417,7 @@ export function ProjectDetailPage() {
   });
 
   const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error;
-  const workflowError = workflowMutation.error ?? timelineTaskMutation.error ?? addStageMutation.error ?? removeStageMutation.error ?? assignedUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
+  const workflowError = timelineTaskMutation.error ?? addStageMutation.error ?? removeStageMutation.error ?? assignedUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
   const notesError = notesMutation.error;
   const rolePolicy = getRolePolicy(user);
   const canAdministerProjectDetails = Boolean(user?.isPlatformOwner);
@@ -519,11 +501,6 @@ export function ProjectDetailPage() {
   const stagePlan = getStagePlan(selectedProject);
   const canEditNotes = canViewProject(user, selectedProject);
   const hasNotesChange = notesDraft.trim() !== selectedProject.notes.trim();
-  const allowedStageOptions = getAllowedStageOptions(user, selectedProject, stagePlan);
-  const hasAllowedStageChange = allowedStageOptions.some((item) => item !== selectedProject.currentStage);
-  const workflowDenialReason = getWorkflowDenialReason(user, selectedProject, { currentStage: stage, status, progress });
-  const hasWorkflowChange = stage !== selectedProject.currentStage || status !== selectedProject.status || progress !== selectedProject.progress;
-  const canSubmitWorkflow = canAdministerProjectDetails && hasWorkflowChange && !workflowDenialReason;
   const branchParticipants = branch?.contacts?.length
     ? branch.contacts
     : branch?.contactName
@@ -630,6 +607,7 @@ export function ProjectDetailPage() {
       </section>
 
       <section className={activeProjectSection === 'timeline' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
+        {workflowError instanceof Error ? <p className="mb-4 text-sm text-red-300">{workflowError.message}</p> : null}
         <Timeline
           stages={stagePlan}
           activeStage={selectedProject.currentStage}
@@ -892,41 +870,6 @@ export function ProjectDetailPage() {
             )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No activity recorded yet.</p>}
           </div>
         </div>
-      </section>
-
-      <section className={activeProjectSection === 'workflow-actions' ? 'rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft' : 'hidden'}>
-          <h3 className="text-lg font-semibold text-white">Workflow Actions</h3>
-          <p className="mt-1 text-sm text-slate-400">Francois administers project detail changes. Other users should leave text updates at the top of this page.</p>
-          {!canAdministerProjectDetails ? <p className="mt-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">Direct project detail editing is restricted. Leave an update above for Francois to review.</p> : null}
-
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">
-              Stage
-              <select value={stage} disabled={!canAdministerProjectDetails || !rolePolicy?.workflow.canChangeStage || !hasAllowedStageChange} onChange={(event) => setStage(event.target.value as ProjectStage)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
-                {allowedStageOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-              </select>
-            </label>
-
-            <label className="grid gap-2 text-sm text-slate-300">
-              Status
-              <select value={status} disabled={!canAdministerProjectDetails || !rolePolicy?.workflow.canChangeStatus} onChange={(event) => setStatus(event.target.value as ProjectStatus)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
-                {statusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-              </select>
-            </label>
-
-            <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">
-              Progress
-              <input type="range" min="0" max="100" value={progress} disabled={!canAdministerProjectDetails || !rolePolicy?.workflow.canChangeProgress} onChange={(event) => setProgress(Number(event.target.value))} className="accent-sky-400 disabled:cursor-not-allowed disabled:opacity-60" />
-            </label>
-            <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-white">{progress}% complete</div>
-          </div>
-
-          {workflowError instanceof Error ? <p className="mt-4 text-sm text-red-300">{workflowError.message}</p> : null}
-          {workflowDenialReason && hasWorkflowChange ? <p className="mt-4 text-sm text-amber-200">{workflowDenialReason}</p> : null}
-
-          <button type="button" disabled={!canSubmitWorkflow || workflowMutation.isPending} onClick={() => workflowMutation.mutate()} className="mt-5 rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60">
-            {workflowMutation.isPending ? 'Updating workflow...' : 'Update workflow'}
-          </button>
       </section>
 
       <section className={activeProjectSection === 'files' ? '' : 'hidden'}>
