@@ -557,7 +557,7 @@ export function ProjectDetailPage() {
     <div className="relative space-y-6">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 rounded-[2.5rem] bg-[radial-gradient(circle_at_20%_15%,rgba(34,211,238,0.25),transparent_55%),radial-gradient(circle_at_85%_20%,rgba(56,189,248,0.22),transparent_50%)]" />
       <section className="rounded-[2rem] border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
-        <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Project ID {selectedProject.id}</p>
+        <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Branch reference</p>
         <h2 className="mt-2 text-3xl font-semibold text-white">{selectedProject.branch}</h2>
         <p className="mt-2 text-sm text-slate-400">
           {selectedProject.town}, {selectedProject.province} · Manager {selectedProject.manager}

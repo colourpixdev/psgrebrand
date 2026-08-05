@@ -6,7 +6,6 @@ import type { Branch, ContactPerson, Division, Project } from '../types/domain';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { filterProjectsForUser } from '../utils/permissions';
-import { buildBranchCodeMap, getBranchCodeForBranch } from '../utils/branchProjectIds';
 
 const divisions: Division[] = ['Wealth', 'Insure', 'Wealth Insure', 'Asset', 'Trust'];
 
@@ -29,7 +28,7 @@ function getEditablePrimaryContact(branch: Branch) {
     } satisfies ContactPerson;
   }
 
-  return branch.contacts?.find((contact) => isPrimaryContactDesignation(contact.designation));
+  return branch.contacts?.find((contact) => isPrimaryContactDesignation(contact.designation)) ?? branch.contacts?.[0];
 }
 
 function getBranchPrimaryContact(branch: Branch) {
@@ -96,7 +95,6 @@ export function BranchesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortOption, setSortOption] = useState<'name'>('name');
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
   const [pendingDeleteBranch, setPendingDeleteBranch] = useState<Branch | null>(null);
   const [formData, setFormData] = useState({
@@ -370,9 +368,7 @@ export function BranchesPage() {
     }
 
     return [...results].sort((a, b) => a.name.localeCompare(b.name));
-  }, [branches, searchTerm, sortOption]);
-
-  const branchCodeById = useMemo(() => buildBranchCodeMap(branches), [branches]);
+  }, [branches, searchTerm]);
 
   const openProjectsByBranch = useMemo(() => {
     return projects.reduce<Record<string, Project[]>>((acc, project) => {
@@ -584,27 +580,15 @@ export function BranchesPage() {
         )}
 
         <div className="mb-6 rounded-3xl border border-white/10 bg-slate-950/50 p-4 shadow-soft">
-          <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr] xl:items-end">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Search</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by branch name, town, or address"
-                className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white placeholder:text-slate-500 outline-none focus:border-sky-400/50"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Sort by</label>
-              <select
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
-                className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
-              >
-                <option value="name">Branch name</option>
-              </select>
-            </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-300">Search</label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by branch name, town, or address"
+              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white placeholder:text-slate-500 outline-none focus:border-sky-400/50"
+            />
           </div>
           <div className="mt-4 text-sm text-slate-400">Showing {filteredBranches.length} of {branches.length} branches</div>
         </div>
@@ -758,7 +742,6 @@ export function BranchesPage() {
                 <div id={`branch-${branch.id}`} key={branch.id} className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-soft">
                   <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_1fr_auto] lg:items-start">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{getBranchCodeForBranch(branch, branchCodeById)}</p>
                       <p className="mt-1 text-lg font-semibold text-white">{branch.name}</p>
                       <Link to={`/branches/${branch.id}`} className="mt-3 inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Open branch project</Link>
                       <p className="mt-1 text-sm text-slate-400">{branch.town}, {branch.province}</p>

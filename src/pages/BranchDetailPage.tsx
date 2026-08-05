@@ -6,7 +6,6 @@ import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
-import { buildBranchCodeMap, getBranchCodeForBranch } from '../utils/branchProjectIds';
 import type { Project, TaskAssignee } from '../types/domain';
 
 function byUpdatedAtDesc(a: Project, b: Project) {
@@ -52,7 +51,6 @@ export function BranchDetailPage() {
 
   const branch = branches.find((item) => item.id === (branchId ?? ''));
   const scopedProjects = filterProjectsForUser(projects, user);
-  const codeByBranchId = useMemo(() => buildBranchCodeMap(branches), [branches]);
   const branchProjects = useMemo(() => {
     if (!branch) {
       return [];
@@ -74,7 +72,6 @@ export function BranchDetailPage() {
     return <div className="rounded-[2rem] border border-white/10 bg-white/6 p-6 text-sm text-slate-300 shadow-soft">Branch not found.</div>;
   }
 
-  const branchCode = getBranchCodeForBranch(branch, codeByBranchId);
   const branchParticipants = branch.contacts?.length
     ? branch.contacts
     : branch.contactName
@@ -94,7 +91,6 @@ export function BranchDetailPage() {
             <div className="mb-3">
               <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">← Back to branches</Link>
             </div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Branch {branchCode}</p>
             <h2 className="mt-2 text-3xl font-semibold text-white">{branch.name}</h2>
             <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
             <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
@@ -144,7 +140,7 @@ export function BranchDetailPage() {
               <article key={project.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <p className="text-base font-semibold text-white">{project.id}</p>
+                    <p className="text-base font-semibold text-white">{project.branch}</p>
                     <p className="mt-1 text-sm text-slate-300">{project.currentStage} · {project.status.replace('_', ' ')}</p>
                     <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
                   </div>

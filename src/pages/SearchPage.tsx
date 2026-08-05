@@ -25,7 +25,6 @@ export function SearchPage() {
           p.branch.toLowerCase().includes(q) ||
           p.town.toLowerCase().includes(q) ||
           p.province.toLowerCase().includes(q) ||
-          p.id.toLowerCase().includes(q) ||
           p.currentStage.toLowerCase().includes(q) ||
           p.projectTypeName.toLowerCase().includes(q) ||
           p.status.toLowerCase().includes(q) ||
@@ -41,7 +40,7 @@ export function SearchPage() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="e.g. Hermanus, delayed, stage, PSG-00123..."
+          placeholder="e.g. Hermanus, delayed, stage, branch name..."
           className="mt-4 w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400/50 md:max-w-lg"
         />
         {q ? (

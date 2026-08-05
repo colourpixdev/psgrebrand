@@ -81,7 +81,7 @@ function projectCsvRows(projects: Project[]) {
     const pendingTasks = project.tasks.filter((task) => !task.completed).length;
     const participants = project.tasks.flatMap((task) => task.assignees?.map((assignee) => `${assignee.name} (${assignee.designation})`) ?? []).join('; ');
     return [
-      project.id,
+      project.branch,
       project.branch,
       project.projectTypeName,
       project.town,
@@ -100,7 +100,7 @@ function projectCsvRows(projects: Project[]) {
 }
 
 function downloadExcel(projects: Project[], reportName: string) {
-  const headers = ['Project ID', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Progress', 'Target', 'Pending tasks', 'Files', 'Participants', 'Updated'];
+  const headers = ['Branch reference', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Progress', 'Target', 'Pending tasks', 'Files', 'Participants', 'Updated'];
   const rows = projectCsvRows(projects);
   const csv = ['\uFEFF', headers.map(toCsvCell).join(','), ...rows.map((row) => row.map(toCsvCell).join(','))].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -362,7 +362,7 @@ export function ReportsPage() {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Branch, town, manager, project ID..."
+                placeholder="Branch, town, manager, branch reference..."
                 className="w-full rounded-2xl border border-white/10 bg-slate-900/80 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
               />
             </div>

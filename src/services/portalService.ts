@@ -204,7 +204,7 @@ function validateVoiceUpdateFile(file: File) {
 }
 
 export type CreateProjectInput = {
-  id: string;
+  id?: string;
   workspaceName?: string;
   clientCompany?: string;
   graphicsPartner?: string;
@@ -727,8 +727,11 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   const graphicsPartner = input.graphicsPartner?.trim() || defaultWorkspace.graphicsPartner;
   const template = input.projectType ? getProjectTemplate(input.projectType) : defaultProjectTemplate;
   const resolvedBranchId = input.branchId?.trim() || input.branch.trim();
+  const normalizedProjectId = input.id?.trim()
+    || input.branch.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    || `project-${Date.now()}`;
   const basePayload = {
-    id: input.id.trim(),
+    id: normalizedProjectId,
     branch_id: resolvedBranchId,
     branch_code: input.branchCode?.trim() || null,
     branch: input.branch.trim(),
@@ -751,7 +754,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     files: [],
     tasks: [],
     comments: [],
-    activity: [createActivity('Project Created', `${input.id} was created in ${workspaceName} for ${clientCompany}.`, 'success')],
+    activity: [createActivity('Project Created', `${normalizedProjectId} was created in ${workspaceName} for ${clientCompany}.`, 'success')],
   };
   const workspacePayload = {
     ...basePayload,
@@ -767,8 +770,8 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   if (!client) {
     const localProjects = readLocalProjects();
 
-    if (localProjects.some((project) => project.id === input.id.trim())) {
-      throw new Error(`Project ${input.id.trim()} already exists.`);
+    if (localProjects.some((project) => project.id === normalizedProjectId)) {
+      throw new Error(`Project ${normalizedProjectId} already exists.`);
     }
 
     const now = new Date().toISOString();
@@ -850,8 +853,8 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
 
     const localProjects = readLocalProjects();
 
-    if (localProjects.some((project) => project.id === input.id.trim())) {
-      throw new Error(`Project ${input.id.trim()} already exists.`);
+    if (localProjects.some((project) => project.id === normalizedProjectId)) {
+      throw new Error(`Project ${normalizedProjectId} already exists.`);
     }
 
     const now = new Date().toISOString();
