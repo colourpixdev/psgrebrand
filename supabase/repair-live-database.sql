@@ -277,6 +277,10 @@ create policy "Authenticated read access to branches"
   on public.branches for select to authenticated
   using (true);
 
+create policy "Public read access to branches"
+  on public.branches for select to public
+  using (true);
+
 create policy "Authenticated insert branches"
   on public.branches for insert to authenticated
   with check (true);
@@ -292,6 +296,10 @@ create policy "Authenticated delete branches"
 
 create policy "Authenticated read access to projects"
   on public.projects for select to authenticated
+  using (true);
+
+create policy "Public read access to projects"
+  on public.projects for select to public
   using (true);
 
 create policy "Authenticated insert projects"

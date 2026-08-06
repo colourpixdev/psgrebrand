@@ -199,6 +199,17 @@ end $$;
 
 do $$
 begin
+  create policy "Public read access to branches"
+    on public.branches
+    for select
+    to public
+    using (true);
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
   create policy "Authenticated insert branches"
     on public.branches
     for insert
@@ -237,6 +248,17 @@ begin
     on public.projects
     for select
     to authenticated
+    using (true);
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  create policy "Public read access to projects"
+    on public.projects
+    for select
+    to public
     using (true);
 exception
   when duplicate_object then null;
