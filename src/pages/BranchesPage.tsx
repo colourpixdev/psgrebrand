@@ -421,6 +421,21 @@ export function BranchesPage() {
     });
   }, [location.hash, filteredBranches]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const editBranchId = params.get('editBranch');
+    if (!editBranchId || filteredBranches.length === 0) {
+      return;
+    }
+
+    const branchToEdit = filteredBranches.find((branch) => branch.id === editBranchId);
+    if (!branchToEdit) {
+      return;
+    }
+
+    beginEdit(branchToEdit);
+  }, [location.search, filteredBranches]);
+
   return (
     <div className="min-h-screen p-6 md:p-8">
       <div className="max-w-7xl mx-auto">

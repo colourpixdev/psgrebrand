@@ -108,7 +108,6 @@ export function BranchDetailPage() {
       <section className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-soft">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-lg font-semibold text-white">Contact persons</h3>
-          <Link to={`/branches#branch-${branch.id}`} className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">Manage contacts</Link>
         </div>
         {branchParticipants.length > 0 ? (
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -125,7 +124,7 @@ export function BranchDetailPage() {
           <div className="mt-4 space-y-3">
             <p className="text-sm text-slate-400">No contact persons have been added yet.</p>
             <Link
-              to={`/branches#branch-${branch.id}`}
+              to={`/branches?editBranch=${branch.id}#branch-${branch.id}`}
               className="inline-flex items-center justify-center rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
             >
               Add contact person
@@ -141,12 +140,6 @@ export function BranchDetailPage() {
             {canCreateProjects ? (
               <Link to={`/projects?branchId=${encodeURIComponent(branch.id)}`} className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">Add project</Link>
             ) : null}
-            <Link
-              to={branchProject ? `/projects/${encodeURIComponent(branchProject.id)}` : `/projects?branchId=${encodeURIComponent(branch.id)}`}
-              className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25"
-            >
-              Open branch project
-            </Link>
           </div>
         </div>
 
