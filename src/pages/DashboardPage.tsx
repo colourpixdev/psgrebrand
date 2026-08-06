@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Search } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,7 +23,6 @@ function greeting() {
 export function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [quickSearch, setQuickSearch] = useState('');
   const {
     data: branches = [],
     isLoading: isLoadingBranches,
@@ -52,11 +50,6 @@ export function DashboardPage() {
   }, [scopedProjects]);
 
   const delayedCount = useMemo(() => scopedProjects.filter((project) => project.status === 'delayed' || project.status === 'on_hold').length, [scopedProjects]);
-
-  function submitQuickSearch(event: FormEvent) {
-    event.preventDefault();
-    navigate(`/search?q=${encodeURIComponent(quickSearch.trim())}`);
-  }
 
   return (
     <div className="space-y-6">
@@ -109,19 +102,6 @@ export function DashboardPage() {
           </div>
         </section>
       )}
-
-      <form onSubmit={submitQuickSearch} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <label className="flex items-center gap-3">
-          <Search className="h-4 w-4 shrink-0 text-slate-400" />
-          <input
-            type="search"
-            value={quickSearch}
-            onChange={(event) => setQuickSearch(event.target.value)}
-            placeholder="Search any branch..."
-            className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
-          />
-        </label>
-      </form>
 
       <ReportsPage />
     </div>
