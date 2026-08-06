@@ -190,13 +190,6 @@ export function BranchDetailPage() {
                 </div>
 
                 <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/45 p-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Files</p>
-                  <div className="mt-2 space-y-1 text-sm text-slate-200">
-                    {project.files.length > 0 ? project.files.map((file) => <p key={`${project.id}-${file.path ?? file.name}`}>{file.name}</p>) : <p className="text-slate-400">No files uploaded yet.</p>}
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/45 p-3">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-500">All tasks</p>
                   <div className="mt-2 space-y-3 text-sm text-slate-200">
                     {project.tasks.length > 0 ? project.tasks.map((task) => {
