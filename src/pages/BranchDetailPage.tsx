@@ -51,7 +51,11 @@ export function BranchDetailPage() {
     queryFn: getProjects,
   });
 
-  const branch = branches.find((item) => item.id === (branchId ?? ''));
+  const normalizedParam = branchId ?? '';
+  const branch = branches.find((item) => item.id === normalizedParam)
+    || branches.find((item) => item.code === normalizedParam)
+    || branches.find((item) => encodeURIComponent(item.id) === normalizedParam)
+    || branches.find((item) => item.name?.toLowerCase() === decodeURIComponent(normalizedParam).toLowerCase());
   const canCreateProjects = can(user, 'create_project');
   const scopedProjects = filterProjectsForUser(projects, user);
   const branchProjects = useMemo(() => {
