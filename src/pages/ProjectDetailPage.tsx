@@ -735,6 +735,7 @@ export function ProjectDetailPage() {
               const taskStatus = getTaskStatus(task);
               const taskUpdates = projectComments.filter((comment) => comment.taskId === task.id);
               const isTaskUpdatesOpen = expandedTaskUpdateTaskIds.includes(task.id);
+              const taskFiles = selectedProject.files.filter((file) => file.taskId === task.id);
               const statusStyles: Record<'pending' | 'open' | 'busy' | 'done', string> = {
                 pending: 'border-slate-400/20 bg-slate-700/20 text-slate-200 hover:bg-slate-700/30',
                 open: 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10',
@@ -811,7 +812,7 @@ export function ProjectDetailPage() {
                   <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3">
                     <div className="flex flex-wrap items-center gap-3">
                       <span className="text-xs text-slate-500">
-                        {selectedProject.files.filter((file) => file.taskId === task.id).length} file{selectedProject.files.filter((file) => file.taskId === task.id).length === 1 ? '' : 's'} attached to this task
+                        {taskFiles.length} file{taskFiles.length === 1 ? '' : 's'} attached to this task
                       </span>
                       {canUploadFiles ? (
                         <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-white/10 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
@@ -832,11 +833,11 @@ export function ProjectDetailPage() {
                         </label>
                       ) : null}
                     </div>
-                    {selectedProject.files.filter((file) => file.taskId === task.id).length > 0 ? (
+                    {taskFiles.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
                         <ul className="space-y-2 text-sm text-slate-300">
-                          {selectedProject.files.filter((file) => file.taskId === task.id).map((file) => (
+                          {taskFiles.map((file) => (
                             <li key={`${task.id}-${file.path ?? file.name}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
                               <span className="truncate">{file.name}</span>
                               <button

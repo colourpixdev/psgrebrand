@@ -198,13 +198,28 @@ export function BranchDetailPage() {
 
                 <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/45 p-3">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-500">All tasks</p>
-                  <div className="mt-2 space-y-2 text-sm text-slate-200">
-                    {project.tasks.length > 0 ? project.tasks.map((task) => (
-                      <div key={`${project.id}-${task.id}`} className="flex items-start justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/50 px-3 py-2">
-                        <p className={task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}>{task.text}</p>
-                        <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-300">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
-                      </div>
-                    )) : <p className="text-slate-400">No tasks added yet.</p>}
+                  <div className="mt-2 space-y-3 text-sm text-slate-200">
+                    {project.tasks.length > 0 ? project.tasks.map((task) => {
+                      const taskFiles = project.files.filter((file) => file.taskId === task.id);
+                      return (
+                        <div key={`${project.id}-${task.id}`} className="rounded-2xl border border-white/10 bg-slate-950/50 px-3 py-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className={task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}>{task.text}</p>
+                            <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-300">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
+                          </div>
+                          {taskFiles.length > 0 ? (
+                            <div className="mt-3 space-y-2 rounded-xl border border-slate-700/80 bg-slate-950/80 p-3">
+                              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
+                              <div className="space-y-1 text-sm text-slate-300">
+                                {taskFiles.map((file) => (
+                                  <p key={`${project.id}-${task.id}-${file.path ?? file.name}`} className="truncate">{file.name}</p>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    }) : <p className="text-slate-400">No tasks added yet.</p>}
                   </div>
                 </div>
 
