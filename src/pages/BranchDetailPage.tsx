@@ -10,6 +10,20 @@ import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { isTaskOutstanding } from '../utils/taskStatus';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
 
+function canPreviewFile(file: ProjectFile) {
+  const fileType = file.type ?? '';
+  const fileName = file.name.toLowerCase();
+
+  return fileType.startsWith('image/') || fileType === 'application/pdf' || fileName.endsWith('.pdf');
+}
+
+function isPreviewThumbnailCandidate(file: ProjectFile) {
+  const fileType = file.type ?? '';
+  const fileName = file.name.toLowerCase();
+
+  return fileType.startsWith('image/') || fileType === 'application/pdf' || fileName.endsWith('.pdf');
+}
+
 function byUpdatedAtDesc(a: Project, b: Project) {
   return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '');
 }
@@ -107,9 +121,9 @@ export function BranchDetailPage() {
   useEffect(() => {
     branchFiles.forEach((file) => {
       const key = file.path ?? file.name;
-      const isImage = file.type?.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg)$/i.test(file.name);
+      const isThumbnailCandidate = isPreviewThumbnailCandidate(file);
 
-      if (!file.path || !isImage || thumbnails[key] || thumbnailRequestedKeys.current.has(key)) {
+      if (!file.path || !isThumbnailCandidate || thumbnails[key] || thumbnailRequestedKeys.current.has(key)) {
         return;
       }
 
@@ -264,20 +278,24 @@ export function BranchDetailPage() {
                                 {taskFiles.map((file) => {
                                   const key = file.path ?? file.name;
                                   const thumbnailUrl = thumbnails[key];
-                                  const isImage = file.type?.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg)$/i.test(file.name);
+                                  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                                  const isPreviewable = canPreviewFile(file);
 
                                   return (
                                     <div key={`${project.id}-${task.id}-${key}`} className="rounded-2xl border border-white/10 bg-slate-950/70 p-3">
-                                      {thumbnailUrl ? (
+                                      {thumbnailUrl && !isPdf ? (
                                         <img src={thumbnailUrl} alt={file.name} className="mb-3 h-28 w-full rounded-xl object-cover" />
                                       ) : (
                                         <div className="mb-3 flex h-28 items-center justify-center rounded-xl bg-slate-900/70 text-slate-400">
-                                          <FileText className="h-8 w-8" />
+                                          <div className="flex flex-col items-center gap-2 text-center">
+                                            <FileText className="h-8 w-8" />
+                                            <span className="text-xs uppercase tracking-[0.2em] text-slate-400">{isPdf ? 'PDF File' : 'Preview unavailable'}</span>
+                                          </div>
                                         </div>
                                       )}
                                       <p className="truncate font-medium text-white">{file.name}</p>
                                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                                        {isImage ? (
+                                        {isPreviewable ? (
                                           <button type="button" onClick={() => previewMutation.mutate(file)} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
                                             <Eye className="mr-1 inline h-3.5 w-3.5" /> Preview
                                           </button>
