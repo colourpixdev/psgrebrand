@@ -28,6 +28,13 @@ function isImageFile(file: ProjectFile) {
   return fileType.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg)$/.test(fileName);
 }
 
+function isPdfFile(file: ProjectFile) {
+  const fileType = file.type ?? '';
+  const fileName = file.name.toLowerCase();
+
+  return fileType === 'application/pdf' || fileName.endsWith('.pdf');
+}
+
 export function FileGrid({
   files,
   taskFolders = [],
@@ -79,7 +86,7 @@ export function FileGrid({
 
     files.forEach((file) => {
       const key = file.path ?? file.name;
-      if (!file.path || !isImageFile(file) || requestedThumbnailKeys.current.has(key)) {
+      if (!file.path || !isImageFile(file) && !isPdfFile(file) || requestedThumbnailKeys.current.has(key)) {
         return;
       }
 
@@ -102,7 +109,11 @@ export function FileGrid({
       <div key={`${key}-${file.uploadedAt ?? ''}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-200">
         {thumbnailUrl ? (
           <img src={thumbnailUrl} alt={file.name} className="mb-3 h-32 w-full rounded-xl object-cover" />
-        ) : null}
+        ) : (
+          <div className="mb-3 flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-white/15 bg-slate-950/70 text-slate-500">
+            <span className="text-xs uppercase tracking-[0.25em]">Preview unavailable</span>
+          </div>
+        )}
         <div className="flex items-start gap-3">
           {thumbnailUrl ? null : <FileText className="mt-0.5 h-4 w-4 shrink-0 text-sky-200" />}
           <div className="min-w-0 flex-1">

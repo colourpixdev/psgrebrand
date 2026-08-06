@@ -838,16 +838,48 @@ export function ProjectDetailPage() {
                         <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
                         <ul className="space-y-2 text-sm text-slate-300">
                           {taskFiles.map((file) => (
-                            <li key={`${task.id}-${file.path ?? file.name}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
-                              <span className="truncate">{file.name}</span>
-                              <button
-                                type="button"
-                                disabled={downloadMutation.isPending}
-                                onClick={() => downloadMutation.mutate(file)}
-                                className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                Download
-                              </button>
+                            <li key={`${task.id}-${file.path ?? file.name}`} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                              <span className="truncate font-medium text-white">{file.name}</span>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {file.path && canViewProject(user, selectedProject) ? (
+                                  <button
+                                    type="button"
+                                    disabled={previewMutation.isPending}
+                                    onClick={() => previewMutation.mutate(file)}
+                                    className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    Preview
+                                  </button>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  disabled={downloadMutation.isPending}
+                                  onClick={() => downloadMutation.mutate(file)}
+                                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Download
+                                </button>
+                                {canDeleteFiles ? (
+                                  <button
+                                    type="button"
+                                    disabled={renameFileMutation.isPending || deleteFileMutation.isPending}
+                                    onClick={() => renameFileMutation.mutate({ file, nextName: file.name })}
+                                    className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    Rename
+                                  </button>
+                                ) : null}
+                                {canDeleteFiles ? (
+                                  <button
+                                    type="button"
+                                    disabled={deleteFileMutation.isPending}
+                                    onClick={() => deleteFileMutation.mutate(file)}
+                                    className="rounded-xl border border-red-400/20 bg-red-500/10 px-2 py-1 text-[11px] font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    Delete
+                                  </button>
+                                ) : null}
+                              </div>
                             </li>
                           ))}
                         </ul>
