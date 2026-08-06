@@ -1,13 +1,14 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
+import { FileText, Download, Eye } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
-import { getProjects } from '../services/portalService';
+import { getProjectFileUrl, getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { isTaskOutstanding } from '../utils/taskStatus';
-import type { Project, TaskAssignee } from '../types/domain';
+import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
 
 function byUpdatedAtDesc(a: Project, b: Project) {
   return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '');
@@ -66,6 +67,58 @@ export function BranchDetailPage() {
   const branchProject = branchProjects[0];
   const outstandingTasks = branchProjects.reduce((count, project) => count + project.tasks.filter(isTaskOutstanding).length, 0);
   const totalFiles = branchProjects.reduce((count, project) => count + project.files.length, 0);
+  const branchFiles = useMemo(() => branchProjects.flatMap((project) => project.files), [branchProjects]);
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const thumbnailRequestedKeys = useRef(new Set<string>());
+
+  const previewMutation = useMutation({
+    mutationFn: (file: ProjectFile) => getProjectFileUrl(file),
+    onSuccess: (url) => {
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    },
+  });
+
+  const downloadMutation = useMutation({
+    mutationFn: async (file: ProjectFile) => {
+      const url = await getProjectFileUrl(file, { download: true });
+      if (!url) {
+        return null;
+      }
+
+      return { url, name: file.name };
+    },
+    onSuccess: (download) => {
+      if (download) {
+        const link = document.createElement('a');
+        link.href = download.url;
+        link.download = download.name;
+        link.rel = 'noreferrer';
+        link.click();
+      }
+    },
+  });
+
+  useEffect(() => {
+    branchFiles.forEach((file) => {
+      const key = file.path ?? file.name;
+      const isImage = file.type?.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg)$/i.test(file.name);
+
+      if (!file.path || !isImage || thumbnails[key] || thumbnailRequestedKeys.current.has(key)) {
+        return;
+      }
+
+      thumbnailRequestedKeys.current.add(key);
+      getProjectFileUrl(file).then((url) => {
+        if (url) {
+          setThumbnails((current) => ({ ...current, [key]: url }));
+        }
+      }).catch(() => {
+        thumbnailRequestedKeys.current.delete(key);
+      });
+    });
+  }, [branchFiles, thumbnails]);
 
   if (isLoadingBranches || isLoadingProjects) {
     return <div className="rounded-[2rem] border border-white/10 bg-white/6 p-6 text-sm text-slate-300 shadow-soft">Loading branch workspace...</div>;
@@ -201,12 +254,37 @@ export function BranchDetailPage() {
                             <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-300">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
                           </div>
                           {taskFiles.length > 0 ? (
-                            <div className="mt-3 space-y-2 rounded-xl border border-slate-700/80 bg-slate-950/80 p-3">
+                            <div className="mt-3 space-y-3 rounded-xl border border-slate-700/80 bg-slate-950/80 p-3">
                               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
-                              <div className="space-y-1 text-sm text-slate-300">
-                                {taskFiles.map((file) => (
-                                  <p key={`${project.id}-${task.id}-${file.path ?? file.name}`} className="truncate">{file.name}</p>
-                                ))}
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                {taskFiles.map((file) => {
+                                  const key = file.path ?? file.name;
+                                  const thumbnailUrl = thumbnails[key];
+                                  const isImage = file.type?.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg)$/i.test(file.name);
+
+                                  return (
+                                    <div key={`${project.id}-${task.id}-${key}`} className="rounded-2xl border border-white/10 bg-slate-950/70 p-3">
+                                      {thumbnailUrl ? (
+                                        <img src={thumbnailUrl} alt={file.name} className="mb-3 h-28 w-full rounded-xl object-cover" />
+                                      ) : (
+                                        <div className="mb-3 flex h-28 items-center justify-center rounded-xl bg-slate-900/70 text-slate-400">
+                                          <FileText className="h-8 w-8" />
+                                        </div>
+                                      )}
+                                      <p className="truncate font-medium text-white">{file.name}</p>
+                                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                                        {isImage ? (
+                                          <button type="button" onClick={() => previewMutation.mutate(file)} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
+                                            <Eye className="mr-1 inline h-3.5 w-3.5" /> Preview
+                                          </button>
+                                        ) : null}
+                                        <button type="button" onClick={() => downloadMutation.mutate(file)} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
+                                          <Download className="mr-1 inline h-3.5 w-3.5" /> Download
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           ) : null}
