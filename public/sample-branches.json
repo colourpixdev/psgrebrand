@@ -1,0 +1,40 @@
+[
+  {
+    "id": "branch-johannesburg",
+    "code": "JHB",
+    "name": "Johannesburg Branch",
+    "division": "Wealth",
+    "province": "Gauteng",
+    "town": "Johannesburg",
+    "physical_address": "12 Market Street, Johannesburg",
+    "latitude": -26.2041,
+    "longitude": 28.0473,
+    "contact_name": "Jane Doe",
+    "contact_email": "jane.doe@example.com",
+    "contact_phone": "+27 82 000 0000",
+    "contacts": [
+      { "name": "Jane Doe", "email": "jane.doe@example.com", "phone": "+27 82 000 0000", "designation": "Branch Contact" }
+    ],
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "updated_at": "2024-06-01T00:00:00.000Z"
+  },
+  {
+    "id": "branch-cape-town",
+    "code": "CPT",
+    "name": "Cape Town Branch",
+    "division": "Insure",
+    "province": "Western Cape",
+    "town": "Cape Town",
+    "physical_address": "3 Waterfront Drive, Cape Town",
+    "latitude": -33.9249,
+    "longitude": 18.4241,
+    "contact_name": "Sipho Nkosi",
+    "contact_email": "sipho.nkosi@example.com",
+    "contact_phone": "+27 21 000 0000",
+    "contacts": [
+      { "name": "Sipho Nkosi", "email": "sipho.nkosi@example.com", "phone": "+27 21 000 0000", "designation": "Contact Person" }
+    ],
+    "created_at": "2024-02-01T00:00:00.000Z",
+    "updated_at": "2024-06-10T00:00:00.000Z"
+  }
+]

@@ -251,6 +251,26 @@ export async function getAllBranches(): Promise<Branch[]> {
   const localBranches = readLocalBranches();
 
   if (!supabase) {
+    if (localBranches.length > 0) {
+      return localBranches.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    // Try static sample fallback bundled with the site (public/sample-branches.json)
+    try {
+      const res = await fetch('/sample-branches.json');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const mapped = data.map((row) => mergeLocalBranchMetadata(row as any));
+          const localOnlyBranches = localBranches.filter((localBranch) => !mapped.some((serverBranch) => serverBranch.id === localBranch.id));
+          return [...mapped, ...localOnlyBranches].sort((a, b) => a.name.localeCompare(b.name));
+        }
+      }
+    } catch (err) {
+      // ignore and fall back to empty local branches
+      console.warn('No sample branches available:', err);
+    }
+
     return localBranches.sort((a, b) => a.name.localeCompare(b.name));
   }
 
