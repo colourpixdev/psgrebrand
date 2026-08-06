@@ -952,15 +952,28 @@ export async function getProjectFileUrl(file: ProjectFile, options: { download?:
 
   await hydrateAuthSession();
 
-  const { data, error } = await client.storage
-    .from(projectFilesBucket)
-    .createSignedUrl(file.path, 60 * 60, options.download ? { download: file.name } : undefined);
+  try {
+    const { data, error } = await client.storage
+      .from(projectFilesBucket)
+      .createSignedUrl(file.path, 60 * 60, options.download ? { download: file.name } : undefined);
 
-  if (error) {
-    throw error;
+    if (!error && data?.signedUrl) {
+      return data.signedUrl;
+    }
+  } catch (err) {
+    // fall through to public URL attempt
   }
 
-  return data.signedUrl;
+  try {
+    const { data: publicData } = await client.storage.from(projectFilesBucket).getPublicUrl(file.path);
+    if (publicData && typeof publicData.publicUrl === 'string' && publicData.publicUrl) {
+      return publicData.publicUrl;
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  return null;
 }
 
 export async function updateProjectWorkflow(input: UpdateProjectWorkflowInput): Promise<Project> {

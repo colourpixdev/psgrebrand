@@ -132,6 +132,9 @@ export function FileGrid({
         ) : (
           <div className="mt-3 flex flex-wrap items-center gap-4">
             <p className="text-xs text-slate-500">Legacy file name only</p>
+            <button type="button" onClick={() => { setRenamingFileKey(key); setNextFileName(file.name); }} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
+              Rename
+            </button>
             {canDelete ? (
               <button type="button" onClick={() => onDelete?.(file)} className="text-xs font-semibold text-red-300 transition hover:text-red-200">
                 Delete
