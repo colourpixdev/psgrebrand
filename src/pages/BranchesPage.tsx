@@ -368,8 +368,18 @@ export function BranchesPage() {
       });
     }
 
-    return [...results].sort((a, b) => a.name.localeCompare(b.name));
-  }, [branches, searchTerm]);
+    // sort: branches with active (open) projects first, then alphabetically
+    return [...results].sort((a, b) => {
+      const aHas = getOpenProjectsForBranch(a).length > 0;
+      const bHas = getOpenProjectsForBranch(b).length > 0;
+
+      if (aHas !== bHas) {
+        return aHas ? -1 : 1;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+  }, [branches, searchTerm, projects]);
 
   const canCreateProjects = can(user, 'create_project');
 

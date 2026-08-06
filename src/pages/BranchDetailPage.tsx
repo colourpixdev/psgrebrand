@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { FileText, Download, Eye } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
-import { getProjectFileUrl, getProjects, renameProjectFile } from '../services/portalService';
+import { addProjectComment, getProjectFileUrl, getProjects, renameProjectFile } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
@@ -91,11 +91,38 @@ export function BranchDetailPage() {
   const outstandingTasks = branchProjects.reduce((count, project) => count + project.tasks.filter(isTaskOutstanding).length, 0);
   const totalFiles = branchProjects.reduce((count, project) => count + project.files.length, 0);
   const branchFiles = useMemo(() => branchProjects.flatMap((project) => project.files), [branchProjects]);
+  const branchLatestUpdates = useMemo(() => {
+    return branchProjects
+      .flatMap((project) => (project.comments ?? []).map((comment) => ({ project, comment })))
+      .sort((a, b) => (b.comment.date ?? '').localeCompare(a.comment.date ?? ''))
+      .slice(0, 4);
+  }, [branchProjects]);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [renamingFileKey, setRenamingFileKey] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
+  const [quickUpdateDrafts, setQuickUpdateDrafts] = useState<Record<string, { taskId: string; message: string }>>({});
   const thumbnailRequestedKeys = useRef(new Set<string>());
   const queryClient = useQueryClient();
+
+  const quickUpdateMutation = useMutation({
+    mutationFn: ({ projectId, taskId, message }: { projectId: string; taskId: string; message: string }) => addProjectComment({
+      projectId,
+      author: user?.name ?? 'Workspace user',
+      message,
+      taskId: taskId || undefined,
+    }),
+    onSuccess: async (_, variables) => {
+      setQuickUpdateDrafts((current) => ({
+        ...current,
+        [variables.projectId]: {
+          taskId: '',
+          message: '',
+        },
+      }));
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['branches'] });
+    },
+  });
 
   const renameFileMutation = useMutation({
     mutationFn: ({ file, nextName }: { file: ProjectFile; nextName: string }) => renameProjectFile({
@@ -190,6 +217,29 @@ export function BranchDetailPage() {
             <h2 className="mt-2 text-3xl font-semibold text-white">{branch.name}</h2>
             <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
             <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
+            {branchParticipants.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Contacts</p>
+                <div className="mt-2 flex flex-wrap gap-4">
+                  {branchParticipants.slice(0, 3).map((p, i) => (
+                    <div key={`${p.email ?? p.name}-${i}`} className="rounded-lg border border-white/6 bg-slate-900/40 p-3 min-w-[180px]">
+                      <p className="font-medium text-white">{p.name}</p>
+                      {p.designation ? <p className="text-xs text-slate-400">{p.designation}</p> : null}
+                      {p.phone ? (
+                        <p className="mt-1 text-xs text-slate-400">
+                          <a href={formatPhoneHref(p.phone)} className="hover:text-white">{p.phone}</a>
+                        </p>
+                      ) : null}
+                      {p.email ? (
+                        <p className="text-xs text-slate-400">
+                          <a href={`mailto:${p.email}`} className="hover:text-white">{p.email}</a>
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <div className="grid gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-sm text-slate-200">
             <p>Rebrand records: <span className="text-white">{branchProjects.length}</span></p>
@@ -199,45 +249,7 @@ export function BranchDetailPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-soft">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold text-white">Contact persons</h3>
-        </div>
-        {branchParticipants.length > 0 ? (
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {branchParticipants.map((participant, index) => (
-              <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3">
-                <p className="font-medium text-white">{participant.name}</p>
-                <p className="mt-1 text-sm text-slate-400">{participant.designation}</p>
-                {participant.phone ? (
-                  <p className="mt-2 text-xs text-slate-400">
-                    <a href={formatPhoneHref(participant.phone)} className="hover:text-white">
-                      {participant.phone}
-                    </a>
-                  </p>
-                ) : null}
-                {participant.email ? (
-                  <p className="mt-1 text-xs text-slate-400">
-                    <a href={`mailto:${participant.email}`} className="hover:text-white">
-                      {participant.email}
-                    </a>
-                  </p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-4 space-y-3">
-            <p className="text-sm text-slate-400">No contact persons have been added yet.</p>
-            <Link
-              to={`/branches?editBranch=${branch.id}#branch-${branch.id}`}
-              className="inline-flex items-center justify-center rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
-            >
-              Add contact person
-            </Link>
-          </div>
-        )}
-      </section>
+      {/* Contact persons shown in header above; section removed to avoid duplication */}
 
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -248,6 +260,23 @@ export function BranchDetailPage() {
             ) : null}
           </div>
         </div>
+
+        {branchLatestUpdates.length > 0 ? (
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {branchLatestUpdates.map(({ project, comment }) => (
+              <div key={`${project.id}-${comment.date}-${comment.author}`} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{project.branch}</p>
+                <p className="mt-2 text-sm font-semibold text-white">{comment.author}</p>
+                <p className="mt-1 text-sm text-slate-300 line-clamp-3">{comment.message}</p>
+                <p className="mt-3 text-xs text-slate-500">{comment.date || 'Unknown date'}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-2xl border border-dashed border-white/15 bg-slate-900/60 p-4 text-sm text-slate-400">
+            No recent branch updates yet. Use the quick update form below to capture progress instantly.
+          </div>
+        )}
 
         <div className="mt-4 space-y-4">
           {branchProjects.length > 0 ? branchProjects.map((project) => {
@@ -267,6 +296,68 @@ export function BranchDetailPage() {
                   </div>
                   <div className="mt-3 flex gap-2">
                     <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Edit branch project</Link>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">Quick update</p>
+                      <p className="text-xs text-slate-400">Leave a short task update for this project.</p>
+                    </div>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">Fast entry</span>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-[1.4fr_1fr]">
+                    <label className="grid gap-2 text-sm text-slate-200">
+                      Related task
+                      <select
+                        value={quickUpdateDrafts[project.id]?.taskId ?? ''}
+                        onChange={(event) => setQuickUpdateDrafts((current) => ({
+                          ...current,
+                          [project.id]: {
+                            taskId: event.target.value,
+                            message: current[project.id]?.message ?? '',
+                          },
+                        }))}
+                        className="rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50"
+                      >
+                        <option value="">General project update</option>
+                        {project.tasks.map((task) => (
+                          <option key={task.id} value={task.id}>{task.text}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-2 text-sm text-slate-200">
+                      Update message
+                      <textarea
+                        value={quickUpdateDrafts[project.id]?.message ?? ''}
+                        onChange={(event) => setQuickUpdateDrafts((current) => ({
+                          ...current,
+                          [project.id]: {
+                            taskId: current[project.id]?.taskId ?? '',
+                            message: event.target.value,
+                          },
+                        }))}
+                        rows={3}
+                        placeholder="Describe progress, issues, or next steps"
+                        className="rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={!quickUpdateDrafts[project.id]?.message?.trim() || quickUpdateMutation.isPending}
+                      onClick={() => quickUpdateMutation.mutate({
+                        projectId: project.id,
+                        taskId: quickUpdateDrafts[project.id]?.taskId ?? '',
+                        message: quickUpdateDrafts[project.id]?.message ?? '',
+                      })}
+                      className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {quickUpdateMutation.isPending ? 'Saving update...' : 'Save quick update'}
+                    </button>
+                    <p className="text-xs text-slate-400">This update is added to the project journal and linked to the selected task.</p>
                   </div>
                 </div>
 
