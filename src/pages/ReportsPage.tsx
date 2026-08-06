@@ -5,6 +5,7 @@ import { FileText, MapPinned, Search, Shield } from 'lucide-react';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
+import { isTaskOutstanding } from '../utils/taskStatus';
 import type { Project, ProjectStatus, Role } from '../types/domain';
 
 type ReportType = 'single-branch-detail' | 'multi-branch-overview' | 'operational-blockers';
@@ -46,7 +47,7 @@ function isPastDate(value: string) {
 }
 
 function isOperationalBlocker(project: Project) {
-  const pendingTasks = project.tasks.filter((task) => !task.completed);
+  const pendingTasks = project.tasks.filter(isTaskOutstanding);
   const missingManager = !project.manager || project.manager.toLowerCase() === 'not captured';
   const awaitingQuoteOrApproval = ['Quotation Requested', 'Awaiting Approval'].includes(project.currentStage);
   return project.status === 'delayed'
@@ -78,7 +79,7 @@ function toCsvCell(value: string | number) {
 
 function projectCsvRows(projects: Project[]) {
   return projects.map((project) => {
-    const pendingTasks = project.tasks.filter((task) => !task.completed).length;
+    const pendingTasks = project.tasks.filter(isTaskOutstanding).length;
     const participants = project.tasks.flatMap((task) => task.assignees?.map((assignee) => `${assignee.name} (${assignee.designation})`) ?? []).join('; ');
     return [
       project.branch,
@@ -114,7 +115,7 @@ function downloadExcel(projects: Project[], reportName: string) {
 
 function branchDetailHtml(projects: Project[], reportName: string, branchName: string, userName?: string) {
   const cards = projects.map((project) => {
-    const pendingTasks = project.tasks.filter((task) => !task.completed);
+    const pendingTasks = project.tasks.filter(isTaskOutstanding);
     const participants = project.tasks.flatMap((task) => task.assignees ?? []);
     // filter out current user's activity when generating reports
     const activityItems = (userName

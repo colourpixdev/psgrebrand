@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { isTaskOutstanding } from '../../utils/taskStatus';
 import type { Project, UserRecord } from '../../types/domain';
 
 const statusTone: Record<Project['status'], string> = {
@@ -18,7 +19,7 @@ function isQuestionRequester(question: Project['comments'][number], user: UserRe
 export function ProjectCard({ project, user }: { project: Project; user?: UserRecord | null }) {
   const openQuestions = project.comments.filter((comment) => comment.kind === 'question' && comment.status !== 'answered').length;
   const unreadAnswers = project.comments.filter((comment) => comment.kind === 'question' && comment.status === 'answered' && comment.unreadForRequester && isQuestionRequester(comment, user)).length;
-  const outstandingTasks = project.tasks.filter((task) => !task.completed).length;
+  const outstandingTasks = project.tasks.filter(isTaskOutstanding).length;
 
   return (
     <article className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 transition hover:-translate-y-0.5 hover:border-sky-400/30">

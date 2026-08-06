@@ -4,13 +4,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { Timeline } from '../components/timeline/Timeline';
 import { roleLabels } from '../constants/portal';
-import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, updateProjectNotes, updateProjectSummary, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectNotes, updateProjectSummary, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById } from '../services/branchService';
 import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { canViewProject, getRolePolicy } from '../utils/permissions';
+import { getTaskStatus } from '../utils/taskStatus';
 import type { CommentItem, Project, ProjectFile, ProjectStatus, ProjectStage, TaskAssignee, TaskItem } from '../types/domain';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
@@ -281,6 +282,18 @@ export function ProjectDetailPage() {
     },
   });
 
+  const reorderTaskMutation = useMutation({
+    mutationFn: ({ task, direction }: { task: TaskItem; direction: 'up' | 'down' }) => reorderProjectTask({
+      projectId: projectId ?? '',
+      taskId: task.id,
+      direction,
+      actor: user?.name ?? 'Workspace user',
+    }),
+    onSuccess: async (updatedProject) => {
+      await syncProject(updatedProject, 'Task order saved.');
+    },
+  });
+
   async function ensureStagesMaterialized(currentProject: Project): Promise<Project> {
     return currentProject;
   }
@@ -499,14 +512,11 @@ export function ProjectDetailPage() {
     return true;
   }
 
-  function getTaskStatus(task: TaskItem): 'open' | 'busy' | 'done' {
-    return task.status ?? (task.completed ? 'done' : 'open');
-  }
-
-  function nextTaskStatus(status: 'open' | 'busy' | 'done'): 'open' | 'busy' | 'done' {
+  function nextTaskStatus(status: TaskItem['status'] | undefined): TaskItem['status'] {
+    if (status === 'pending') return 'open';
     if (status === 'open') return 'busy';
     if (status === 'busy') return 'done';
-    return 'open';
+    return 'pending';
   }
 
   function startAnswer(question: CommentItem) {
@@ -721,16 +731,17 @@ export function ProjectDetailPage() {
           </div>
           <p className="mt-2 text-xs text-slate-500">Every open task needs at least one assignee. Designations come from each user profile title or role label. Click the status button to move a task from Open to Busy to Done.</p>
           <div className="mt-4 space-y-2">
-            {mergedTasks.length > 0 ? mergedTasks.map((task) => {
+            {mergedTasks.length > 0 ? mergedTasks.map((task, index) => {
               const taskStatus = getTaskStatus(task);
               const taskUpdates = projectComments.filter((comment) => comment.taskId === task.id);
               const isTaskUpdatesOpen = expandedTaskUpdateTaskIds.includes(task.id);
-              const statusStyles: Record<'open' | 'busy' | 'done', string> = {
+              const statusStyles: Record<'pending' | 'open' | 'busy' | 'done', string> = {
+                pending: 'border-slate-400/20 bg-slate-700/20 text-slate-200 hover:bg-slate-700/30',
                 open: 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10',
                 busy: 'border-amber-400/30 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25',
                 done: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25',
               };
-              const statusLabels: Record<'open' | 'busy' | 'done', string> = { open: 'Open', busy: 'Busy', done: 'Done' };
+              const statusLabels: Record<'pending' | 'open' | 'busy' | 'done', string> = { pending: 'Pending', open: 'Open', busy: 'Busy', done: 'Done' };
 
               return (
               <div key={task.id} className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200">
@@ -767,7 +778,23 @@ export function ProjectDetailPage() {
                         </span>
                       </span>
                     </div>
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={reorderTaskMutation.isPending || index === 0}
+                        onClick={() => reorderTaskMutation.mutate({ task, direction: 'up' })}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Move up
+                      </button>
+                      <button
+                        type="button"
+                        disabled={reorderTaskMutation.isPending || index === mergedTasks.length - 1}
+                        onClick={() => reorderTaskMutation.mutate({ task, direction: 'down' })}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Move down
+                      </button>
                       {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); setEditingTaskAssigneeEmails(task.assignees?.map((assignee) => assignee.email) ?? (task.assigneeEmail ? [task.assigneeEmail] : [])); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Edit</button> : null}
                       {canDeleteTasks ? <button type="button" disabled={deleteTaskMutation.isPending} onClick={() => deleteTaskMutation.mutate(task)} className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
                       <button
@@ -781,26 +808,45 @@ export function ProjectDetailPage() {
                   </div>
                 )}
                 {editingTaskId !== task.id && canUploadFiles ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-white/10 pt-3">
-                    <span className="text-xs text-slate-500">
-                      {selectedProject.files.filter((file) => file.taskId === task.id).length} file{selectedProject.files.filter((file) => file.taskId === task.id).length === 1 ? '' : 's'} in this task's folder
-                    </span>
-                    <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-white/10 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
-                      {uploadMutation.isPending ? 'Uploading...' : 'Upload file'}
-                      <input
-                        type="file"
-                        disabled={uploadMutation.isPending}
-                        accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
-                        className="sr-only"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          event.target.value = '';
-                          if (file) {
-                            uploadMutation.mutate({ file, taskId: task.id });
-                          }
-                        }}
-                      />
-                    </label>
+                  <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-xs text-slate-500">
+                        {selectedProject.files.filter((file) => file.taskId === task.id).length} file{selectedProject.files.filter((file) => file.taskId === task.id).length === 1 ? '' : 's'} attached to this task
+                      </span>
+                      <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-white/10 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
+                        {uploadMutation.isPending ? 'Uploading...' : 'Upload file'}
+                        <input
+                          type="file"
+                          disabled={uploadMutation.isPending}
+                          accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
+                          className="sr-only"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.target.value = '';
+                            if (file) {
+                              uploadMutation.mutate({ file, taskId: task.id });
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {selectedProject.files.filter((file) => file.taskId === task.id).length > 0 ? (
+                      <ul className="space-y-2 text-sm text-slate-300">
+                        {selectedProject.files.filter((file) => file.taskId === task.id).map((file) => (
+                          <li key={`${task.id}-${file.path ?? file.name}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
+                            <span className="truncate">{file.name}</span>
+                            <button
+                              type="button"
+                              disabled={downloadMutation.isPending}
+                              onClick={() => downloadMutation.mutate(file)}
+                              className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Download
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                 ) : null}
                 {editingTaskId !== task.id && isTaskUpdatesOpen ? (

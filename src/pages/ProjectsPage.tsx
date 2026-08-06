@@ -7,6 +7,7 @@ import { getProjects } from '../services/portalService';
 import { ProjectCreateForm } from '../components/projects/ProjectCreateForm';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
+import { isTaskOutstanding } from '../utils/taskStatus';
 
 export function ProjectsPage() {
   const { user } = useAuth();
@@ -15,7 +16,7 @@ export function ProjectsPage() {
     queryFn: getProjects,
   });
   const projects = filterProjectsForUser(data ?? [], user);
-  const outstandingTasks = projects.reduce((count, project) => count + project.tasks.filter((task) => !task.completed).length, 0);
+  const outstandingTasks = projects.reduce((count, project) => count + project.tasks.filter(isTaskOutstanding).length, 0);
 
   return (
     <div className="space-y-6">

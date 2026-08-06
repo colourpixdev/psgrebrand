@@ -163,6 +163,7 @@ function normalizeProjectTasks(tasks: unknown[] | null): TaskItem[] {
           assigneeName: typeof candidate.assigneeName === 'string' ? candidate.assigneeName : undefined,
           assigneeEmail: typeof candidate.assigneeEmail === 'string' ? candidate.assigneeEmail : undefined,
           assignees: normalizeTaskAssignees(candidate),
+          status: typeof candidate.status === 'string' ? candidate.status as TaskItem['status'] : undefined,
           createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : undefined,
           completedAt: typeof candidate.completedAt === 'string' ? candidate.completedAt : undefined,
           completedByName: typeof candidate.completedByName === 'string' ? candidate.completedByName : undefined,
@@ -485,6 +486,13 @@ export type UpdateProjectTaskInput = {
   assignees?: TaskAssignee[];
   actor: string;
   actorEmail?: string;
+};
+
+export type ReorderProjectTaskInput = {
+  projectId: string;
+  taskId: string;
+  direction: 'up' | 'down';
+  actor: string;
 };
 
 export type UpsertProjectStageTaskInput = {
@@ -1330,7 +1338,7 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
     id: createTaskId(),
     text: task,
     completed: false,
-    status: 'open',
+    status: 'pending',
     stage: input.stage,
     assigneeName: primaryAssignee?.name,
     assigneeEmail: primaryAssignee?.email,
@@ -1348,6 +1356,56 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
 
   if (error || !data) {
     throw error ?? new Error('Unable to add project task.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function reorderProjectTask(input: ReorderProjectTaskInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const taskIndex = existingProject.tasks.findIndex((task) => task.id === input.taskId);
+  if (taskIndex === -1) {
+    throw new Error('Task not found.');
+  }
+
+  const nextIndex = input.direction === 'up' ? taskIndex - 1 : taskIndex + 1;
+  if (nextIndex < 0 || nextIndex >= existingProject.tasks.length) {
+    return existingProject;
+  }
+
+  const tasks = [...existingProject.tasks];
+  [tasks[taskIndex], tasks[nextIndex]] = [tasks[nextIndex], tasks[taskIndex]];
+
+  const activity = [
+    createActivity(
+      'Task reordered',
+      `${input.actor} moved task ${input.direction === 'up' ? 'up' : 'down'}: ${existingProject.tasks[taskIndex].text}`,
+      'info',
+    ),
+    ...existingProject.activity,
+  ];
+
+  const { data, error } = await client
+    .from('projects')
+    .update({ tasks, activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to reorder project task.');
   }
 
   return mapProjectRow(data as ProjectRow);

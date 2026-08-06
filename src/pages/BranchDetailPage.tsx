@@ -6,6 +6,7 @@ import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
+import { isTaskOutstanding } from '../utils/taskStatus';
 import type { Project, TaskAssignee } from '../types/domain';
 
 function byUpdatedAtDesc(a: Project, b: Project) {
@@ -63,7 +64,7 @@ export function BranchDetailPage() {
   }, [branch, scopedProjects]);
 
   const branchProject = branchProjects[0];
-  const outstandingTasks = branchProjects.reduce((count, project) => count + project.tasks.filter((task) => !task.completed).length, 0);
+  const outstandingTasks = branchProjects.reduce((count, project) => count + project.tasks.filter(isTaskOutstanding).length, 0);
   const totalFiles = branchProjects.reduce((count, project) => count + project.files.length, 0);
 
   if (isLoadingBranches || isLoadingProjects) {
