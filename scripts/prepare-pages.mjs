@@ -7,9 +7,21 @@ const projectRoot = path.resolve(scriptDir, '..');
 const distDir = path.resolve(scriptDir, '..', 'dist');
 const rootAssetsDir = path.join(projectRoot, 'assets');
 
-await rm(rootAssetsDir, { recursive: true, force: true });
-await rm(path.join(projectRoot, '404.html'), { force: true });
-await rm(path.join(projectRoot, 'index.html'), { force: true });
+async function tryRemove(pathToRemove) {
+  try {
+    await rm(pathToRemove, { recursive: true, force: true });
+  } catch (error) {
+    if (error?.code === 'EBUSY') {
+      console.warn(`Skipped removing locked path: ${pathToRemove}`);
+      return;
+    }
+    throw error;
+  }
+}
+
+await tryRemove(rootAssetsDir);
+await tryRemove(path.join(projectRoot, '404.html'));
+await tryRemove(path.join(projectRoot, 'index.html'));
 
 await mkdir(distDir, { recursive: true });
 await copyFile(path.join(distDir, 'index.html'), path.join(distDir, '404.html'));

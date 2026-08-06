@@ -794,12 +794,6 @@ export function BranchesPage() {
 
                     {isAdmin ? (
                       <div className="flex gap-2 lg:justify-end">
-                        <Link
-                          to={`/branches/${encodeURIComponent(branch.id)}`}
-                          className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200 transition hover:bg-emerald-500/20"
-                        >
-                          Open branch record
-                        </Link>
                         <button
                           type="button"
                           onClick={() => beginEdit(branch)}

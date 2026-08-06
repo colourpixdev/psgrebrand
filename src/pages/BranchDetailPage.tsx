@@ -121,7 +121,17 @@ export function BranchDetailPage() {
               </div>
             ))}
           </div>
-        ) : <p className="mt-4 text-sm text-slate-400">No contact persons have been added yet.</p>}
+        ) : (
+          <div className="mt-4 space-y-3">
+            <p className="text-sm text-slate-400">No contact persons have been added yet.</p>
+            <Link
+              to={`/branches#branch-${branch.id}`}
+              className="inline-flex items-center justify-center rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
+            >
+              Add contact person
+            </Link>
+          </div>
+        )}
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-soft">
@@ -133,7 +143,7 @@ export function BranchDetailPage() {
             ) : null}
             <Link
               to={branchProject ? `/projects/${encodeURIComponent(branchProject.id)}` : `/projects?branchId=${encodeURIComponent(branch.id)}`}
-              className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+              className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25"
             >
               Open branch project
             </Link>
@@ -162,8 +172,7 @@ export function BranchDetailPage() {
                 </div>
 
                     <div className="mt-3 flex gap-2">
-                      <Link to={`/branches/${encodeURIComponent(branch.id)}`} className="inline-flex items-center justify-center rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Open branch hub</Link>
-                      <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Update details</Link>
+                      <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Edit branch project</Link>
                     </div>
 
                 <div className="mt-4 grid gap-3 md:grid-cols-2">

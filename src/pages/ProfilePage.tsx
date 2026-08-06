@@ -55,7 +55,7 @@ export function ProfilePage() {
         <p className="text-sm uppercase tracking-[0.32em] text-teal-200/80">Profile</p>
         <h2 className="mt-3 text-3xl font-semibold text-white">Control how you appear to other project users.</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-          Add a personal avatar, company name, or organisation mark so Colourpix, PSG Wealth Insure, and delivery partners can recognise who is involved in each project record.
+          Add a personal avatar, company name, or organisation mark so Colourpix, PSG, and delivery partners can recognise who is involved in each project record.
         </p>
       </section>
 
@@ -123,7 +123,7 @@ export function ProfilePage() {
 
             <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">
               Company or organisation
-              <input {...register('company')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50" placeholder="PSG Wealth Insure, Colourpix, delivery partner..." />
+              <input {...register('company')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50" placeholder="PSG, Colourpix, delivery partner..." />
             </label>
 
             <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">

@@ -22,12 +22,12 @@ export const rolloutSupportContact = {
 
 export const defaultWorkspace: Workspace = {
   id: 'psg-national-signage-rollout',
-  name: 'Colourpix / PSG Wealth Insure Workspace',
-  clientCompany: 'PSG Wealth Insure',
+  name: 'Colourpix / PSG Workspace',
+  clientCompany: 'PSG',
   graphicsPartner: defaultGraphicsPartner,
   clientLogoUrl: '',
   servicePartnerLogoUrl: '',
-  description: 'Custom operational workspace managed by Colourpix CC for PSG Wealth Insure project delivery.',
+  description: 'Custom operational workspace managed by Colourpix CC for PSG project delivery.',
   status: 'active',
 };
 

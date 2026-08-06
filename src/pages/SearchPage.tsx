@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { FileText } from 'lucide-react';
@@ -18,6 +18,20 @@ export function SearchPage() {
 
   const q = query.trim().toLowerCase();
   const scopedProjects = filterProjectsForUser(projects, user);
+
+  const suggestions = useMemo(() => {
+    if (!q) {
+      return [];
+    }
+
+    const branchNames = Array.from(
+      new Set(scopedProjects.map((project) => project.branch).filter(Boolean)),
+    );
+
+    return branchNames
+      .filter((branch) => branch.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [q, scopedProjects]);
 
   const filtered = q
     ? scopedProjects.filter(
@@ -43,6 +57,25 @@ export function SearchPage() {
           placeholder="e.g. Hermanus, delayed, stage, branch name..."
           className="mt-4 w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400/50 md:max-w-lg"
         />
+
+        {suggestions.length > 0 ? (
+          <div className="mt-4 grid gap-2 text-sm text-slate-300 md:max-w-lg">
+            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Branch suggestions</p>
+            <div className="grid gap-2 rounded-3xl border border-white/10 bg-slate-950/80 p-3">
+              {suggestions.map((branch) => (
+                <button
+                  key={branch}
+                  type="button"
+                  onClick={() => setQuery(branch)}
+                  className="w-full rounded-2xl px-3 py-2 text-left text-slate-100 transition hover:bg-slate-900/70"
+                >
+                  {branch}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {q ? (
           <p className="mt-2 text-xs text-slate-400">
             {filtered.length} result{filtered.length !== 1 ? 's' : ''} for "{q}"

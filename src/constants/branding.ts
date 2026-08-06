@@ -3,7 +3,7 @@
   description: 'PSG Branch Rebrand Workspace',
   developer: 'PSG Rebrand',
   licensee: 'Platform owner',
-  customer: 'PSG Wealth Insure',
+  customer: 'PSG',
   partner: 'Colourpix CC',
   workspace: 'PSG Branch Rebrand',
   licenseStatus: 'Licensed',
