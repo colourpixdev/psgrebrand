@@ -379,22 +379,33 @@ export function BranchesPage() {
         return acc;
       }
 
-      const branchKey = project.branchId?.trim() || project.branch.trim().toLowerCase();
-      if (!branchKey) {
+      const branchIdKey = project.branchId?.trim().toLowerCase();
+      const branchNameKey = project.branch?.trim().toLowerCase();
+      if (!branchIdKey && !branchNameKey) {
         return acc;
       }
 
-      if (!acc[branchKey]) {
-        acc[branchKey] = [];
+      if (branchIdKey) {
+        if (!acc[branchIdKey]) {
+          acc[branchIdKey] = [];
+        }
+        acc[branchIdKey].push(project);
       }
 
-      acc[branchKey].push(project);
+      if (branchNameKey && branchNameKey !== branchIdKey) {
+        if (!acc[branchNameKey]) {
+          acc[branchNameKey] = [];
+        }
+        acc[branchNameKey].push(project);
+      }
+
       return acc;
     }, {});
   }, [projects]);
 
   function getOpenProjectsForBranch(branch: Branch) {
-    const directMatches = openProjectsByBranch[branch.id] ?? [];
+    const branchKey = branch.id.trim().toLowerCase();
+    const directMatches = openProjectsByBranch[branchKey] ?? [];
 
     if (directMatches.length > 0) {
       return directMatches;
