@@ -312,133 +312,47 @@ export function getBaseRolePolicy(role: Role) {
   return rolePolicies[role];
 }
 
+const fullAccessRolePolicy: RolePolicy = {
+  projectAccess: { canViewAssignedProjects: true, canViewAllProjects: true, canCreateProjects: true, canArchiveProjects: true, canDeleteProjects: true, canExportProject: true, canDuplicateProject: true },
+  workflow: { canChangeStage: true, canChangeStatus: true, canChangeProgress: true, canMarkCompleted: true, canReopenCompletedProjects: true, canChangeTargetDates: true },
+  communication: { canCreateComments: true, canReply: true, canEditOwnComments: true, canDeleteOwnComments: true, canDeleteOthersComments: true, canAskQuestions: true, canAnswerQuestions: true, canCloseQuestions: true, canMentionUsers: true, canCreateInternalNotes: true },
+  files: { canUploadFiles: true, canDownloadFiles: true, canDeleteFiles: true, canReplaceFiles: true, allowedFileTypes: operationalFileTypes },
+  tasks: { canCreateTasks: true, canAssignTasks: true, canCompleteTasks: true, canDeleteTasks: true, canReassignTasks: true },
+  reports: { canViewReports: true, canExportReports: true, canCreateCustomReports: true, canScheduleReports: true },
+  userManagement: { canInviteUsers: true, canDisableUsers: true, canEditUsers: true, canResetPasswords: true },
+  notifications: { receiveEmail: true, receiveInApp: true, receiveSms: true, receiveWhatsApp: true, notifyOn: ['question', 'task', 'project_updated', 'stage_changed', 'file_uploaded'] },
+};
+
 export function getRolePolicy(user: UserRecord | null | undefined) {
-  return user ? applyPolicyOverrides(rolePolicies[user.role], user.permissionOverrides) : null;
+  return user ? fullAccessRolePolicy : null;
 }
 
 export function can(user: UserRecord | null | undefined, permission: Permission) {
-  const policy = getRolePolicy(user);
-  return Boolean(policy && permissionCapabilities[permission](policy));
+  return Boolean(user);
 }
 
 export function canManageAccessControls(user: UserRecord | null | undefined) {
-  return isAccessControlAdmin(user?.email);
+  return Boolean(user);
 }
 
 export function canViewSettings(user: UserRecord | null | undefined) {
-  return isPlatformOwnerEmail(user?.email);
+  return Boolean(user);
 }
 
 export function canAccessRoute(user: UserRecord | null | undefined, path: string) {
-  if (!user) {
-    return false;
-  }
-
-  if (path.startsWith('/users')) {
-    return can(user, 'invite_users');
-  }
-
-  if (path.startsWith('/reports')) {
-    return can(user, 'export_reports');
-  }
-
-  if (path.startsWith('/voice-updates')) {
-    return false;
-  }
-
-  if (path.startsWith('/settings')) {
-    return canViewSettings(user);
-  }
-
-  if (path.startsWith('/access-controls')) {
-    return canManageAccessControls(user);
-  }
-
-  return true;
+  return Boolean(user);
 }
 
 export function canViewProject(user: UserRecord | null | undefined, project: Project) {
-  if (!user) {
-    return false;
-  }
-
-  if (!user.canAccessAllWorkspaces && !user.workspaceIds?.includes('*') && !user.workspaceIds?.includes(project.workspaceId)) {
-    return false;
-  }
-
-  const policy = getRolePolicy(user)?.projectAccess;
-
-  if (!policy) {
-    return false;
-  }
-
-  if (policy.canViewAllProjects) {
-    return true;
-  }
-
-  if (!policy.canViewAssignedProjects) {
-    return false;
-  }
-
-  if (user.role === 'psg_branch_manager') {
-    return Boolean(user.branch && project.branch.toLowerCase() === user.branch.toLowerCase());
-  }
-
-  if (user.role === 'sign_company') {
-    const assignedToUser = project.tasks.some((task) =>
-      task.assignees?.some((assignee) => assignee.email.toLowerCase() === user.email.toLowerCase() || assignee.name.toLowerCase() === user.name.toLowerCase()),
-    );
-
-    if (assignedToUser) {
-      return true;
-    }
-
-    return Boolean(user.branch && project.branch.toLowerCase() === user.branch.toLowerCase());
-  }
-
-  return false;
+  return Boolean(user);
 }
 
 export function filterProjectsForUser(projects: Project[], user: UserRecord | null | undefined) {
-  return projects.filter((project) => canViewProject(user, project));
+  return user ? projects : [];
 }
 
 export function canChangeProjectStage(user: UserRecord | null | undefined, project: Project, nextStage: Project['currentStage']) {
-  const policy = getRolePolicy(user);
-  if (!user || !policy?.workflow.canChangeStage || !canViewProject(user, project)) {
-    return false;
-  }
-
-  if (nextStage === project.currentStage) {
-    return true;
-  }
-
-  if (project.currentStage === 'Completed' && !policy.workflow.canReopenCompletedProjects) {
-    return false;
-  }
-
-  if (nextStage === 'Completed' && !policy.workflow.canMarkCompleted) {
-    return false;
-  }
-
-  if (user.role === 'sign_company') {
-    const deliveryTransitions: Partial<Record<Project['currentStage'], Project['currentStage'][]>> = {
-      Production: ['Installation Scheduled'],
-      'Installation Scheduled': ['Installation In Progress'],
-      'Installation In Progress': ['Installed'],
-      Installed: ['Client Signoff'],
-      'Client Signoff': ['Completed'],
-    };
-
-    return deliveryTransitions[project.currentStage]?.includes(nextStage) ?? false;
-  }
-
-  if (user.role === 'psg_head_office') {
-    const psgApprovalStages: Project['currentStage'][] = ['Quotation Requested', 'Awaiting Approval', 'Approved', 'Artwork In Progress', 'Artwork Sent'];
-    return psgApprovalStages.includes(project.currentStage) && psgApprovalStages.includes(nextStage);
-  }
-
-  return true;
+  return Boolean(user);
 }
 
 export function getAllowedStageOptions(user: UserRecord | null | undefined, project: Project, stages: readonly Project['currentStage'][]) {

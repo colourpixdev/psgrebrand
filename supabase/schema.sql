@@ -110,110 +110,6 @@ create schema if not exists private;
 revoke all on schema private from public;
 grant usage on schema private to authenticated;
 
-drop function if exists public.is_colourpix_admin();
-
-create or replace function private.current_profile_role()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select role
-  from public.profiles
-  where user_id = (select auth.uid())
-    or lower(email) = lower((select auth.jwt() ->> 'email'))
-  order by (user_id = (select auth.uid())) desc nulls last
-  limit 1;
-$$;
-
-create or replace function private.is_colourpix_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select coalesce((select private.current_profile_role()) = 'colourpix_admin', false);
-$$;
-
-create or replace function private.current_profile_branch()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select branch
-  from public.profiles
-  where user_id = (select auth.uid())
-    or lower(email) = lower((select auth.jwt() ->> 'email'))
-  order by (user_id = (select auth.uid())) desc nulls last
-  limit 1;
-$$;
-
-create or replace function private.current_profile_name()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select name
-  from public.profiles
-  where user_id = (select auth.uid())
-    or lower(email) = lower((select auth.jwt() ->> 'email'))
-  order by (user_id = (select auth.uid())) desc nulls last
-  limit 1;
-$$;
-
-create or replace function private.can_view_project(project_branch_id text, project_installer text)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select case
-    when (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office') then true
-    when (select private.current_profile_role()) = 'psg_branch_manager' then
-      (select private.current_profile_branch()) is null
-      or exists (
-        select 1 from public.branches
-        where id = project_branch_id
-        and lower(name) = lower((select private.current_profile_branch()))
-      )
-    when (select private.current_profile_role()) = 'sign_company' then
-      lower(project_installer) = lower(coalesce((select private.current_profile_name()), ''))
-      or lower(project_installer) = lower(coalesce((select private.current_profile_branch()), ''))
-    else false
-  end;
-$$;
-
-create or replace function private.can_update_project(project_branch text, project_installer text)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company')
-    and (select private.can_view_project(project_branch, project_installer));
-$$;
-
-revoke all on function private.current_profile_role() from public;
-revoke all on function private.current_profile_branch() from public;
-revoke all on function private.current_profile_name() from public;
-revoke all on function private.is_colourpix_admin() from public;
-revoke all on function private.can_view_project(text, text) from public;
-revoke all on function private.can_update_project(text, text) from public;
-grant execute on function private.current_profile_role() to authenticated;
-grant execute on function private.current_profile_branch() to authenticated;
-grant execute on function private.current_profile_name() to authenticated;
-grant execute on function private.is_colourpix_admin() to authenticated;
-grant execute on function private.can_view_project(text, text) to authenticated;
-grant execute on function private.can_update_project(text, text) to authenticated;
-
 alter table public.branches enable row level security;
 alter table public.projects enable row level security;
 alter table public.profiles enable row level security;
@@ -296,7 +192,7 @@ begin
     on public.branches
     for select
     to authenticated
-    using ((select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'));
+    using (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -307,7 +203,7 @@ begin
     on public.branches
     for insert
     to authenticated
-    with check ((select private.current_profile_role()) = 'colourpix_admin');
+    with check (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -318,8 +214,8 @@ begin
     on public.branches
     for update
     to authenticated
-    using ((select private.current_profile_role()) = 'colourpix_admin')
-    with check ((select private.current_profile_role()) = 'colourpix_admin');
+    using (true)
+    with check (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -330,7 +226,7 @@ begin
     on public.branches
     for delete
     to authenticated
-    using ((select private.current_profile_role()) = 'colourpix_admin');
+    using (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -341,7 +237,7 @@ begin
     on public.projects
     for select
     to authenticated
-    using ((select private.can_view_project(branch_id, installer)));
+    using (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -352,7 +248,7 @@ begin
     on public.projects
     for insert
     to authenticated
-    with check ((select private.current_profile_role()) = 'colourpix_admin');
+    with check (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -363,8 +259,8 @@ begin
     on public.projects
     for update
     to authenticated
-    using ((select private.can_update_project(branch_id, installer)))
-    with check ((select private.can_update_project(branch_id, installer)));
+    using (true)
+    with check (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -375,7 +271,7 @@ begin
     on public.projects
     for delete
     to authenticated
-    using ((select private.current_profile_role()) = 'colourpix_admin');
+    using (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -386,11 +282,7 @@ begin
     on public.profiles
     for select
     to authenticated
-    using (
-      (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office')
-      or user_id = (select auth.uid())
-      or lower(email) = lower((select auth.jwt() ->> 'email'))
-    );
+    using (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -401,7 +293,7 @@ begin
     on public.profiles
     for insert
     to authenticated
-    with check ((select private.is_colourpix_admin()));
+    with check (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -412,8 +304,8 @@ begin
     on public.profiles
     for update
     to authenticated
-    using ((select private.is_colourpix_admin()))
-    with check ((select private.is_colourpix_admin()));
+    using (true)
+    with check (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -424,7 +316,7 @@ begin
     on public.profiles
     for delete
     to authenticated
-    using ((select private.is_colourpix_admin()));
+    using (true);
 exception
   when duplicate_object then null;
 end $$;
@@ -490,7 +382,7 @@ begin
     on storage.objects
     for select
     to authenticated
-    using (bucket_id = 'voice-updates' and (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office'));
+    using (bucket_id = 'voice-updates');
 exception
   when duplicate_object then null;
 end $$;
@@ -501,7 +393,7 @@ begin
     on storage.objects
     for insert
     to authenticated
-    with check (bucket_id = 'voice-updates' and (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office'));
+    with check (bucket_id = 'voice-updates');
 exception
   when duplicate_object then null;
 end $$;
@@ -512,7 +404,7 @@ begin
     on storage.objects
     for delete
     to authenticated
-    using (bucket_id = 'voice-updates' and (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office'));
+    using (bucket_id = 'voice-updates');
 exception
   when duplicate_object then null;
 end $$;

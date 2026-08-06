@@ -43,38 +43,6 @@ create schema if not exists private;
 revoke all on schema private from public;
 grant usage on schema private to authenticated;
 
-drop function if exists public.is_colourpix_admin();
-
-create or replace function private.current_profile_role()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select role
-  from public.profiles
-  where user_id = (select auth.uid())
-    or lower(email) = lower((select auth.jwt() ->> 'email'))
-  order by (user_id = (select auth.uid())) desc nulls last
-  limit 1;
-$$;
-
-create or replace function private.is_colourpix_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select coalesce((select private.current_profile_role()) = 'colourpix_admin', false);
-$$;
-
-revoke all on function private.current_profile_role() from public;
-revoke all on function private.is_colourpix_admin() from public;
-grant execute on function private.current_profile_role() to authenticated;
-grant execute on function private.is_colourpix_admin() to authenticated;
-
 alter table public.profiles enable row level security;
 
 grant usage on schema public to authenticated;
@@ -87,29 +55,25 @@ drop policy if exists "Authenticated delete profiles" on public.profiles;
 
 do $$ begin
   create policy "Authenticated read access to profiles"
-    on public.profiles for select to authenticated using (
-      (select private.current_profile_role()) in ('colourpix_admin', 'psg_head_office')
-      or user_id = (select auth.uid())
-      or lower(email) = lower((select auth.jwt() ->> 'email'))
-    );
+    on public.profiles for select to authenticated using (true);
 exception when duplicate_object then null;
 end $$;
 
 do $$ begin
   create policy "Authenticated insert profiles"
-    on public.profiles for insert to authenticated with check ((select private.is_colourpix_admin()));
+    on public.profiles for insert to authenticated with check (true);
 exception when duplicate_object then null;
 end $$;
 
 do $$ begin
   create policy "Authenticated update profiles"
-    on public.profiles for update to authenticated using ((select private.is_colourpix_admin())) with check ((select private.is_colourpix_admin()));
+    on public.profiles for update to authenticated using (true) with check (true);
 exception when duplicate_object then null;
 end $$;
 
 do $$ begin
   create policy "Authenticated delete profiles"
-    on public.profiles for delete to authenticated using ((select private.is_colourpix_admin()));
+    on public.profiles for delete to authenticated using (true);
 exception when duplicate_object then null;
 end $$;
 
