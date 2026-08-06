@@ -209,29 +209,32 @@ export function BranchDetailPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="mb-3">
-              <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">← Back to branches</Link>
+        <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
+          <div className="space-y-6">
+            <div>
+              <div className="mb-3">
+                <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">← Back to branches</Link>
+              </div>
+              <h2 className="mt-2 text-3xl font-semibold text-white">{branch.name}</h2>
+              <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
+              <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
             </div>
-            <h2 className="mt-2 text-3xl font-semibold text-white">{branch.name}</h2>
-            <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
-            <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
+
             {branchParticipants.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Contacts</p>
-                <div className="mt-2 flex flex-wrap gap-4">
-                  {branchParticipants.slice(0, 3).map((p, i) => (
-                    <div key={`${p.email ?? p.name}-${i}`} className="rounded-lg border border-white/6 bg-slate-900/40 p-3 min-w-[180px]">
-                      <p className="font-medium text-white">{p.name}</p>
-                      {p.designation ? <p className="text-xs text-slate-400">{p.designation}</p> : null}
+              <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Contact persons</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {branchParticipants.slice(0, 4).map((p, i) => (
+                    <div key={`${p.email ?? p.name}-${i}`} className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
+                      <p className="font-semibold text-white">{p.name}</p>
+                      {p.designation ? <p className="mt-1 text-xs text-slate-400">{p.designation}</p> : null}
                       {p.phone ? (
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="mt-2 text-xs text-slate-400">
                           <a href={formatPhoneHref(p.phone)} className="hover:text-white">{p.phone}</a>
                         </p>
                       ) : null}
                       {p.email ? (
-                        <p className="text-xs text-slate-400">
+                        <p className="mt-1 text-xs text-slate-400">
                           <a href={`mailto:${p.email}`} className="hover:text-white">{p.email}</a>
                         </p>
                       ) : null}
@@ -241,6 +244,7 @@ export function BranchDetailPage() {
               </div>
             )}
           </div>
+
           <div className="grid gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-sm text-slate-200">
             <p>Rebrand records: <span className="text-white">{branchProjects.length}</span></p>
             <p>Outstanding tasks: <span className="text-white">{outstandingTasks}</span></p>
@@ -287,8 +291,8 @@ export function BranchDetailPage() {
               .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')).slice(0, 5);
 
             return (
-              <article key={project.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <article key={project.id} className="rounded-2xl border border-white/10 bg-slate-950/90 p-5 shadow-soft">
+                <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <p className="text-base font-semibold text-white">{project.branch}</p>
                     <p className="mt-1 text-sm text-slate-300">{project.currentStage} · {project.status.replace('_', ' ')}</p>
@@ -299,7 +303,7 @@ export function BranchDetailPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/50 p-4">
+                <div className="mt-4 border-t border-white/10 pt-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-white">Quick update</p>
@@ -361,19 +365,19 @@ export function BranchDetailPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <div className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                <div className="mt-6 grid gap-3 md:grid-cols-2">
+                  <div>
                     <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Assigned participants</p>
-                    <div className="mt-2 space-y-1 text-sm text-slate-200">
+                    <div className="mt-3 space-y-2 text-sm text-slate-200">
                       {participants.length > 0 ? participants.map((participant) => (
                         <p key={`${project.id}-${participant.email}`}>{participant.name} · {participant.designation}</p>
                       )) : <p className="text-slate-400">No participants assigned yet.</p>}
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                  <div>
                     <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Pending tasks</p>
-                    <div className="mt-2 space-y-1 text-sm text-slate-200">
+                    <div className="mt-3 space-y-2 text-sm text-slate-200">
                       {pendingTasks.length > 0 ? pendingTasks.slice(0, 5).map((task) => (
                         <p key={`${project.id}-${task.id}`}>{task.text}</p>
                       )) : <p className="text-slate-400">No pending tasks.</p>}
@@ -381,19 +385,19 @@ export function BranchDetailPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                <div className="mt-6 border-t border-white/10 pt-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-500">All tasks</p>
-                  <div className="mt-2 space-y-3 text-sm text-slate-200">
+                  <div className="mt-4 space-y-3 text-sm text-slate-200">
                     {project.tasks.length > 0 ? project.tasks.map((task) => {
                       const taskFiles = project.files.filter((file) => file.taskId === task.id);
                       return (
-                        <div key={`${project.id}-${task.id}`} className="rounded-2xl border border-white/10 bg-slate-950/50 px-3 py-3">
+                        <div key={`${project.id}-${task.id}`} className="border-b border-white/10 py-3 last:border-0">
                           <div className="flex items-start justify-between gap-3">
                             <p className={task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}>{task.text}</p>
-                            <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-300">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
+                            <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-300">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
                           </div>
                           {taskFiles.length > 0 ? (
-                            <div className="mt-3 space-y-3 rounded-xl border border-slate-700/80 bg-slate-950/80 p-3">
+                            <div className="mt-3 space-y-3 rounded-2xl bg-slate-950/70 p-3">
                               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
                               <div className="grid gap-3 sm:grid-cols-2">
                                 {taskFiles.map((file) => {
@@ -403,7 +407,7 @@ export function BranchDetailPage() {
                                   const isPreviewable = canPreviewFile(file);
 
                                   return (
-                                    <div key={`${project.id}-${task.id}-${key}`} className="rounded-2xl border border-white/10 bg-slate-950/70 p-3">
+                                    <div key={`${project.id}-${task.id}-${key}`} className="rounded-2xl bg-slate-950/70 p-3">
                                       {thumbnailUrl && !isPdf ? (
                                         <img src={thumbnailUrl} alt={file.name} className="mb-3 h-28 w-full rounded-xl object-cover" />
                                       ) : (
@@ -476,12 +480,12 @@ export function BranchDetailPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <div className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                <div className="mt-6 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl bg-slate-950/70 p-4">
                     <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Latest updates</p>
-                    <div className="mt-2 space-y-2 text-sm text-slate-200">
+                    <div className="mt-3 space-y-2 text-sm text-slate-200">
                       {latestUpdates.length > 0 ? latestUpdates.map((item, index) => (
-                        <div key={`${project.id}-${item.author}-${item.date}-${index}`} className="rounded-lg border border-white/10 bg-slate-950/50 px-3 py-2">
+                        <div key={`${project.id}-${item.author}-${item.date}-${index}`} className="rounded-2xl bg-slate-950/80 px-3 py-2">
                           <p className="text-xs text-slate-400">{item.date}</p>
                           <p className="mt-1 font-medium text-white">{item.author}</p>
                           <p className="mt-1 text-slate-300">{item.message}</p>
@@ -490,11 +494,11 @@ export function BranchDetailPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                  <div className="rounded-2xl bg-slate-950/70 p-4">
                     <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Latest activity</p>
-                    <div className="mt-2 space-y-2 text-sm text-slate-200">
+                    <div className="mt-3 space-y-2 text-sm text-slate-200">
                       {latestActivity.length > 0 ? latestActivity.map((item, index) => (
-                        <div key={`${project.id}-${item.title}-${item.date}-${index}`} className="rounded-lg border border-white/10 bg-slate-950/50 px-3 py-2">
+                        <div key={`${project.id}-${item.title}-${item.date}-${index}`} className="rounded-2xl bg-slate-950/80 px-3 py-2">
                           <p className="text-xs text-slate-400">{item.date}</p>
                           <p className="mt-1 font-medium text-white">{item.title}</p>
                           <p className="mt-1 text-slate-300">{item.detail}</p>
