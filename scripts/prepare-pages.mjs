@@ -41,7 +41,16 @@ try {
   const runtimeSnippet = `\n    <script>\n      window.__PSG_CONFIG__ = window.__PSG_CONFIG__ || {\n        VITE_SUPABASE_URL: '${supabaseUrl.replace(/'/g, "\\'")}',\n        VITE_SUPABASE_KEY: '${supabaseKey.replace(/'/g, "\\'")}',\n      };\n    </script>\n`;
 
   if (!indexHtml.includes('window.__PSG_CONFIG__')) {
-    indexHtml = indexHtml.replace(/<\/head>/i, runtimeSnippet + '  </head>');
+    // Prefer inserting the runtime snippet before the first module script so
+    // `window.__PSG_CONFIG__` exists when application modules initialize.
+    const moduleScriptMatch = indexHtml.match(/<script[^>]+type=["']module["'][\s\S]*?>/i);
+    if (moduleScriptMatch && moduleScriptMatch.index !== undefined) {
+      const insertPos = moduleScriptMatch.index;
+      indexHtml = indexHtml.slice(0, insertPos) + runtimeSnippet + indexHtml.slice(insertPos);
+    } else {
+      indexHtml = indexHtml.replace(/<\/head>/i, runtimeSnippet + '  </head>');
+    }
+
     await (await import('node:fs/promises')).writeFile(indexPath, indexHtml, 'utf8');
   }
 } catch (err) {
