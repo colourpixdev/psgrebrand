@@ -19,7 +19,7 @@ window.addEventListener('vite:preloadError', reloadOnVitePreloadError);
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <HashRouter basename={import.meta.env.BASE_URL}>
+      <HashRouter>
         <App />
       </HashRouter>
     </QueryClientProvider>
