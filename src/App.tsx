@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { Component, lazy, Suspense, useEffect, useState, type ErrorInfo, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { LayoutDashboard, KanbanSquare, FileText, Shield, Users, MapPinned, Map } from 'lucide-react';
 import { AppShell } from './layouts/AppShell';
@@ -59,6 +59,34 @@ function RouteLoading() {
       Loading workspace...
     </div>
   );
+}
+
+class RouteErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Route render failed:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-[2rem] border border-red-400/20 bg-red-500/10 p-6 text-sm text-red-100 shadow-soft">
+          <p className="font-semibold">The page hit an unexpected error.</p>
+          <p className="mt-2 text-red-200/90">The app has switched to a safe fallback view. Refresh the page to retry.</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 // No redirect — branches are now a first-class workspace hub.
@@ -166,24 +194,26 @@ function AppRoutes() {
       }
     >
       <Suspense fallback={<RouteLoading />}>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/auth/callback" element={<AuthCallbackPage />} />
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-          <Route path="/branches" element={<BranchesPage />} />
-          <Route path="/branches/:branchId" element={<BranchDetailPage />} />
-          <Route path="/users" element={<UsersPage />} />
-          <Route path="/access-controls" element={<AccessControlsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/support" element={<SupportPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/legal" element={<LegalPage />} />
-        </Routes>
+        <RouteErrorBoundary>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+            <Route path="/branches" element={<BranchesPage />} />
+            <Route path="/branches/:branchId" element={<BranchDetailPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/access-controls" element={<AccessControlsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/support" element={<SupportPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/legal" element={<LegalPage />} />
+          </Routes>
+        </RouteErrorBoundary>
       </Suspense>
     </AppShell>
   );
