@@ -377,6 +377,59 @@ function isVoiceNoteMessage(message: string) {
   return message.trim().toLowerCase().startsWith('voice note:');
 }
 
+
+
+// Local retry queue for failed function notifications. Stored as an array of payloads.
+const notificationQueueKey = 'psg-rebrand:fn-notifications';
+
+function enqueueFailedNotification(payload: unknown) {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(notificationQueueKey);
+    const queue = raw ? JSON.parse(raw) : [];
+    queue.push({ payload, ts: Date.now() });
+    localStorage.setItem(notificationQueueKey, JSON.stringify(queue));
+  } catch (err) {
+    console.warn('Failed to enqueue notification for retry.', err);
+  }
+}
+
+async function flushNotificationQueue(client: typeof supabase) {
+  if (!client) return;
+  if (typeof localStorage === 'undefined') return;
+
+  try {
+    const raw = localStorage.getItem(notificationQueueKey);
+    const queue: Array<{ payload: unknown; ts: number }> = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(queue) || queue.length === 0) return;
+
+    const remaining: Array<{ payload: unknown; ts: number }> = [];
+    for (const item of queue) {
+      try {
+        const { error } = await client.functions.invoke('notify-project-change', { body: item.payload as any });
+        if (error) {
+          console.warn('Queued notification failed to send.', error.message);
+          remaining.push(item);
+        }
+      } catch (err) {
+        console.warn('Queued notification failed to send.', err);
+        remaining.push(item);
+      }
+    }
+
+    if (remaining.length === 0) {
+      localStorage.removeItem(notificationQueueKey);
+    } else {
+      localStorage.setItem(notificationQueueKey, JSON.stringify(remaining));
+    }
+  } catch (err) {
+    console.warn('Failed to flush notification queue.', err);
+  }
+}
+
+// Replace notifyProjectChange with a non-blocking, resilient implementation that
+// attempts the function call but never blocks the caller. Failed attempts are
+// enqueued for retry and the queue is flushed after successful sends.
 async function notifyProjectChange(input: ProjectChangeNotificationInput) {
   const client = supabase;
 
@@ -384,28 +437,38 @@ async function notifyProjectChange(input: ProjectChangeNotificationInput) {
     return;
   }
 
-  try {
-    const { error } = await client.functions.invoke('notify-project-change', {
-      body: {
-        to: rolloutAppEmail,
-        changeType: input.changeType,
-        actor: input.actor,
-        message: input.message,
-        project: {
-          id: input.project.id,
-          branchId: input.project.branchId,
-          currentStage: input.project.currentStage,
-          status: input.project.status,
-        },
-      },
-    });
+  const payload = {
+    to: rolloutAppEmail,
+    changeType: input.changeType,
+    actor: input.actor,
+    message: input.message,
+    project: {
+      id: input.project.id,
+      branchId: input.project.branchId,
+      currentStage: input.project.currentStage,
+      status: input.project.status,
+    },
+  } as const;
 
-    if (error) {
-      console.warn('Project notification email could not be sent.', error.message);
+  // Fire-and-forget invocation so UI actions aren't blocked by network/CORS issues.
+  (async () => {
+    try {
+      const { error } = await client.functions.invoke('notify-project-change', { body: payload });
+      if (error) {
+        console.warn('Project notification email could not be sent.', error.message);
+        enqueueFailedNotification(payload);
+        return;
+      }
+
+      // On success attempt to flush any previously queued notifications.
+      await flushNotificationQueue(client);
+    } catch (err) {
+      console.warn('Project notification email could not be sent.', err);
+      enqueueFailedNotification(payload);
     }
-  } catch (error) {
-    console.warn('Project notification email could not be sent.', error);
-  }
+  })();
+
+  return;
 }
 
 export type UpdateProjectWorkflowInput = {
