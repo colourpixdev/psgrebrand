@@ -231,6 +231,13 @@ export function ReportsPage() {
   const guidance = user ? roleReportGuidance[user.role] : ['Single branch report', 'Multi-branch overview', 'Operational blockers and ownership'];
   const normalizedQuery = query.trim().toLowerCase();
   const availableBranches = useMemo(() => uniqueSorted(scopedProjects.map((project) => project.branch)), [scopedProjects]);
+  const branchSuggestions = useMemo(() => {
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    return availableBranches.filter((branch) => branch.toLowerCase().includes(normalizedQuery)).slice(0, 8);
+  }, [availableBranches, normalizedQuery]);
 
   const filteredProjects = useMemo(() => scopedProjects.filter((project) => {
     const matchesSearch = !normalizedQuery || [
@@ -345,6 +352,27 @@ export function ReportsPage() {
                 className="w-full rounded-2xl border border-white/10 bg-slate-900/80 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
               />
             </div>
+
+            {branchSuggestions.length > 0 ? (
+              <div className="mt-3 grid gap-2 text-sm text-slate-300">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Branch suggestions</p>
+                <div className="grid gap-2 rounded-3xl border border-white/10 bg-slate-950/80 p-3">
+                  {branchSuggestions.map((branch) => (
+                    <button
+                      key={branch}
+                      type="button"
+                      onClick={() => {
+                        setQuery(branch);
+                        setBranchName(branch);
+                      }}
+                      className="w-full rounded-2xl px-3 py-2 text-left text-slate-100 transition hover:bg-slate-900/70"
+                    >
+                      {branch}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </label>
         </div>
 

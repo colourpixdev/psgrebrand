@@ -733,7 +733,9 @@ export function ProjectDetailPage() {
           <div className="mt-4 space-y-2">
             {mergedTasks.length > 0 ? mergedTasks.map((task, index) => {
               const taskStatus = getTaskStatus(task);
-              const taskUpdates = projectComments.filter((comment) => comment.taskId === task.id);
+              const taskUpdates = projectComments
+                .filter((comment) => comment.taskId === task.id)
+                .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
               const isTaskUpdatesOpen = expandedTaskUpdateTaskIds.includes(task.id);
               const taskFiles = selectedProject.files.filter((file) => file.taskId === task.id);
               const statusStyles: Record<'pending' | 'open' | 'busy' | 'done', string> = {
@@ -887,6 +889,37 @@ export function ProjectDetailPage() {
                     ) : (
                       <p className="text-xs text-slate-500">No files attached to this task yet.</p>
                     )}
+                  </div>
+                ) : null}
+                {taskUpdates.length > 0 ? (
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Recent comments</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setJournalTaskId(task.id);
+                          setActiveProjectSection('taskUpdates');
+                        }}
+                        className="text-xs font-semibold text-sky-200 transition hover:text-sky-100"
+                      >
+                        Comment on this task
+                      </button>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {taskUpdates.slice(0, 2).map((update, commentIndex) => (
+                        <div key={`${update.date}-${update.author}-${commentIndex}`} className="rounded-2xl border border-white/10 bg-slate-900/80 p-3">
+                          <div className="flex items-center justify-between gap-2 text-xs text-slate-400">
+                            <span className="font-semibold text-white">{update.author}</span>
+                            <span>{update.date}</span>
+                          </div>
+                          <p className="mt-2 text-sm text-slate-300">{update.message}</p>
+                        </div>
+                      ))}
+                      {taskUpdates.length > 2 ? (
+                        <p className="text-xs text-slate-500">{taskUpdates.length - 2} more update{taskUpdates.length - 2 === 1 ? '' : 's'}</p>
+                      ) : null}
+                    </div>
                   </div>
                 ) : null}
                 {editingTaskId !== task.id && isTaskUpdatesOpen ? (

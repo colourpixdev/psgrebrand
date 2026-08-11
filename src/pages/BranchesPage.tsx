@@ -97,6 +97,7 @@ export function BranchesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
   const [pendingDeleteBranch, setPendingDeleteBranch] = useState<Branch | null>(null);
+  const [hasAutoRefreshed, setHasAutoRefreshed] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     division: 'Wealth' as Division,
@@ -456,6 +457,21 @@ export function BranchesPage() {
 
     beginEdit(branchToEdit);
   }, [location.search, filteredBranches]);
+
+  useEffect(() => {
+    if (loading || hasAutoRefreshed) {
+      return;
+    }
+
+    const shouldRefresh = branches.length === 0 && !error && !searchTerm && !showForm;
+    if (!shouldRefresh) {
+      return;
+    }
+
+    setHasAutoRefreshed(true);
+    console.warn('Branches page detected an empty list on load. Refreshing once.');
+    void loadPageData();
+  }, [branches.length, error, hasAutoRefreshed, loading, searchTerm, showForm]);
 
   return (
     <div className="min-h-screen p-6 md:p-8">
