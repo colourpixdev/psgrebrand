@@ -92,3 +92,5 @@ Optionally set `OPENAI_TRANSCRIPTION_MODEL`; otherwise the function uses `gpt-4o
 ## Repository
 
 GitHub: https://github.com/francois2botha-star/rebrandreport
+
+CI rebuild trigger: 2026-08-11 10:25Z
