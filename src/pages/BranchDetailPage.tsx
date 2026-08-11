@@ -101,6 +101,7 @@ export function BranchDetailPage() {
   const [renamingFileKey, setRenamingFileKey] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [quickUpdateDrafts, setQuickUpdateDrafts] = useState<Record<string, { taskId: string; message: string }>>({});
+  const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
   const thumbnailRequestedKeys = useRef(new Set<string>());
   const queryClient = useQueryClient();
 
@@ -164,6 +165,20 @@ export function BranchDetailPage() {
         link.rel = 'noreferrer';
         link.click();
       }
+    },
+  });
+
+  const taskCommentMutation = useMutation({
+    mutationFn: ({ projectId, taskId, message }: { projectId: string; taskId: string; message: string }) => addProjectComment({
+      projectId,
+      author: user?.name ?? 'Workspace user',
+      message,
+      taskId: taskId || undefined,
+    }),
+    onSuccess: async (_, variables) => {
+      setTaskCommentDrafts((current) => ({ ...current, [`${variables.projectId}-${variables.taskId}`]: '' }));
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['branches'] });
     },
   });
 
@@ -390,6 +405,8 @@ export function BranchDetailPage() {
                   <div className="mt-4 space-y-3 text-sm text-slate-200">
                     {project.tasks.length > 0 ? project.tasks.map((task) => {
                       const taskFiles = project.files.filter((file) => file.taskId === task.id);
+                      const taskKey = `${project.id}-${task.id}`;
+                      const taskComments = (project.comments ?? []).filter((c) => c.taskId === task.id).sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
                       return (
                         <div key={`${project.id}-${task.id}`} className="border-b border-white/10 py-3 last:border-0">
                           <div className="flex items-start justify-between gap-3">
@@ -474,6 +491,43 @@ export function BranchDetailPage() {
                               </div>
                             </div>
                           ) : null}
+                          {/* Task comments */}
+                          <div className="mt-3">
+                            <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
+                            <div className="mt-2 space-y-2">
+                              {taskComments.length > 0 ? taskComments.map((c, i) => (
+                                <div key={`${taskKey}-c-${i}`} className="rounded-2xl bg-slate-950/80 p-3">
+                                  <p className="text-xs text-slate-400">{c.date}</p>
+                                  <p className="mt-1 font-medium text-white">{c.author}</p>
+                                  <p className="mt-1 text-slate-300">{c.message}</p>
+                                </div>
+                              )) : <p className="text-slate-400">No comments yet.</p>}
+                            </div>
+
+                            {/* Add comment */}
+                            {can(user, 'add_comments') ? (
+                              <div className="mt-3 grid gap-2">
+                                <textarea
+                                  value={taskCommentDrafts[taskKey] ?? ''}
+                                  onChange={(e) => setTaskCommentDrafts((cur) => ({ ...cur, [taskKey]: e.target.value }))}
+                                  rows={2}
+                                  placeholder="Leave a comment for this task"
+                                  className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={!taskCommentDrafts[taskKey]?.trim() || taskCommentMutation.isPending}
+                                    onClick={() => taskCommentMutation.mutate({ projectId: project.id, taskId: task.id, message: taskCommentDrafts[taskKey] ?? '' })}
+                                    className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {taskCommentMutation.isPending ? 'Posting...' : 'Add comment'}
+                                  </button>
+                                  <p className="text-xs text-slate-400">Comments appear in the project journal and under the task.</p>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
                       );
                     }) : <p className="text-slate-400">No tasks added yet.</p>}
