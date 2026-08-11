@@ -8,6 +8,17 @@
     <base href="%BASE_URL%" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="apple-touch-icon" href="brand/psg-flower-cyan.svg" />
+    <script type="module">
+      window.__PSG_CONFIG__ = window.__PSG_CONFIG__ || {
+        VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+        VITE_SUPABASE_KEY:
+          import.meta.env.VITE_SUPABASE_KEY ||
+          import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+          import.meta.env.VITE_SUPABASE_ANON_KEY,
+        VITE_SUPABASE_PUBLISHABLE_KEY: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>

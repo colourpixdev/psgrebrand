@@ -1,0 +1,1 @@
+function l(t,e){if(!e)return t;const r=e.trim().toLowerCase();return t.filter(i=>{const n=(i.title??"").toLowerCase(),o=(i.detail??"").toLowerCase();return!n.includes(r)&&!o.includes(r)})}export{l as f};
