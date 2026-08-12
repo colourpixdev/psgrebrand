@@ -6,6 +6,7 @@ import { SaveFeedbackProvider } from './contexts/SaveFeedbackContext';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
+import { checkSupabaseReachability } from './lib/supabaseHealth';
 import { canAccessRoute } from './utils/permissions';
 import { productBrand } from './constants/branding';
 import { lazyWithChunkReload } from './utils/chunkRecovery';
@@ -109,43 +110,35 @@ function AppRoutes() {
   useEffect(() => {
     let isMounted = true;
 
-    if (!supabase) {
-      setSupabaseStatus('Supabase is not configured. Add your project URL and publishable key to load live workspace data.');
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    if (!user) {
-      setSupabaseStatus(null);
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    if (user.role !== 'colourpix_admin' && user.role !== 'psg_head_office') {
-      setSupabaseStatus('Supabase connected. Role-scoped project access active.');
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    supabase
-      .from('projects')
-      .select('id', { count: 'exact', head: true })
-      .then(({ count, error }) => {
-        if (!isMounted) {
-          return;
+    async function refreshSupabaseStatus() {
+      if (!supabase) {
+        if (isMounted) {
+          setSupabaseStatus('Supabase is not configured. Add your project URL and publishable key to load live workspace data.');
         }
+        return;
+      }
 
-        if (error) {
-          setSupabaseStatus(`Supabase connected, but the projects query failed: ${error.message}`);
-          return;
+      if (!user) {
+        if (isMounted) {
+          setSupabaseStatus(null);
         }
+        return;
+      }
 
-        const projectCount = count ?? 0;
-        setSupabaseStatus(`Supabase connected. Live projects available: ${projectCount}.`);
-      });
+      const result = await checkSupabaseReachability();
+      if (!isMounted) {
+        return;
+      }
+
+      if (result.level === 'ok') {
+        setSupabaseStatus(result.message);
+        return;
+      }
+
+      setSupabaseStatus(result.message);
+    }
+
+    refreshSupabaseStatus();
 
     return () => {
       isMounted = false;
@@ -187,7 +180,13 @@ function AppRoutes() {
       navigation={visibleNavigation}
       statusBanner={
         supabaseStatus ? (
-          <div className="mb-6 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100 shadow-soft">
+          <div
+            className={`mb-6 rounded-2xl border px-4 py-3 text-sm shadow-soft ${
+              supabaseStatus.toLowerCase().includes('unreachable') || supabaseStatus.toLowerCase().includes('not configured') || supabaseStatus.toLowerCase().includes('failed')
+                ? 'border-red-400/30 bg-red-500/10 text-red-100'
+                : 'border-sky-400/20 bg-sky-500/10 text-sky-100'
+            }`}
+          >
             {supabaseStatus}
           </div>
         ) : null
