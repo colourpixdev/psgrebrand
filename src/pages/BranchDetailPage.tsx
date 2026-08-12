@@ -109,6 +109,7 @@ export function BranchDetailPage() {
   const [renameDraft, setRenameDraft] = useState('');
   const [quickUpdateDrafts, setQuickUpdateDrafts] = useState<Record<string, { taskId: string; message: string }>>({});
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
+  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set());
   const thumbnailRequestedKeys = useRef(new Set<string>());
   const queryClient = useQueryClient();
 
@@ -377,10 +378,33 @@ export function BranchDetailPage() {
                       return (
                         <div key={`${project.id}-${task.id}`} className="border-b border-white/10 py-3 last:border-0">
                           <div className="flex items-start justify-between gap-3">
-                            <p className={task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}>{task.text}</p>
+                            <div className="flex flex-1 items-start gap-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const taskId = `${project.id}-${task.id}`;
+                                  setCollapsedTasks((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(taskId)) {
+                                      next.delete(taskId);
+                                    } else {
+                                      next.add(taskId);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                className="shrink-0 rounded-lg p-1 text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
+                                aria-label={collapsedTasks.has(`${project.id}-${task.id}`) ? 'Expand task' : 'Collapse task'}
+                              >
+                                <span className="text-lg leading-none">
+                                  {collapsedTasks.has(`${project.id}-${task.id}`) ? '▶' : '▼'}
+                                </span>
+                              </button>
+                              <p className={task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}>{task.text}</p>
+                            </div>
                             <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-300">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
                           </div>
-                          {taskFiles.length > 0 ? (
+                          {!collapsedTasks.has(`${project.id}-${task.id}`) && taskFiles.length > 0 ? (
                             <div className="mt-3 space-y-3 rounded-2xl bg-slate-950/70 p-3">
                               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
                               <div className="grid gap-3 sm:grid-cols-2">
@@ -459,6 +483,7 @@ export function BranchDetailPage() {
                             </div>
                           ) : null}
                           {/* Task comments */}
+                          {!collapsedTasks.has(`${project.id}-${task.id}`) ? (
                           <div className="mt-3">
                             <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
                             <div className="mt-2 space-y-2">
@@ -495,6 +520,7 @@ export function BranchDetailPage() {
                               </div>
                             ) : null}
                           </div>
+                          ) : null}
                         </div>
                       );
                     }) : <p className="text-slate-400">No tasks added yet.</p>}
