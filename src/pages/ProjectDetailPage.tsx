@@ -625,7 +625,7 @@ export function ProjectDetailPage() {
           <div className="mt-5 border-t border-white/10 pt-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Branch and contact persons</h3>
-              <Link to={`/branches/${branch.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/30 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">View branch details</Link>
+              <Link to={`/branches/${branch.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-slate-800/60 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-slate-700/60">View branch details</Link>
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-4 text-sm text-slate-300">
               <div>Branch: <span className="text-white">{branch.name}</span></div>
@@ -786,7 +786,7 @@ export function ProjectDetailPage() {
                         type="button"
                         disabled={reorderTaskMutation.isPending || index === 0}
                         onClick={() => reorderTaskMutation.mutate({ task, direction: 'up' })}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-700/60 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Move up
                       </button>
@@ -794,11 +794,11 @@ export function ProjectDetailPage() {
                         type="button"
                         disabled={reorderTaskMutation.isPending || index === mergedTasks.length - 1}
                         onClick={() => reorderTaskMutation.mutate({ task, direction: 'down' })}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-700/60 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Move down
                       </button>
-                      {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); setEditingTaskAssigneeEmails(task.assignees?.map((assignee) => assignee.email) ?? (task.assigneeEmail ? [task.assigneeEmail] : [])); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Edit</button> : null}
+                      {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); setEditingTaskAssigneeEmails(task.assignees?.map((assignee) => assignee.email) ?? (task.assigneeEmail ? [task.assigneeEmail] : [])); }} className="rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-700/60">Edit</button> : null}
                       {canDeleteTasks ? <button type="button" disabled={deleteTaskMutation.isPending} onClick={() => deleteTaskMutation.mutate(task)} className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
                       <button
                         type="button"
@@ -848,7 +848,7 @@ export function ProjectDetailPage() {
                                     type="button"
                                     disabled={previewMutation.isPending}
                                     onClick={() => previewMutation.mutate(file)}
-                                    className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="rounded-xl border border-white/10 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-slate-700/60 disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     Preview
                                   </button>
@@ -857,7 +857,7 @@ export function ProjectDetailPage() {
                                   type="button"
                                   disabled={downloadMutation.isPending}
                                   onClick={() => downloadMutation.mutate(file)}
-                                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="rounded-xl border border-white/10 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-slate-700/60 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   Download
                                 </button>
@@ -866,7 +866,7 @@ export function ProjectDetailPage() {
                                     type="button"
                                     disabled={renameFileMutation.isPending || deleteFileMutation.isPending}
                                     onClick={() => renameFileMutation.mutate({ file, nextName: file.name })}
-                                    className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="rounded-xl border border-white/10 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-slate-700/60 disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     Rename
                                   </button>

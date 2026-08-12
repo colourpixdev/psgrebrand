@@ -73,32 +73,32 @@ export function DashboardPage() {
       ) : null}
 
       {isLoading ? (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-300">Loading dashboard...</div>
+        <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-6 text-slate-300">Loading dashboard...</div>
       ) : (
         <section className="grid grid-cols-2 gap-3 md:grid-cols-6">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Total Branches</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{branches.length}</p>
+          <div className="rounded-2xl border border-white/10 bg-slate-800/60 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-300">Total Branches</p>
+            <p className="mt-2 text-3xl font-bold text-white">{branches.length}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Active Projects</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{stats.active}</p>
+          <div className="rounded-2xl border border-white/10 bg-slate-800/60 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-300">Active Projects</p>
+            <p className="mt-2 text-3xl font-bold text-white">{stats.active}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Awaiting Approval</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{stats.awaitingApproval}</p>
+          <div className="rounded-2xl border border-white/10 bg-slate-800/60 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-300">Awaiting Approval</p>
+            <p className="mt-2 text-3xl font-bold text-white">{stats.awaitingApproval}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Installations Today</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{stats.installationsToday}</p>
+          <div className="rounded-2xl border border-white/10 bg-slate-800/60 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-300">Installations Today</p>
+            <p className="mt-2 text-3xl font-bold text-white">{stats.installationsToday}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Completed</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{stats.completed}</p>
+          <div className="rounded-2xl border border-white/10 bg-slate-800/60 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-300">Completed</p>
+            <p className="mt-2 text-3xl font-bold text-white">{stats.completed}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-400">At Risk</p>
-            <p className="mt-2 text-2xl font-semibold text-amber-200">{delayedCount}</p>
+          <div className="rounded-2xl border border-white/10 bg-slate-800/60 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-slate-300">At Risk</p>
+            <p className="mt-2 text-3xl font-bold text-amber-300">{delayedCount}</p>
           </div>
         </section>
       )}

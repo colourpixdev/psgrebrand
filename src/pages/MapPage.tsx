@@ -274,7 +274,7 @@ export function MapPage() {
                               <Link
                                 key={project.id}
                                 to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`}
-                                className="inline-flex items-center justify-center rounded-md border border-sky-300/50 bg-sky-500/15 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700 transition hover:bg-sky-500/25"
+                                className="inline-flex items-center justify-center rounded-md border border-sky-400/50 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-slate-700/60"
                               >
                                 View project details
                               </Link>

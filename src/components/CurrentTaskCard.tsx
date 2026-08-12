@@ -53,11 +53,10 @@ export default function CurrentTaskCard({ project, canSave = true, onSave }: Pro
                 value={taskId}
                 onChange={(e) => setTaskId(e.target.value)}
                 className="current-task-select rounded-2xl border border-white/10 bg-slate-900/90 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50"
-                style={{ color: '#ffffff', backgroundColor: 'rgba(15, 23, 42, 0.92)' }}
               >
-                <option value="" style={{ color: '#ffffff', backgroundColor: '#0f172a' }}>General project update</option>
+                <option value="">General project update</option>
                 {project.tasks.map((task) => (
-                  <option key={task.id} value={task.id} style={{ color: '#ffffff', backgroundColor: '#0f172a' }}>{task.text}</option>
+                  <option key={task.id} value={task.id}>{task.text}</option>
                 ))}
               </select>
             </label>
