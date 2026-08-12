@@ -394,6 +394,53 @@ function enqueueFailedNotification(payload: unknown) {
   }
 }
 
+// Email notifications are disabled by default. The app can still add comments and updates
+// without attempting to send notification emails from the client.
+let notificationDeliveryEnabled = false;
+let notificationDeliveryDisabledReason: string | null = null;
+
+function toErrorString(value: unknown) {
+  if (!value) {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (value instanceof Error) {
+    return value.message;
+  }
+
+  if (typeof value === 'object' && value !== null && 'message' in value && typeof (value as any).message === 'string') {
+    return (value as any).message;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function shouldDisableNotificationDelivery(error: unknown) {
+  const message = toErrorString(error).toLowerCase();
+  return [
+    'not_found',
+    'not found',
+    '404',
+    'function was not found',
+    'deploy',
+    'missing',
+  ].some((term) => message.includes(term));
+}
+
+function disableNotificationDelivery(reason: string) {
+  notificationDeliveryEnabled = false;
+  notificationDeliveryDisabledReason = reason;
+  console.warn('Project notification delivery disabled:', reason);
+}
+
 async function flushNotificationQueue(client: typeof supabase) {
   if (!client) return;
   if (typeof localStorage === 'undefined') return;
@@ -408,11 +455,21 @@ async function flushNotificationQueue(client: typeof supabase) {
       try {
         const { error } = await client.functions.invoke('notify-project-change', { body: item.payload as any });
         if (error) {
-          console.warn('Queued notification failed to send.', error.message);
+          const errorMessage = toErrorString(error);
+          if (shouldDisableNotificationDelivery(errorMessage)) {
+            disableNotificationDelivery(errorMessage);
+            break;
+          }
+          console.warn('Queued notification failed to send.', errorMessage);
           remaining.push(item);
         }
       } catch (err) {
-        console.warn('Queued notification failed to send.', err);
+        const errorMessage = toErrorString(err);
+        if (shouldDisableNotificationDelivery(errorMessage)) {
+          disableNotificationDelivery(errorMessage);
+          break;
+        }
+        console.warn('Queued notification failed to send.', errorMessage);
         remaining.push(item);
       }
     }
@@ -433,7 +490,7 @@ async function flushNotificationQueue(client: typeof supabase) {
 async function notifyProjectChange(input: ProjectChangeNotificationInput) {
   const client = supabase;
 
-  if (!client) {
+  if (!client || !notificationDeliveryEnabled) {
     return;
   }
 
@@ -455,7 +512,12 @@ async function notifyProjectChange(input: ProjectChangeNotificationInput) {
     try {
       const { error } = await client.functions.invoke('notify-project-change', { body: payload });
       if (error) {
-        console.warn('Project notification email could not be sent.', error.message);
+        const errorMessage = toErrorString(error);
+        if (shouldDisableNotificationDelivery(errorMessage)) {
+          disableNotificationDelivery(errorMessage);
+          return;
+        }
+        console.warn('Project notification email could not be sent.', errorMessage);
         enqueueFailedNotification(payload);
         return;
       }
@@ -463,7 +525,12 @@ async function notifyProjectChange(input: ProjectChangeNotificationInput) {
       // On success attempt to flush any previously queued notifications.
       await flushNotificationQueue(client);
     } catch (err) {
-      console.warn('Project notification email could not be sent.', err);
+      const errorMessage = toErrorString(err);
+      if (shouldDisableNotificationDelivery(errorMessage)) {
+        disableNotificationDelivery(errorMessage);
+        return;
+      }
+      console.warn('Project notification email could not be sent.', errorMessage);
       enqueueFailedNotification(payload);
     }
   })();
@@ -618,6 +685,32 @@ function createActivity(title: string, detail: string, type: ActivityItem['type'
     detail,
     type,
   };
+}
+
+function createStructuredComment(project: Project, author: string, message: string, taskId?: string) {
+  const linkedTask = taskId ? project.tasks.find((t) => t.id === taskId) : undefined;
+
+  const trimmed = message.trim();
+
+  const comment: CommentItem = {
+    kind: 'comment',
+    date: todayLabel(),
+    author,
+    message: trimmed,
+    taskId: linkedTask?.id,
+  };
+
+  const activity = [
+    createActivity(
+      'Project update',
+      linkedTask ? `${author} added an update on "${linkedTask.text}": ${trimmed}` : `${author} added a journal entry.`,
+    ),
+    ...project.activity,
+  ];
+
+  const changeType: ProjectChangeNotificationInput['changeType'] = isVoiceNoteMessage(trimmed) ? 'voice_note' : 'note';
+
+  return { comment, comments: [comment, ...project.comments], activity, changeType } as const;
 }
 
 function summarizeAssignees(assignees?: TaskAssignee[]) {
@@ -1156,26 +1249,11 @@ export async function addProjectComment(input: AddProjectCommentInput): Promise<
   if (!existingProject) {
     throw new Error('Project not found.');
   }
-
-  const linkedTask = input.taskId ? existingProject.tasks.find((task) => task.id === input.taskId) : undefined;
-  const comments: CommentItem[] = [
-    {
-      kind: 'comment',
-      date: todayLabel(),
-      author: input.author,
-      message,
-      taskId: linkedTask?.id,
-    },
-    ...existingProject.comments,
-  ];
-  const activity = [
-    createActivity('Project update', linkedTask ? `${input.author} added an update on "${linkedTask.text}": ${message}` : `${input.author} added a journal entry.`),
-    ...existingProject.activity,
-  ];
+  const structured = createStructuredComment(existingProject, input.author, message, input.taskId);
 
   const { data, error } = await client
     .from('projects')
-    .update({ comments, activity, updated_at: new Date().toISOString() })
+    .update({ comments: structured.comments, activity: structured.activity, updated_at: new Date().toISOString() })
     .eq('id', input.projectId)
     .select('*')
     .single();
@@ -1189,8 +1267,8 @@ export async function addProjectComment(input: AddProjectCommentInput): Promise<
   await notifyProjectChange({
     project: updatedProject,
     actor: input.author,
-    message,
-    changeType: isVoiceNoteMessage(message) ? 'voice_note' : 'note',
+    message: structured.comment.message,
+    changeType: structured.changeType,
   });
 
   return updatedProject;

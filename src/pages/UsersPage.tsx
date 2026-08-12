@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { getUsersResult } from '../services/userService';
-import { UserCreateForm } from '../components/users/UserCreateForm';
 
 export function UsersPage() {
   const { data } = useQuery({
@@ -34,7 +33,12 @@ export function UsersPage() {
           </p>
         </div>
       ) : (
-        <UserCreateForm />
+        <div className="rounded-3xl border border-white/10 bg-slate-950/50 p-6 text-sm text-slate-300 shadow-soft">
+          <p className="font-semibold text-white">Manual user creation only</p>
+          <p className="mt-2 leading-6 text-slate-400">
+            User invites are disabled in this application. Create users directly in Supabase Auth and add matching profiles in the <code className="rounded bg-slate-900/50 px-1 py-0.5 text-xs">profiles</code> table.
+          </p>
+        </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">

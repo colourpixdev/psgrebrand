@@ -4,6 +4,8 @@ import { Link, useParams } from 'react-router-dom';
 import { FileText, Download, Eye } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
 import { addProjectComment, getProjectFileUrl, getProjects, renameProjectFile } from '../services/portalService';
+import CurrentTaskCard from '../components/CurrentTaskCard';
+import QuickUpdate from '../components/QuickUpdate/QuickUpdate';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
@@ -263,6 +265,9 @@ export function BranchDetailPage() {
                 </div>
               </div>
             )}
+            <div className="mt-4">
+              <CurrentTaskCard project={branchProject} />
+            </div>
           </div>
 
           <div className="grid gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-sm text-slate-200">
@@ -287,8 +292,8 @@ export function BranchDetailPage() {
 
         {branchLatestUpdates.length > 0 ? (
           <div className="mt-6 grid gap-3 md:grid-cols-2">
-            {branchLatestUpdates.map(({ project, comment }) => (
-              <div key={`${project.id}-${comment.date}-${comment.author}`} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+            {branchLatestUpdates.map(({ project, comment }, index) => (
+              <div key={`${project.id}-update-${index}-${comment.taskId ?? 'general'}`} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{project.branch}</p>
                 <p className="mt-2 text-sm font-semibold text-white">{comment.author}</p>
                 <p className="mt-1 text-sm text-slate-300 line-clamp-3">{comment.message}</p>
@@ -331,66 +336,19 @@ export function BranchDetailPage() {
                     </div>
                     <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">Fast entry</span>
                   </div>
-                  <div className="mt-4 grid gap-3 md:grid-cols-[1.4fr_1fr]">
-                    <label className="grid gap-2 text-sm text-slate-200">
-                      Related task
-                      <select
-                        value={quickUpdateDrafts[project.id]?.taskId ?? ''}
-                        onChange={(event) => setQuickUpdateDrafts((current) => ({
-                          ...current,
-                          [project.id]: {
-                            taskId: event.target.value,
-                            message: current[project.id]?.message ?? '',
-                          },
-                        }))}
-                        className="rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50"
-                      >
-                        <option value="">General project update</option>
-                        {project.tasks.map((task) => (
-                          <option key={task.id} value={task.id}>{task.text}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="grid gap-2 text-sm text-slate-200">
-                      Update message
-                      <textarea
-                        value={quickUpdateDrafts[project.id]?.message ?? ''}
-                        onChange={(event) => setQuickUpdateDrafts((current) => ({
-                          ...current,
-                          [project.id]: {
-                            taskId: current[project.id]?.taskId ?? '',
-                            message: event.target.value,
-                          },
-                        }))}
-                        rows={3}
-                        placeholder="Describe progress, issues, or next steps"
-                        className="rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
-                      />
-                    </label>
-                  </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      disabled={!quickUpdateDrafts[project.id]?.message?.trim() || quickUpdateMutation.isPending}
-                      onClick={() => quickUpdateMutation.mutate({
-                        projectId: project.id,
-                        taskId: quickUpdateDrafts[project.id]?.taskId ?? '',
-                        message: quickUpdateDrafts[project.id]?.message ?? '',
-                      })}
-                      className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {quickUpdateMutation.isPending ? 'Saving update...' : 'Save quick update'}
-                    </button>
-                    <p className="text-xs text-slate-400">This update is added to the project journal and linked to the selected task.</p>
-                  </div>
+                  <QuickUpdate
+                    project={project}
+                    canSave={!quickUpdateMutation.isPending}
+                    onSave={(taskId, message) => quickUpdateMutation.mutate({ projectId: project.id, taskId: taskId ?? '', message })}
+                  />
                 </div>
 
                 <div className="mt-6 grid gap-3 md:grid-cols-2">
                   <div>
                     <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Assigned participants</p>
                     <div className="mt-3 space-y-2 text-sm text-slate-200">
-                      {participants.length > 0 ? participants.map((participant) => (
-                        <p key={`${project.id}-${participant.email}`}>{participant.name} · {participant.designation}</p>
+                      {participants.length > 0 ? participants.map((participant, index) => (
+                        <p key={`${project.id}-${participant.email ?? participant.name ?? index}`}>{participant.name} · {participant.designation}</p>
                       )) : <p className="text-slate-400">No participants assigned yet.</p>}
                     </div>
                   </div>
@@ -501,7 +459,7 @@ export function BranchDetailPage() {
                             <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
                             <div className="mt-2 space-y-2">
                               {taskComments.length > 0 ? taskComments.map((c, i) => (
-                                <div key={`${taskKey}-c-${i}`} className="rounded-2xl bg-slate-950/80 p-3">
+                                <div key={`${taskKey}-comment-${i}-${c.taskId ?? 'general'}`} className="rounded-2xl bg-slate-950/80 p-3">
                                   <p className="text-xs text-slate-400">{c.date}</p>
                                   <p className="mt-1 font-medium text-white">{c.author}</p>
                                   <p className="mt-1 text-slate-300">{c.message}</p>
