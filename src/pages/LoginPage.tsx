@@ -10,7 +10,7 @@ import type { Role } from '../types/domain';
 import { productBrand, psgPrimaryLogoUrl } from '../constants/branding';
 import { RolloutLogo } from '../components/brand/RolloutLogo';
 
-const roles: Role[] = ['colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'];
+const roles: Role[] = ['colourpix_admin', 'psg_user'];
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('Enter a valid email address'),
@@ -103,7 +103,7 @@ export function LoginPage() {
                   type="email"
                   autoComplete="email"
                   {...register('email')}
-                  className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400/50"
+                  className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-300 focus:border-sky-400/50"
                   placeholder="name@company.co.za"
                 />
                 {errors.email ? <span className="text-xs text-red-300">{errors.email.message}</span> : null}
@@ -115,7 +115,7 @@ export function LoginPage() {
                   type="password"
                   autoComplete="current-password"
                   {...register('password')}
-                  className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-sky-400/50"
+                  className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-300 focus:border-sky-400/50"
                   placeholder="••••••••"
                 />
                 {errors.password ? <span className="text-xs text-red-300">{errors.password.message}</span> : null}

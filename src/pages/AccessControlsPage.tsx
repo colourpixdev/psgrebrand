@@ -12,7 +12,7 @@ type AccessDraft = {
   permissionOverrides: Record<string, boolean>;
 };
 
-const roleOptions = Object.keys(roleLabels) as Role[];
+const roleOptions: Role[] = ['colourpix_admin', 'psg_user'];
 
 function countEnabledCapabilities(role: Role) {
   const policy = getBaseRolePolicy(role);
@@ -22,10 +22,11 @@ function countEnabledCapabilities(role: Role) {
 }
 
 const roleDescriptions: Record<Role, string> = {
-  colourpix_admin: 'Platform owner with full operational control across projects, workflow, files, reports, and user management.',
-  psg_head_office: 'Broad PSG oversight with visibility and progress controls, but limited administrative actions.',
-  psg_branch_manager: 'Branch-scoped operational visibility focused on assigned projects and local coordination.',
-  sign_company: 'Delivery partner role focused on execution updates, files, and task progress.',
+  colourpix_admin: 'Francois and Beverley have full operational control across projects, workflow, files, reports, and user management.',
+  psg_user: 'PSG users can view project information but cannot edit branch or project records.',
+  psg_head_office: 'PSG users can view project information but cannot edit branch or project records.',
+  psg_branch_manager: 'PSG users can view project information but cannot edit branch or project records.',
+  sign_company: 'PSG users can view project information but cannot edit branch or project records.',
 };
 
 function getDraft(user: UserRecord): AccessDraft {
@@ -97,6 +98,7 @@ export function AccessControlsPage() {
       return countByRole;
     }, {
       colourpix_admin: 0,
+      psg_user: 0,
       psg_head_office: 0,
       psg_branch_manager: 0,
       sign_company: 0,

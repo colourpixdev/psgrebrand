@@ -112,29 +112,29 @@ export function ProfilePage() {
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <label className="grid gap-2 text-sm text-slate-300">
               Display name
-              <input {...register('displayName')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50" placeholder="Your display name" />
+              <input {...register('displayName')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-300 focus:border-teal-300/50" placeholder="Your display name" />
               {errors.displayName ? <span className="text-xs text-red-300">{errors.displayName.message}</span> : null}
             </label>
 
             <label className="grid gap-2 text-sm text-slate-300">
               Title or responsibility
-              <input {...register('title')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50" placeholder="Project manager, site contact, supplier..." />
+              <input {...register('title')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-300 focus:border-teal-300/50" placeholder="Project manager, site contact, supplier..." />
             </label>
 
             <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">
               Company or organisation
-              <input {...register('company')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50" placeholder="PSG, Colourpix, delivery partner..." />
+              <input {...register('company')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-300 focus:border-teal-300/50" placeholder="PSG, Colourpix, delivery partner..." />
             </label>
 
             <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">
               Avatar image URL
-              <input {...register('avatarUrl')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50" placeholder="https://..." />
+              <input {...register('avatarUrl')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-300 focus:border-teal-300/50" placeholder="https://..." />
               {errors.avatarUrl ? <span className="text-xs text-red-300">{errors.avatarUrl.message}</span> : null}
             </label>
 
             <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">
               Organisation mark URL
-              <input {...register('logoUrl')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50" placeholder="https://..." />
+              <input {...register('logoUrl')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-300 focus:border-teal-300/50" placeholder="https://..." />
               {errors.logoUrl ? <span className="text-xs text-red-300">{errors.logoUrl.message}</span> : null}
             </label>
           </div>

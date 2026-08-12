@@ -89,7 +89,7 @@ export function Timeline({ stages, activeStage, tasks, users, canCompleteStages,
             value={newStageName}
             onChange={(event) => setNewStageName(event.target.value)}
             placeholder="Add a custom stage..."
-            className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/50"
+            className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50"
           />
           <button
             type="button"

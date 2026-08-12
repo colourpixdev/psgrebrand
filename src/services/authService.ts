@@ -1,11 +1,12 @@
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Role, UserRecord } from '../types/domain';
+import { normalizeRole } from '../types/domain';
 import { roleLabels } from '../constants/portal';
 import { enrichWorkspaceAccess } from '../constants/workspaces';
 import { sanitizePermissionOverrides } from '../utils/permissions';
 
-const validRoles: Role[] = ['colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'];
+const validRoles: Role[] = ['colourpix_admin', 'psg_user'];
 
 type ProfileRow = {
   name: string;
@@ -21,7 +22,7 @@ type ProfileRow = {
 };
 
 function isRole(value: unknown): value is Role {
-  return typeof value === 'string' && validRoles.includes(value as Role);
+  return typeof value === 'string' && (validRoles.includes(value as Role) || value === 'psg_head_office' || value === 'psg_branch_manager' || value === 'sign_company');
 }
 
 function fallbackSessionUser(session: Session | null): UserRecord | null {
@@ -31,7 +32,7 @@ function fallbackSessionUser(session: Session | null): UserRecord | null {
 
   const metadataName = session.user.user_metadata?.name;
   const metadataBranch = session.user.user_metadata?.branch;
-  const role = isRole(session.user.app_metadata?.role) ? session.user.app_metadata.role : 'psg_head_office';
+  const role = normalizeRole(isRole(session.user.app_metadata?.role) ? session.user.app_metadata.role : 'psg_user');
 
   return enrichWorkspaceAccess({
     name: typeof metadataName === 'string' ? metadataName : session.user.email ?? roleLabels[role],
@@ -81,7 +82,7 @@ export async function sessionToUser(session: Session | null): Promise<UserRecord
 
   return enrichWorkspaceAccess({
     name: profile.name,
-    role: isRole(profile.role) ? profile.role : fallbackUser?.role ?? 'psg_head_office',
+    role: normalizeRole(isRole(profile.role) ? profile.role : fallbackUser?.role ?? 'psg_user'),
     branch: profile.branch ?? undefined,
     company: profile.company ?? undefined,
     profileTitle: profile.profile_title ?? undefined,
@@ -125,7 +126,7 @@ export async function signInWithEmailPassword(email: string, password: string) {
   if (!supabase) {
     return enrichWorkspaceAccess({
       name: normalizedEmail.split('@')[0] || 'Signed in user',
-      role: 'psg_head_office' as Role,
+      role: 'psg_user' as Role,
       email: normalizedEmail,
     });
   }

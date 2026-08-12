@@ -34,7 +34,7 @@ export default function QuickUpdate({ project, canSave = true, onSave }: Props) 
             onChange={(e) => setMessage(e.target.value)}
             rows={3}
             placeholder="Describe progress, issues, or next steps"
-            className="rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
+            className="rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50"
           />
         </label>
       </div>
@@ -52,7 +52,7 @@ export default function QuickUpdate({ project, canSave = true, onSave }: Props) 
         >
           Save quick update
         </button>
-        <p className="text-xs text-slate-400">This update is added to the project journal and linked to the selected task.</p>
+        <p className="text-xs text-slate-300">This update is added to the project journal and linked to the selected task.</p>
       </div>
     </div>
   );

@@ -45,6 +45,10 @@ export function isPlatformOwnerEmail(email: string | undefined) {
   return Boolean(email && platformOwnerEmails.includes(email.trim().toLowerCase()));
 }
 
+export function isAdminUserEmail(email: string | undefined) {
+  return isPlatformOwnerEmail(email);
+}
+
 export function enrichWorkspaceAccess(user: UserRecord): UserRecord {
   const normalizedEmail = user.email.trim().toLowerCase();
   const canAccessAllWorkspaces = isAllWorkspaceAdmin(normalizedEmail) || user.workspaceIds?.includes('*') === true;

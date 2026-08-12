@@ -249,14 +249,14 @@ export function BranchDetailPage() {
                   {branchParticipants.slice(0, 4).map((p, i) => (
                     <div key={`${p.email ?? p.name}-${i}`} className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
                       <p className="font-semibold text-white">{p.name}</p>
-                      {p.designation ? <p className="mt-1 text-xs text-slate-400">{p.designation}</p> : null}
+                      {p.designation ? <p className="mt-1 text-xs text-slate-300">{p.designation}</p> : null}
                       {p.phone ? (
-                        <p className="mt-2 text-xs text-slate-400">
+                        <p className="mt-2 text-xs text-slate-300">
                           <a href={formatPhoneHref(p.phone)} className="hover:text-white">{p.phone}</a>
                         </p>
                       ) : null}
                       {p.email ? (
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="mt-1 text-xs text-slate-300">
                           <a href={`mailto:${p.email}`} className="hover:text-white">{p.email}</a>
                         </p>
                       ) : null}
@@ -266,7 +266,11 @@ export function BranchDetailPage() {
               </div>
             )}
             <div className="mt-4">
-              <CurrentTaskCard project={branchProject} />
+              <CurrentTaskCard
+                project={branchProject}
+                canSave={!quickUpdateMutation.isPending}
+                onSave={(taskId, message) => quickUpdateMutation.mutate({ projectId: branchProject?.id ?? '', taskId: taskId ?? '', message })}
+              />
             </div>
           </div>
 
@@ -302,7 +306,7 @@ export function BranchDetailPage() {
             ))}
           </div>
         ) : (
-          <div className="mt-6 rounded-2xl border border-dashed border-white/15 bg-slate-900/60 p-4 text-sm text-slate-400">
+          <div className="mt-6 rounded-2xl border border-dashed border-white/15 bg-slate-900/60 p-4 text-sm text-slate-300">
             No recent branch updates yet. Use the quick update form below to capture progress instantly.
           </div>
         )}
@@ -475,7 +479,7 @@ export function BranchDetailPage() {
                                   onChange={(e) => setTaskCommentDrafts((cur) => ({ ...cur, [taskKey]: e.target.value }))}
                                   rows={2}
                                   placeholder="Leave a comment for this task"
-                                  className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
+                                  className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50"
                                 />
                                 <div className="flex gap-2">
                                   <button

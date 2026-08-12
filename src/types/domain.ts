@@ -1,4 +1,18 @@
-export type Role = 'colourpix_admin' | 'psg_head_office' | 'psg_branch_manager' | 'sign_company';
+export type Role = 'colourpix_admin' | 'psg_user' | 'psg_head_office' | 'psg_branch_manager' | 'sign_company';
+
+export function normalizeRole(role: unknown): Role {
+  const value = typeof role === 'string' ? role.trim().toLowerCase() : '';
+
+  if (value === 'colourpix_admin' || value === 'admin') {
+    return 'colourpix_admin';
+  }
+
+  if (value === 'psg_user' || value === 'psg' || value === 'psg_head_office' || value === 'psg_branch_manager' || value === 'sign_company') {
+    return 'psg_user';
+  }
+
+  return 'psg_user';
+}
 
 export interface Workspace {
   id: string;

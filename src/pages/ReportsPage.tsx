@@ -28,6 +28,7 @@ const reportTypes: Array<{ value: ReportType; label: string; description: string
 
 const roleReportGuidance: Record<Role, string[]> = {
   colourpix_admin: ['Operational blockers and ownership', 'Single branch report', 'Multi-branch overview'],
+  psg_user: ['Single branch report', 'Operational blockers and ownership', 'Multi-branch overview'],
   psg_head_office: ['Single branch report', 'Operational blockers and ownership', 'Multi-branch overview'],
   psg_branch_manager: ['Single branch report', 'My assigned tasks view', 'Status follow-up list'],
   sign_company: ['My installation tasks', 'Operational blockers and ownership', 'Single branch report'],
@@ -349,7 +350,7 @@ export function ReportsPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Branch, town, manager, branch reference..."
-                className="w-full rounded-2xl border border-white/10 bg-slate-900/80 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
+                className="w-full rounded-2xl border border-white/10 bg-slate-900/80 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50"
               />
             </div>
 

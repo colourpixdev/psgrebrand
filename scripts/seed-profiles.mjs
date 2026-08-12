@@ -54,11 +54,11 @@ const adminClient = createClient(supabaseUrl, serviceRoleKey, {
 });
 
 const PROFILES = [
-  { name: 'Beverley', role: 'colourpix_admin', branch: null, email: 'beverley@colourpix.co.za' },
+  { name: 'Beverley', role: 'colourpix_admin', branch: null, email: 'bd@colourpix.co.za' },
   { name: 'Francois', role: 'colourpix_admin', branch: null, email: 'francois@colourpix.co.za' },
-  { name: 'PSG Head Office', role: 'psg_head_office', branch: null, email: 'head.office@psg.co.za' },
-  { name: 'John Smith', role: 'psg_branch_manager', branch: 'PSG Hermanus', email: 'john.smith@psg.co.za' },
-  { name: 'ABC Signage', role: 'sign_company', branch: null, email: 'ops@abcsignage.co.za' },
+  { name: 'PSG Head Office', role: 'psg_user', branch: null, email: 'head.office@psg.co.za' },
+  { name: 'John Smith', role: 'psg_user', branch: 'PSG Hermanus', email: 'john.smith@psg.co.za' },
+  { name: 'ABC Signage', role: 'psg_user', branch: null, email: 'ops@abcsignage.co.za' },
 ];
 
 async function seedProfiles() {

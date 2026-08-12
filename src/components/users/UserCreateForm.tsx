@@ -9,7 +9,7 @@ import { useSaveFeedback } from '../../contexts/SaveFeedbackContext';
 const userSchema = z.object({
   name: z.string().trim().min(2, 'Name is required'),
   email: z.string().trim().toLowerCase().email('Enter a valid email address'),
-  role: z.enum(['colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company']),
+  role: z.enum(['colourpix_admin', 'psg_user']),
   branch: z.string().trim().optional(),
 });
 
@@ -24,7 +24,7 @@ export function UserCreateForm() {
     defaultValues: {
       name: '',
       email: '',
-      role: 'psg_head_office',
+      role: 'psg_user',
       branch: '',
     },
   });
@@ -33,7 +33,7 @@ export function UserCreateForm() {
     mutationFn: inviteUser,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['users'] });
-      reset({ name: '', email: '', role: 'psg_head_office', branch: '' });
+      reset({ name: '', email: '', role: 'psg_user', branch: '' });
       showSuccess('Invite sent.');
     },
   });
@@ -68,8 +68,8 @@ export function UserCreateForm() {
         <label className="grid gap-2 text-sm text-slate-300">
           Role
           <select {...register('role')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none">
-            {Object.entries(roleLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+            {(['colourpix_admin', 'psg_user'] as const).map((value) => (
+              <option key={value} value={value}>{roleLabels[value]}</option>
             ))}
           </select>
           {errors.role ? <span className="text-xs text-red-300">{errors.role.message}</span> : null}

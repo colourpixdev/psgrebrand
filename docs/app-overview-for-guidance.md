@@ -4,7 +4,7 @@
 
 PSG Rebrand is intended to be a secure, role-aware project workspace platform for managing repeatable work across separate client workspaces. The application is licensed software, with the first workspace configured for the PSG National Signage Rollout and Colourpix CC positioned as the default service partner at this stage. PSG signage is the first proof-of-concept template, not the limit of the product. Its purpose is to replace scattered spreadsheets, WhatsApp messages, email threads, and manual status chasing with one shared project record for every site, location, customer request, rollout item, or delivery job.
 
-The platform gives platform owners, workspace administrators, client administrators, site contacts, and delivery partners a controlled view of the project work relevant to them. It tracks each project from initial setup through information gathering, approvals, quotations, production or delivery, evidence, signoff, and completion.
+The platform gives platform administrators, workspace administrators, client administrators, site contacts, and delivery partners a controlled view of the project work relevant to them. It tracks each project from initial setup through information gathering, approvals, quotations, production or delivery, evidence, signoff, and completion.
 
 The current version is a working production-oriented scaffold connected to Supabase for authentication, project data, file storage, role-based access, and live project updates. It already supports dashboard reporting, project workflow management, project templates, file uploads, comments, project Q&A requests, voice-note batch updates, search, maps, reports, and user profile management.
 
@@ -40,7 +40,7 @@ The current default workspace is PSG National Signage Rollout. Future workspaces
 - Platform administrators
 - Project records and journal entries scoped to that workspace
 
-The platform owner and nominated senior workspace administrators should have all-workspace administrative access. Other users should belong only to the specific workspaces they are invited into. Colourpix CC is currently the default service partner for all workspaces and should be presented as "in partnership with Colourpix CC" rather than as the licence owner.
+Francois and nominated senior workspace administrators should have all-workspace administrative access. Other users should belong only to the specific workspaces they are invited into. Colourpix CC is currently the default service partner for all workspaces and should be presented as "in partnership with Colourpix CC" rather than as the licence owner.
 
 ## Project Templates and SaaS Direction
 
@@ -707,7 +707,7 @@ Users should be able to control how they appear inside a workspace without recei
 
 Recommended administration boundaries:
 
-- PSG Rebrand platform owner: controls platform-level roles, workspace creation, global support routing, product configuration, and reusable features.
+- Francois / platform administrator: controls platform-level roles, workspace creation, global support routing, product configuration, and reusable features.
 - Workspace administrator: manages workspace branding, client/project records, delivery partners, and user membership for that workspace.
 - Client administrator: approves client-side users, report needs, workflow changes, and feature requests inside their workspace.
 - Site contact and delivery partner: maintain their own avatar/profile identity and request changes through Support.

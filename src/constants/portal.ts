@@ -1,11 +1,14 @@
 import type { ProjectStage, Role } from '../types/domain';
 
 export const roleLabels: Record<Role, string> = {
-  colourpix_admin: 'Workspace Administrator',
-  psg_head_office: 'Client Administrator',
-  psg_branch_manager: 'Site Contact',
-  sign_company: 'Delivery Partner',
+  colourpix_admin: 'Admin',
+  psg_user: 'PSG user',
+  psg_head_office: 'PSG user',
+  psg_branch_manager: 'PSG user',
+  sign_company: 'PSG user',
 };
+
+export const roleOptions: Role[] = ['colourpix_admin', 'psg_user'];
 
 export const timelineStages: readonly ProjectStage[] = [
   'New Project',

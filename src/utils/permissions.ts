@@ -1,4 +1,5 @@
 import type { Project, Role, UserRecord } from '../types/domain';
+import { normalizeRole } from '../types/domain';
 import { isAccessControlAdmin, isPlatformOwnerEmail } from '../constants/workspaces';
 
 export type Permission =
@@ -118,35 +119,45 @@ export const rolePolicies: Record<Role, RolePolicy> = {
     userManagement: { canInviteUsers: true, canDisableUsers: true, canEditUsers: true, canResetPasswords: true },
     notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: ['question', 'task', 'project_updated', 'stage_changed', 'file_uploaded'] },
   },
-  psg_head_office: {
-    projectAccess: { canViewAssignedProjects: true, canViewAllProjects: true, canCreateProjects: false, canArchiveProjects: false, canDeleteProjects: false, canExportProject: true, canDuplicateProject: false },
-    workflow: { canChangeStage: true, canChangeStatus: true, canChangeProgress: true, canMarkCompleted: false, canReopenCompletedProjects: false, canChangeTargetDates: false },
-    communication: { canCreateComments: true, canReply: true, canEditOwnComments: true, canDeleteOwnComments: false, canDeleteOthersComments: false, canAskQuestions: true, canAnswerQuestions: false, canCloseQuestions: false, canMentionUsers: true, canCreateInternalNotes: false },
-    files: { canUploadFiles: true, canDownloadFiles: true, canDeleteFiles: false, canReplaceFiles: false, allowedFileTypes: operationalFileTypes },
-    tasks: { canCreateTasks: true, canAssignTasks: false, canCompleteTasks: true, canDeleteTasks: false, canReassignTasks: false },
-    reports: { canViewReports: true, canExportReports: true, canCreateCustomReports: false, canScheduleReports: false },
+  psg_user: {
+    projectAccess: { canViewAssignedProjects: true, canViewAllProjects: false, canCreateProjects: false, canArchiveProjects: false, canDeleteProjects: false, canExportProject: true, canDuplicateProject: false },
+    workflow: { canChangeStage: false, canChangeStatus: false, canChangeProgress: false, canMarkCompleted: false, canReopenCompletedProjects: false, canChangeTargetDates: false },
+    communication: { canCreateComments: false, canReply: false, canEditOwnComments: false, canDeleteOwnComments: false, canDeleteOthersComments: false, canAskQuestions: false, canAnswerQuestions: false, canCloseQuestions: false, canMentionUsers: false, canCreateInternalNotes: false },
+    files: { canUploadFiles: false, canDownloadFiles: true, canDeleteFiles: false, canReplaceFiles: false, allowedFileTypes: [] },
+    tasks: { canCreateTasks: false, canAssignTasks: false, canCompleteTasks: false, canDeleteTasks: false, canReassignTasks: false },
+    reports: { canViewReports: false, canExportReports: false, canCreateCustomReports: false, canScheduleReports: false },
     userManagement: { canInviteUsers: false, canDisableUsers: false, canEditUsers: false, canResetPasswords: false },
-    notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: ['question', 'task', 'project_updated', 'stage_changed', 'file_uploaded'] },
+    notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: [] },
+  },
+  psg_head_office: {
+    projectAccess: { canViewAssignedProjects: true, canViewAllProjects: false, canCreateProjects: false, canArchiveProjects: false, canDeleteProjects: false, canExportProject: true, canDuplicateProject: false },
+    workflow: { canChangeStage: false, canChangeStatus: false, canChangeProgress: false, canMarkCompleted: false, canReopenCompletedProjects: false, canChangeTargetDates: false },
+    communication: { canCreateComments: false, canReply: false, canEditOwnComments: false, canDeleteOwnComments: false, canDeleteOthersComments: false, canAskQuestions: false, canAnswerQuestions: false, canCloseQuestions: false, canMentionUsers: false, canCreateInternalNotes: false },
+    files: { canUploadFiles: false, canDownloadFiles: true, canDeleteFiles: false, canReplaceFiles: false, allowedFileTypes: [] },
+    tasks: { canCreateTasks: false, canAssignTasks: false, canCompleteTasks: false, canDeleteTasks: false, canReassignTasks: false },
+    reports: { canViewReports: false, canExportReports: false, canCreateCustomReports: false, canScheduleReports: false },
+    userManagement: { canInviteUsers: false, canDisableUsers: false, canEditUsers: false, canResetPasswords: false },
+    notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: [] },
   },
   psg_branch_manager: {
     projectAccess: { canViewAssignedProjects: true, canViewAllProjects: false, canCreateProjects: false, canArchiveProjects: false, canDeleteProjects: false, canExportProject: true, canDuplicateProject: false },
     workflow: { canChangeStage: false, canChangeStatus: false, canChangeProgress: false, canMarkCompleted: false, canReopenCompletedProjects: false, canChangeTargetDates: false },
-    communication: { canCreateComments: false, canReply: true, canEditOwnComments: true, canDeleteOwnComments: false, canDeleteOthersComments: false, canAskQuestions: true, canAnswerQuestions: false, canCloseQuestions: false, canMentionUsers: true, canCreateInternalNotes: false },
-    files: { canUploadFiles: true, canDownloadFiles: true, canDeleteFiles: false, canReplaceFiles: false, allowedFileTypes: operationalFileTypes },
+    communication: { canCreateComments: false, canReply: false, canEditOwnComments: false, canDeleteOwnComments: false, canDeleteOthersComments: false, canAskQuestions: false, canAnswerQuestions: false, canCloseQuestions: false, canMentionUsers: false, canCreateInternalNotes: false },
+    files: { canUploadFiles: false, canDownloadFiles: true, canDeleteFiles: false, canReplaceFiles: false, allowedFileTypes: [] },
     tasks: { canCreateTasks: false, canAssignTasks: false, canCompleteTasks: false, canDeleteTasks: false, canReassignTasks: false },
-    reports: { canViewReports: true, canExportReports: true, canCreateCustomReports: false, canScheduleReports: false },
+    reports: { canViewReports: false, canExportReports: false, canCreateCustomReports: false, canScheduleReports: false },
     userManagement: { canInviteUsers: false, canDisableUsers: false, canEditUsers: false, canResetPasswords: false },
-    notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: ['question', 'project_updated', 'stage_changed', 'file_uploaded'] },
+    notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: [] },
   },
   sign_company: {
     projectAccess: { canViewAssignedProjects: true, canViewAllProjects: false, canCreateProjects: false, canArchiveProjects: false, canDeleteProjects: false, canExportProject: true, canDuplicateProject: false },
-    workflow: { canChangeStage: true, canChangeStatus: false, canChangeProgress: true, canMarkCompleted: false, canReopenCompletedProjects: false, canChangeTargetDates: false },
-    communication: { canCreateComments: true, canReply: true, canEditOwnComments: true, canDeleteOwnComments: false, canDeleteOthersComments: false, canAskQuestions: false, canAnswerQuestions: false, canCloseQuestions: false, canMentionUsers: true, canCreateInternalNotes: false },
-    files: { canUploadFiles: true, canDownloadFiles: true, canDeleteFiles: false, canReplaceFiles: false, allowedFileTypes: operationalFileTypes },
-    tasks: { canCreateTasks: true, canAssignTasks: false, canCompleteTasks: true, canDeleteTasks: false, canReassignTasks: false },
+    workflow: { canChangeStage: false, canChangeStatus: false, canChangeProgress: false, canMarkCompleted: false, canReopenCompletedProjects: false, canChangeTargetDates: false },
+    communication: { canCreateComments: false, canReply: false, canEditOwnComments: false, canDeleteOwnComments: false, canDeleteOthersComments: false, canAskQuestions: false, canAnswerQuestions: false, canCloseQuestions: false, canMentionUsers: false, canCreateInternalNotes: false },
+    files: { canUploadFiles: false, canDownloadFiles: true, canDeleteFiles: false, canReplaceFiles: false, allowedFileTypes: [] },
+    tasks: { canCreateTasks: false, canAssignTasks: false, canCompleteTasks: false, canDeleteTasks: false, canReassignTasks: false },
     reports: { canViewReports: false, canExportReports: false, canCreateCustomReports: false, canScheduleReports: false },
     userManagement: { canInviteUsers: false, canDisableUsers: false, canEditUsers: false, canResetPasswords: false },
-    notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: ['task', 'project_updated', 'stage_changed', 'file_uploaded'] },
+    notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: [] },
   },
 };
 
@@ -324,35 +335,98 @@ const fullAccessRolePolicy: RolePolicy = {
 };
 
 export function getRolePolicy(user: UserRecord | null | undefined) {
-  return user ? fullAccessRolePolicy : null;
+  if (!user) {
+    return null;
+  }
+
+  const normalizedRole = normalizeRole(user.role);
+  return rolePolicies[normalizedRole] ?? rolePolicies.psg_user;
 }
 
 export function can(user: UserRecord | null | undefined, permission: Permission) {
-  return Boolean(user);
+  const policy = getRolePolicy(user);
+  if (!policy) {
+    return false;
+  }
+
+  return permissionCapabilities[permission](policy);
 }
 
 export function canManageAccessControls(user: UserRecord | null | undefined) {
-  return Boolean(user);
+  if (!user) {
+    return false;
+  }
+
+  return user.role === 'colourpix_admin' || isAccessControlAdmin(user.email) || isPlatformOwnerEmail(user.email);
 }
 
 export function canViewSettings(user: UserRecord | null | undefined) {
-  return Boolean(user);
+  return canManageAccessControls(user) || can(user, 'view_settings');
 }
 
 export function canAccessRoute(user: UserRecord | null | undefined, path: string) {
-  return Boolean(user);
+  if (!user) {
+    return false;
+  }
+
+  if (path.startsWith('/access-controls')) {
+    return canManageAccessControls(user);
+  }
+
+  return true;
 }
 
 export function canViewProject(user: UserRecord | null | undefined, project: Project) {
-  return Boolean(user);
+  if (!user) {
+    return false;
+  }
+
+  if (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email)) {
+    return true;
+  }
+
+  const policy = getRolePolicy(user);
+  if (!policy) {
+    return false;
+  }
+
+  if (policy.projectAccess.canViewAllProjects) {
+    return true;
+  }
+
+  const normalizedUserEmail = user.email.trim().toLowerCase();
+  const normalizedBranch = (user.branch ?? '').trim().toLowerCase();
+  const projectBranch = (project.branch ?? '').trim().toLowerCase();
+  const matchesManager = project.managerEmail?.trim().toLowerCase() === normalizedUserEmail;
+  const matchesBranch = Boolean(normalizedBranch) && projectBranch.includes(normalizedBranch);
+  const matchesAssignee = project.tasks.some((task) =>
+    [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)]
+      .filter(Boolean)
+      .some((email) => email?.trim().toLowerCase() === normalizedUserEmail)
+  );
+
+  return matchesManager || matchesBranch || matchesAssignee;
 }
 
 export function filterProjectsForUser(projects: Project[], user: UserRecord | null | undefined) {
-  return user ? projects : [];
+  if (!user) {
+    return [];
+  }
+
+  return projects.filter((project) => canViewProject(user, project));
 }
 
 export function canChangeProjectStage(user: UserRecord | null | undefined, project: Project, nextStage: Project['currentStage']) {
-  return Boolean(user);
+  const policy = getRolePolicy(user);
+  if (!policy || !user) {
+    return false;
+  }
+
+  if (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email)) {
+    return true;
+  }
+
+  return policy.workflow.canChangeStage && canViewProject(user, project);
 }
 
 export function getAllowedStageOptions(user: UserRecord | null | undefined, project: Project, stages: readonly Project['currentStage'][]) {

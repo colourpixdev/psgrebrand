@@ -3,7 +3,7 @@ import { productBrand } from '../constants/branding';
 const sections = [
   {
     title: 'Software Ownership',
-    body: 'PSG Rebrand, including all source code, user interface design, database structure, workflow logic, documentation, reports, AI functionality, branding and supporting software remains the intellectual property of the platform owner unless transferred by written agreement.',
+    body: 'PSG Rebrand, including all source code, user interface design, database structure, workflow logic, documentation, reports, AI functionality, branding and supporting software remains the intellectual property of Francois unless transferred by written agreement.',
   },
   {
     title: 'License',

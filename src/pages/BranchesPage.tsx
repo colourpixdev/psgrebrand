@@ -5,6 +5,7 @@ import { getProjects } from '../services/portalService';
 import type { Branch, ContactPerson, Division, Project } from '../types/domain';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
+import { isPlatformOwnerEmail } from '../constants/workspaces';
 import { can, filterProjectsForUser } from '../utils/permissions';
 
 const divisions: Division[] = ['Wealth', 'Insure', 'Wealth Insure', 'Asset', 'Trust'];
@@ -130,7 +131,7 @@ export function BranchesPage() {
   const { user } = useAuth();
   const { showSuccess } = useSaveFeedback();
 
-  const isAdmin = user?.role === 'colourpix_admin';
+  const isAdmin = user?.role === 'colourpix_admin' || isPlatformOwnerEmail(user?.email);
 
   useEffect(() => {
     void loadPageData();
@@ -660,7 +661,7 @@ export function BranchesPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by branch name, town, or address"
-              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white placeholder:text-slate-500 outline-none focus:border-sky-400/50"
+              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white placeholder:text-slate-300 outline-none focus:border-sky-400/50"
             />
           </div>
           <div className="mt-4 text-sm text-slate-400">Showing {filteredBranches.length} of {branches.length} branches</div>

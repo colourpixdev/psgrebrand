@@ -2,7 +2,7 @@
   name: 'PSG Rebrand',
   description: 'PSG Branch Rebrand Workspace',
   developer: 'PSG Rebrand',
-  licensee: 'Platform owner',
+  licensee: 'Francois',
   customer: 'PSG',
   partner: 'Colourpix CC',
   workspace: 'PSG Branch Rebrand',

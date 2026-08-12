@@ -585,21 +585,21 @@ export function ProjectDetailPage() {
           {canEditNotes ? (
             <label className="grid gap-2">
               <span>Target Date</span>
-              <input value={targetDateDraft} onChange={(event) => setTargetDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/50" />
+              <input value={targetDateDraft} onChange={(event) => setTargetDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
             </label>
           ) : <div>Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>}
 
           {canEditNotes ? (
             <label className="grid gap-2">
               <span>Installation Date</span>
-              <input value={installationDateDraft} onChange={(event) => setInstallationDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/50" />
+              <input value={installationDateDraft} onChange={(event) => setInstallationDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
             </label>
           ) : <div>Installation Date: <span className="text-white">{selectedProject.installationDate}</span></div>}
 
           {canEditNotes ? (
             <label className="grid gap-2">
               <span>Completion Date</span>
-              <input value={completionDateDraft} onChange={(event) => setCompletionDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/50" />
+              <input value={completionDateDraft} onChange={(event) => setCompletionDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
             </label>
           ) : <div>Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>}
 
@@ -721,7 +721,7 @@ export function ProjectDetailPage() {
         <div className="mt-6 border-t border-white/10 pt-6">
           <h3 className="text-lg font-semibold text-white">Tasks</h3>
           <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem_auto]">
-            <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder={canAddTasks ? 'Add next action...' : 'Task updates restricted'} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
+            <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder={canAddTasks ? 'Add next action...' : 'Task updates restricted'} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
             <select multiple value={taskAssigneeEmails} disabled={!canAddTasks} onChange={(event) => setTaskAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
               {assignableUsers.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
             </select>
@@ -969,7 +969,7 @@ export function ProjectDetailPage() {
             </label>
             <label className="grid gap-2 text-sm text-slate-200">
               Message
-              <textarea value={commentMessage} onChange={(event) => setCommentMessage(event.target.value)} rows={3} placeholder="Share an update or ask for action on this task." className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/50 sm:text-sm sm:leading-6" />
+              <textarea value={commentMessage} onChange={(event) => setCommentMessage(event.target.value)} rows={3} placeholder="Share an update or ask for action on this task." className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50 sm:text-sm sm:leading-6" />
             </label>
             <div className="flex flex-wrap gap-2">
               {canCreateAssignedUpdate ? (
@@ -1036,7 +1036,7 @@ export function ProjectDetailPage() {
                       <div className="grid gap-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4">
                         <label className="grid gap-2 text-sm text-slate-300">
                           Answer
-                          <textarea value={answerMessage} onChange={(event) => setAnswerMessage(event.target.value)} rows={3} placeholder="Share the latest update for PSG." className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50" />
+                          <textarea value={answerMessage} onChange={(event) => setAnswerMessage(event.target.value)} rows={3} placeholder="Share the latest update for PSG." className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50" />
                         </label>
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                           <label className="grid gap-2 text-sm text-slate-300">
@@ -1145,7 +1145,7 @@ export function ProjectDetailPage() {
             {notesMutation.isPending ? 'Saving summary...' : 'Save summary'}
           </button>
         </div>
-        <textarea value={notesDraft} disabled={!canEditNotes || notesMutation.isPending} onChange={(event) => setNotesDraft(event.target.value)} rows={6} placeholder="Add project notes..." className="mt-5 w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm sm:leading-6" />
+        <textarea value={notesDraft} disabled={!canEditNotes || notesMutation.isPending} onChange={(event) => setNotesDraft(event.target.value)} rows={6} placeholder="Add project notes..." className="mt-5 w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm sm:leading-6" />
         {notesError instanceof Error ? <p className="mt-3 text-sm text-red-300">{notesError.message}</p> : null}
       </section>
     </div>

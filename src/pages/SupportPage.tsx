@@ -197,20 +197,20 @@ export function SupportPage() {
 
           <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">
             Subject
-            <input {...register('subject')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50" placeholder="Short summary of the request" />
+            <input {...register('subject')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-300 focus:border-teal-300/50" placeholder="Short summary of the request" />
             {errors.subject ? <span className="text-xs text-red-300">{errors.subject.message}</span> : null}
           </label>
         </div>
 
         <label className="mt-4 grid gap-2 text-sm text-slate-300">
           Details
-          <textarea rows={4} {...register('details')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50" placeholder="Explain what is needed, what happened, or what would make the workspace more useful." />
+          <textarea rows={4} {...register('details')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-300 focus:border-teal-300/50" placeholder="Explain what is needed, what happened, or what would make the workspace more useful." />
           {errors.details ? <span className="text-xs text-red-300">{errors.details.message}</span> : null}
         </label>
 
         <label className="mt-4 grid gap-2 text-sm text-slate-300">
           Expected outcome
-          <textarea rows={3} {...register('expectedOutcome')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50" placeholder="Describe the report, workflow, update, answer, or fix you want to see." />
+          <textarea rows={3} {...register('expectedOutcome')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-300 focus:border-teal-300/50" placeholder="Describe the report, workflow, update, answer, or fix you want to see." />
           {errors.expectedOutcome ? <span className="text-xs text-red-300">{errors.expectedOutcome.message}</span> : null}
         </label>
 
