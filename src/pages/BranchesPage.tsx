@@ -356,32 +356,6 @@ export function BranchesPage() {
     await executeDelete(pendingDeleteBranch.id);
   }
 
-  const filteredBranches = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    let results = branches;
-
-    if (query) {
-      results = results.filter((branch) => {
-        return [branch.name ?? '', branch.division ?? '', branch.province ?? '', branch.town ?? '', branch.physicalAddress ?? '']
-          .join(' ')
-          .toLowerCase()
-          .includes(query);
-      });
-    }
-
-    // sort: branches with active (open) projects first, then alphabetically
-    return [...results].sort((a, b) => {
-      const aHas = getOpenProjectsForBranch(a).length > 0;
-      const bHas = getOpenProjectsForBranch(b).length > 0;
-
-      if (aHas !== bHas) {
-        return aHas ? -1 : 1;
-      }
-
-      return a.name.localeCompare(b.name);
-    });
-  }, [branches, searchTerm, projects]);
-
   const canCreateProjects = can(user, 'create_project');
 
   const openProjectsByBranch = useMemo(() => {
@@ -424,6 +398,32 @@ export function BranchesPage() {
 
     return openProjectsByBranch[(branch.name ?? '').trim().toLowerCase()] ?? [];
   }
+
+  const filteredBranches = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    let results = branches;
+
+    if (query) {
+      results = results.filter((branch) => {
+        return [branch.name ?? '', branch.division ?? '', branch.province ?? '', branch.town ?? '', branch.physicalAddress ?? '']
+          .join(' ')
+          .toLowerCase()
+          .includes(query);
+      });
+    }
+
+    // sort: branches with active (open) projects first, then alphabetically
+    return [...results].sort((a, b) => {
+      const aHas = getOpenProjectsForBranch(a).length > 0;
+      const bHas = getOpenProjectsForBranch(b).length > 0;
+
+      if (aHas !== bHas) {
+        return aHas ? -1 : 1;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+  }, [branches, searchTerm, projects]);
 
   useEffect(() => {
     if (!location.hash || filteredBranches.length === 0) {
