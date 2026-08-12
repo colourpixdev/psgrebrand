@@ -37,24 +37,28 @@ type BranchRow = {
   updated_at: string;
 };
 
+function isDivision(value: unknown): value is Division {
+  return typeof value === 'string' && ['Wealth', 'Insure', 'Wealth Insure', 'Asset', 'Trust'].includes(value);
+}
+
 function rowToBranch(row: BranchRow): Branch {
   return {
-    id: row.id,
+    id: row.id ?? '',
     code: row.code ?? undefined,
-    name: row.name,
-    division: row.division,
-    province: row.province,
+    name: row.name ?? 'Unknown branch',
+    division: isDivision(row.division) ? row.division : 'Wealth',
+    province: row.province ?? 'Not captured',
     city: row.city ?? undefined,
-    town: row.town,
-    physicalAddress: row.physical_address,
-    latitude: row.latitude,
-    longitude: row.longitude,
+    town: row.town ?? 'Not captured',
+    physicalAddress: row.physical_address ?? '',
+    latitude: typeof row.latitude === 'number' ? row.latitude : null,
+    longitude: typeof row.longitude === 'number' ? row.longitude : null,
     contactName: row.contact_name ?? undefined,
     contactEmail: row.contact_email ?? undefined,
     contactPhone: row.contact_phone ?? undefined,
     contacts: Array.isArray(row.contacts) ? row.contacts : undefined,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: row.created_at ?? new Date().toISOString(),
+    updatedAt: row.updated_at ?? new Date().toISOString(),
   };
 }
 

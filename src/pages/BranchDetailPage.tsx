@@ -70,11 +70,12 @@ export function BranchDetailPage() {
     queryFn: getProjects,
   });
 
-  const normalizedParam = branchId ?? '';
+  const normalizedParam = String(branchId ?? '').trim();
+  const decodedParam = decodeURIComponent(normalizedParam);
   const branch = branches.find((item) => item.id === normalizedParam)
     || branches.find((item) => item.code === normalizedParam)
     || branches.find((item) => encodeURIComponent(item.id) === normalizedParam)
-    || branches.find((item) => item.name?.toLowerCase() === decodeURIComponent(normalizedParam).toLowerCase());
+    || branches.find((item) => typeof item.name === 'string' && item.name.toLowerCase() === decodedParam.toLowerCase());
   const canCreateProjects = can(user, 'create_project');
   const scopedProjects = filterProjectsForUser(projects, user);
   const branchProjects = useMemo(() => {
@@ -82,8 +83,12 @@ export function BranchDetailPage() {
       return [];
     }
 
+    const branchName = branch.name ?? '';
     return scopedProjects
-      .filter((project) => project.branchId === branch.id || project.branch.toLowerCase() === branch.name.toLowerCase())
+      .filter((project) => {
+        const projectBranch = typeof project.branch === 'string' ? project.branch : '';
+        return project.branchId === branch.id || projectBranch.toLowerCase() === branchName.toLowerCase();
+      })
       .sort(byUpdatedAtDesc);
   }, [branch, scopedProjects]);
 

@@ -362,7 +362,7 @@ export function BranchesPage() {
 
     if (query) {
       results = results.filter((branch) => {
-        return [branch.name, branch.division, branch.province, branch.town, branch.physicalAddress]
+        return [branch.name ?? '', branch.division ?? '', branch.province ?? '', branch.town ?? '', branch.physicalAddress ?? '']
           .join(' ')
           .toLowerCase()
           .includes(query);
@@ -415,14 +415,14 @@ export function BranchesPage() {
   }, [projects]);
 
   function getOpenProjectsForBranch(branch: Branch) {
-    const branchKey = branch.id.trim().toLowerCase();
+    const branchKey = (branch.id ?? '').trim().toLowerCase();
     const directMatches = openProjectsByBranch[branchKey] ?? [];
 
     if (directMatches.length > 0) {
       return directMatches;
     }
 
-    return openProjectsByBranch[branch.name.trim().toLowerCase()] ?? [];
+    return openProjectsByBranch[(branch.name ?? '').trim().toLowerCase()] ?? [];
   }
 
   useEffect(() => {

@@ -629,14 +629,22 @@ function summarizeAssignees(assignees?: TaskAssignee[]) {
 }
 
 function mapProjectRow(row: ProjectRow): Project {
-  const template = getProjectTemplate(row.project_type);
-  const mappedBranchId = row.branch_id ?? row.branch ?? 'unassigned';
-  const mappedBranch = row.branch ?? row.branch_id ?? 'Unassigned';
+  const template = getProjectTemplate(row.project_type ?? undefined);
+  const mappedBranchId = typeof row.branch_id === 'string' && row.branch_id.trim().length > 0
+    ? row.branch_id
+    : typeof row.branch === 'string' && row.branch.trim().length > 0
+      ? row.branch
+      : 'unassigned';
+  const mappedBranch = typeof row.branch === 'string' && row.branch.trim().length > 0
+    ? row.branch
+    : typeof row.branch_id === 'string' && row.branch_id.trim().length > 0
+      ? row.branch_id
+      : 'Unassigned';
 
   return {
-    id: row.id,
+    id: row.id ?? 'unknown-project',
     branchId: mappedBranchId,
-    branchCode: row.branch_code ?? undefined,
+    branchCode: typeof row.branch_code === 'string' ? row.branch_code : undefined,
     branch: mappedBranch,
     workspaceId: row.workspace_id ?? defaultWorkspace.id,
     workspaceName: row.workspace_name ?? defaultWorkspace.name,
@@ -650,22 +658,22 @@ function mapProjectRow(row: ProjectRow): Project {
     physicalAddress: row.physical_address ?? '',
     latitude: typeof row.latitude === 'number' ? row.latitude : null,
     longitude: typeof row.longitude === 'number' ? row.longitude : null,
-    manager: row.manager,
-    managerEmail: row.manager_email,
-    designer: row.designer,
-    currentStage: row.current_stage as Project['currentStage'],
-    status: row.status,
-    targetDate: row.target_date,
-    installationDate: row.installation_date,
-    completionDate: row.completion_date,
-    updatedAt: row.updated_at,
-    progress: row.progress ?? 0,
+    manager: row.manager ?? 'Unknown manager',
+    managerEmail: row.manager_email ?? '',
+    designer: row.designer ?? '',
+    currentStage: typeof row.current_stage === 'string' ? row.current_stage as Project['currentStage'] : template.name,
+    status: row.status ?? 'busy',
+    targetDate: row.target_date ?? '',
+    installationDate: row.installation_date ?? '',
+    completionDate: row.completion_date ?? '',
+    updatedAt: row.updated_at ?? new Date().toISOString(),
+    progress: typeof row.progress === 'number' ? row.progress : 0,
     branchManagerViewOnly: Boolean(row.branch_manager_view_only),
     notes: row.notes ?? '',
     files: normalizeProjectFiles(row.files),
     tasks: normalizeProjectTasks(row.tasks),
-    comments: row.comments ?? [],
-    activity: row.activity ?? [],
+    comments: Array.isArray(row.comments) ? row.comments : [],
+    activity: Array.isArray(row.activity) ? row.activity : [],
   };
 }
 
