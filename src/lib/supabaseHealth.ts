@@ -34,7 +34,7 @@ export async function checkSupabaseReachability(): Promise<SupabaseHealth> {
     return {
       ok: true,
       level: 'ok',
-      message: `Supabase connected. Live projects available: ${count ?? 0}.`,
+      message: 'Supabase connected.',
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown network error';
