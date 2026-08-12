@@ -394,7 +394,9 @@ function enqueueFailedNotification(payload: unknown) {
   }
 }
 
-let notificationDeliveryEnabled = true;
+// Email notifications are disabled by default. The app can still add comments and updates
+// without attempting to send notification emails from the client.
+let notificationDeliveryEnabled = false;
 let notificationDeliveryDisabledReason: string | null = null;
 
 function toErrorString(value: unknown) {

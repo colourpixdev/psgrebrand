@@ -292,8 +292,8 @@ export function BranchDetailPage() {
 
         {branchLatestUpdates.length > 0 ? (
           <div className="mt-6 grid gap-3 md:grid-cols-2">
-            {branchLatestUpdates.map(({ project, comment }) => (
-              <div key={`${project.id}-${comment.date}-${comment.author}`} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+            {branchLatestUpdates.map(({ project, comment }, index) => (
+              <div key={`${project.id}-update-${index}-${comment.taskId ?? 'general'}`} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{project.branch}</p>
                 <p className="mt-2 text-sm font-semibold text-white">{comment.author}</p>
                 <p className="mt-1 text-sm text-slate-300 line-clamp-3">{comment.message}</p>
@@ -347,8 +347,8 @@ export function BranchDetailPage() {
                   <div>
                     <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Assigned participants</p>
                     <div className="mt-3 space-y-2 text-sm text-slate-200">
-                      {participants.length > 0 ? participants.map((participant) => (
-                        <p key={`${project.id}-${participant.email}`}>{participant.name} · {participant.designation}</p>
+                      {participants.length > 0 ? participants.map((participant, index) => (
+                        <p key={`${project.id}-${participant.email ?? participant.name ?? index}`}>{participant.name} · {participant.designation}</p>
                       )) : <p className="text-slate-400">No participants assigned yet.</p>}
                     </div>
                   </div>
@@ -459,7 +459,7 @@ export function BranchDetailPage() {
                             <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
                             <div className="mt-2 space-y-2">
                               {taskComments.length > 0 ? taskComments.map((c, i) => (
-                                <div key={`${taskKey}-c-${i}`} className="rounded-2xl bg-slate-950/80 p-3">
+                                <div key={`${taskKey}-comment-${i}-${c.taskId ?? 'general'}`} className="rounded-2xl bg-slate-950/80 p-3">
                                   <p className="text-xs text-slate-400">{c.date}</p>
                                   <p className="mt-1 font-medium text-white">{c.author}</p>
                                   <p className="mt-1 text-slate-300">{c.message}</p>
