@@ -786,7 +786,7 @@ export function ProjectDetailPage() {
                         type="button"
                         disabled={reorderTaskMutation.isPending || index === 0}
                         onClick={() => reorderTaskMutation.mutate({ task, direction: 'up' })}
-                        className="rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-700/60 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Move up
                       </button>
@@ -794,11 +794,11 @@ export function ProjectDetailPage() {
                         type="button"
                         disabled={reorderTaskMutation.isPending || index === mergedTasks.length - 1}
                         onClick={() => reorderTaskMutation.mutate({ task, direction: 'down' })}
-                        className="rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-700/60 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Move down
                       </button>
-                      {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); setEditingTaskAssigneeEmails(task.assignees?.map((assignee) => assignee.email) ?? (task.assigneeEmail ? [task.assigneeEmail] : [])); }} className="rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-700/60">Edit</button> : null}
+                      {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); setEditingTaskAssigneeEmails(task.assignees?.map((assignee) => assignee.email) ?? (task.assigneeEmail ? [task.assigneeEmail] : [])); }} className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600">Edit</button> : null}
                       {canDeleteTasks ? <button type="button" disabled={deleteTaskMutation.isPending} onClick={() => deleteTaskMutation.mutate(task)} className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
                       <button
                         type="button"
@@ -848,7 +848,7 @@ export function ProjectDetailPage() {
                                     type="button"
                                     disabled={previewMutation.isPending}
                                     onClick={() => previewMutation.mutate(file)}
-                                    className="rounded-xl border border-white/10 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-slate-700/60 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="rounded-xl border border-slate-700 bg-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     Preview
                                   </button>
@@ -857,7 +857,7 @@ export function ProjectDetailPage() {
                                   type="button"
                                   disabled={downloadMutation.isPending}
                                   onClick={() => downloadMutation.mutate(file)}
-                                  className="rounded-xl border border-white/10 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-slate-700/60 disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="rounded-xl border border-slate-700 bg-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   Download
                                 </button>
@@ -866,7 +866,7 @@ export function ProjectDetailPage() {
                                     type="button"
                                     disabled={renameFileMutation.isPending || deleteFileMutation.isPending}
                                     onClick={() => renameFileMutation.mutate({ file, nextName: file.name })}
-                                    className="rounded-xl border border-white/10 bg-slate-800/60 px-2 py-1 text-[11px] font-semibold text-slate-200 transition hover:bg-slate-700/60 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="rounded-xl border border-slate-700 bg-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     Rename
                                   </button>
