@@ -57,8 +57,8 @@ export function DashboardPage() {
         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">PSG Branch Rebrand</p>
         <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-white">{greeting()}, {user?.name?.split(' ')[0] || 'there'}</h2>
-            <p className="mt-2 text-sm text-slate-400">Track PSG branch rebrand progress across South Africa and Namibia.</p>
+            <h2 className="text-2xl font-semibold text-slate-900">{greeting()}, {user?.name?.split(' ')[0] || 'there'}</h2>
+            <p className="mt-2 text-sm text-slate-600">Track PSG branch rebrand progress across South Africa and Namibia.</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <p className="text-sm text-slate-400">Metrics are scoped to your assigned branches.</p>
