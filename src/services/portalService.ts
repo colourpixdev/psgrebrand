@@ -394,6 +394,51 @@ function enqueueFailedNotification(payload: unknown) {
   }
 }
 
+let notificationDeliveryEnabled = true;
+let notificationDeliveryDisabledReason: string | null = null;
+
+function toErrorString(value: unknown) {
+  if (!value) {
+    return '';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (value instanceof Error) {
+    return value.message;
+  }
+
+  if (typeof value === 'object' && value !== null && 'message' in value && typeof (value as any).message === 'string') {
+    return (value as any).message;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function shouldDisableNotificationDelivery(error: unknown) {
+  const message = toErrorString(error).toLowerCase();
+  return [
+    'not_found',
+    'not found',
+    '404',
+    'function was not found',
+    'deploy',
+    'missing',
+  ].some((term) => message.includes(term));
+}
+
+function disableNotificationDelivery(reason: string) {
+  notificationDeliveryEnabled = false;
+  notificationDeliveryDisabledReason = reason;
+  console.warn('Project notification delivery disabled:', reason);
+}
+
 async function flushNotificationQueue(client: typeof supabase) {
   if (!client) return;
   if (typeof localStorage === 'undefined') return;
@@ -408,11 +453,21 @@ async function flushNotificationQueue(client: typeof supabase) {
       try {
         const { error } = await client.functions.invoke('notify-project-change', { body: item.payload as any });
         if (error) {
-          console.warn('Queued notification failed to send.', error.message);
+          const errorMessage = toErrorString(error);
+          if (shouldDisableNotificationDelivery(errorMessage)) {
+            disableNotificationDelivery(errorMessage);
+            break;
+          }
+          console.warn('Queued notification failed to send.', errorMessage);
           remaining.push(item);
         }
       } catch (err) {
-        console.warn('Queued notification failed to send.', err);
+        const errorMessage = toErrorString(err);
+        if (shouldDisableNotificationDelivery(errorMessage)) {
+          disableNotificationDelivery(errorMessage);
+          break;
+        }
+        console.warn('Queued notification failed to send.', errorMessage);
         remaining.push(item);
       }
     }
@@ -433,7 +488,7 @@ async function flushNotificationQueue(client: typeof supabase) {
 async function notifyProjectChange(input: ProjectChangeNotificationInput) {
   const client = supabase;
 
-  if (!client) {
+  if (!client || !notificationDeliveryEnabled) {
     return;
   }
 
@@ -455,7 +510,12 @@ async function notifyProjectChange(input: ProjectChangeNotificationInput) {
     try {
       const { error } = await client.functions.invoke('notify-project-change', { body: payload });
       if (error) {
-        console.warn('Project notification email could not be sent.', error.message);
+        const errorMessage = toErrorString(error);
+        if (shouldDisableNotificationDelivery(errorMessage)) {
+          disableNotificationDelivery(errorMessage);
+          return;
+        }
+        console.warn('Project notification email could not be sent.', errorMessage);
         enqueueFailedNotification(payload);
         return;
       }
@@ -463,7 +523,12 @@ async function notifyProjectChange(input: ProjectChangeNotificationInput) {
       // On success attempt to flush any previously queued notifications.
       await flushNotificationQueue(client);
     } catch (err) {
-      console.warn('Project notification email could not be sent.', err);
+      const errorMessage = toErrorString(err);
+      if (shouldDisableNotificationDelivery(errorMessage)) {
+        disableNotificationDelivery(errorMessage);
+        return;
+      }
+      console.warn('Project notification email could not be sent.', errorMessage);
       enqueueFailedNotification(payload);
     }
   })();
