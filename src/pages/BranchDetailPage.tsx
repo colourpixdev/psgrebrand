@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileText, Download, Eye } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
 import { addProjectComment, getProjectFileUrl, getProjects, renameProjectFile } from '../services/portalService';
@@ -61,6 +61,7 @@ function projectParticipants(project: Project) {
 export function BranchDetailPage() {
   const { branchId } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const { data: branches = [], isLoading: isLoadingBranches } = useQuery({
     queryKey: ['branches'],
@@ -347,7 +348,7 @@ export function BranchDetailPage() {
                     <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Edit branch project</Link>
+                    <button type="button" onClick={() => navigate(`/projects/${project.id}`)} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
                   </div>
                 </div>
 
