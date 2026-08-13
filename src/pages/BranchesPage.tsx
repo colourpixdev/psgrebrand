@@ -67,10 +67,10 @@ function ParticipantFields({ contacts, onChange }: { contacts: ContactPerson[]; 
     <div className="mb-6 border-t border-white/10 pt-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-slate-200">Additional contact persons</p>
-          <p className="mt-1 text-xs text-slate-500">Add other contact persons and their designations.</p>
+          <p className="text-sm font-medium text-white">Additional contact persons</p>
+          <p className="mt-1 text-xs text-white">Add other contact persons and their designations.</p>
         </div>
-        <button type="button" onClick={() => onChange([...contacts, { name: '', email: '', phone: '', designation: '' }])} className="rounded-xl border border-sky-400/30 px-3 py-2 text-sm text-sky-200 transition hover:bg-sky-400/10">Add contact person</button>
+        <button type="button" onClick={() => onChange([...contacts, { name: '', email: '', phone: '', designation: '' }])} className="rounded-xl border border-sky-400/30 px-3 py-2 text-sm text-white transition hover:bg-sky-400/10">Add contact person</button>
       </div>
       <div className="mt-3 space-y-3">
         {contacts.map((contact, index) => (
@@ -630,7 +630,7 @@ export function BranchesPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">Contact Person designation</label>
+                <label className="mb-1 block text-sm font-medium text-white">Contact Person designation</label>
                 <input
                   type="text"
                   value={formData.contactDesignation}
