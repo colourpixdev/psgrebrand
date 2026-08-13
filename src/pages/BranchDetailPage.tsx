@@ -238,7 +238,7 @@ export function BranchDetailPage() {
               <div className="mb-3">
                 <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">← Back to branches</Link>
               </div>
-              <h2 className="mt-2 text-3xl font-semibold text-white">{branch.name}</h2>
+              <h2 className="mt-2 text-3xl font-semibold text-slate-900">{branch.name}</h2>
               <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
               <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
             </div>
