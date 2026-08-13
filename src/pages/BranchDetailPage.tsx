@@ -120,6 +120,7 @@ export function BranchDetailPage() {
     return initialCollapsed;
   });
   const thumbnailRequestedKeys = useRef(new Set<string>());
+  const previousTaskIdsRef = useRef<Set<string>>(new Set());
   const queryClient = useQueryClient();
 
   const quickUpdateMutation = useMutation({
@@ -220,20 +221,37 @@ export function BranchDetailPage() {
   }, [branchFiles, thumbnails]);
 
   useEffect(() => {
-    // Only add newly discovered tasks as collapsed, preserve user's expansion choices
-    setCollapsedTasks((prev) => {
-      const next = new Set(prev);
-      branchProjects.forEach((project) => {
-        project.tasks.forEach((task) => {
-          const taskId = `${project.id}-${task.id}`;
-          // Only add if this is a new task (not previously seen)
-          if (!prev.has(taskId)) {
-            next.add(taskId);
-          }
-        });
+    // Build the set of all current task IDs in branchProjects
+    const currentTaskIds = new Set<string>();
+    branchProjects.forEach((project) => {
+      project.tasks.forEach((task) => {
+        currentTaskIds.add(`${project.id}-${task.id}`);
       });
+    });
+
+    // Only add truly NEW tasks (not in previous data) as collapsed, preserve user's expansion choices
+    setCollapsedTasks((prev) => {
+      const next = new Set<string>();
+      
+      // Keep all previously collapsed tasks that still exist in current data
+      prev.forEach((taskId) => {
+        if (currentTaskIds.has(taskId)) {
+          next.add(taskId);
+        }
+      });
+      
+      // Add any tasks that are new (weren't in previous data)
+      currentTaskIds.forEach((taskId) => {
+        if (!previousTaskIdsRef.current.has(taskId)) {
+          next.add(taskId);
+        }
+      });
+      
       return next;
     });
+
+    // Update the ref with current task IDs for next comparison
+    previousTaskIdsRef.current = currentTaskIds;
   }, [branchProjects]);
 
   if (isLoadingBranches || isLoadingProjects) {
