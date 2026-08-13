@@ -121,6 +121,7 @@ export function BranchDetailPage() {
   });
   const thumbnailRequestedKeys = useRef(new Set<string>());
   const previousTaskIdsRef = useRef<Set<string>>(new Set());
+  const isFirstMountRef = useRef(true);
   const queryClient = useQueryClient();
 
   const quickUpdateMutation = useMutation({
@@ -221,7 +222,18 @@ export function BranchDetailPage() {
   }, [branchFiles, thumbnails]);
 
   useEffect(() => {
-    // Build the set of all current task IDs in branchProjects
+    // On first mount, just track the task IDs and preserve initial collapsed state
+    if (isFirstMountRef.current) {
+      branchProjects.forEach((project) => {
+        project.tasks.forEach((task) => {
+          previousTaskIdsRef.current.add(`${project.id}-${task.id}`);
+        });
+      });
+      isFirstMountRef.current = false;
+      return;
+    }
+
+    // On subsequent updates, only add truly NEW tasks as collapsed, preserve user's expansion choices
     const currentTaskIds = new Set<string>();
     branchProjects.forEach((project) => {
       project.tasks.forEach((task) => {
@@ -229,7 +241,6 @@ export function BranchDetailPage() {
       });
     });
 
-    // Only add truly NEW tasks (not in previous data) as collapsed, preserve user's expansion choices
     setCollapsedTasks((prev) => {
       const next = new Set<string>();
       
