@@ -17,13 +17,25 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+const passwordChangeSchema = z.object({
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 type LoginFormValues = z.infer<typeof loginSchema>;
+type PasswordChangeValues = z.infer<typeof passwordChangeSchema>;
 
 export function LoginPage() {
-  const { signInAs, signInWithEmailPassword } = useAuth();
+  const { signInAs, signInWithEmailPassword, passwordChangeRequired, updatePassword } = useAuth();
   const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(null);
+  const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null);
   const [setupBannerDismissed, setSetupBannerDismissed] = useState(false);
+  const [loginEmail, setLoginEmail] = useState<string>('');
+  const [loginPassword, setLoginPassword] = useState<string>('');
   const enablePreviewAuth = import.meta.env.DEV || import.meta.env.VITE_ENABLE_PREVIEW_AUTH === 'true';
 
   const seededAuthEmails = [
@@ -41,19 +53,45 @@ export function LoginPage() {
     },
   });
 
+  const { register: registerPasswordChange, handleSubmit: handlePasswordSubmit, formState: { errors: passwordErrors, isSubmitting: isPasswordSubmitting }, reset: resetPasswordForm } = useForm<PasswordChangeValues>({
+    resolver: zodResolver(passwordChangeSchema),
+    defaultValues: {
+      newPassword: '',
+      confirmPassword: '',
+    },
+  });
+
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
+    setLoginEmail(values.email);
+    setLoginPassword(values.password);
 
     try {
       await signInWithEmailPassword(values.email, values.password);
-      navigate('/');
+      // If passwordChangeRequired is true, the dialog will show automatically
+      if (!passwordChangeRequired) {
+        navigate('/');
+      }
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Unable to sign in. Check your credentials and Supabase config.');
     }
   });
 
+  const onPasswordChange = handlePasswordSubmit(async (values) => {
+    setPasswordChangeError(null);
+
+    try {
+      // The special registration password is "psgrebrand"
+      await updatePassword('psgrebrand', values.newPassword);
+      resetPasswordForm();
+      navigate('/');
+    } catch (error) {
+      setPasswordChangeError(error instanceof Error ? error.message : 'Unable to update password.');
+    }
+  });
+
   return (
-    <div className="grid min-h-[calc(100vh-3rem)] place-items-center px-4 py-8">
+    <div className="grid min-h-[calc(100vh-3rem)] place-items-center px-4 py-8 bg-slate-950">
       <div className="grid w-full max-w-6xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
         <section className="rounded-[2rem] border border-white/10 bg-white/6 p-8 shadow-soft backdrop-blur-xl">
           <div className="flex items-start gap-4">
@@ -85,16 +123,16 @@ export function LoginPage() {
 
           <div className="mt-6 grid gap-3 rounded-3xl border border-white/10 bg-slate-950/45 p-4 text-sm text-slate-300">
             <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Current workspace</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-cyan-200">Current workspace</p>
               <p className="mt-1 font-medium text-white">{productBrand.workspace}</p>
             </div>
-            <p className="text-sm leading-6 text-slate-400">Sign in to see the projects, requests, files, questions, and project journal entries that belong to your workspace.</p>
+            <p className="text-sm leading-6 text-cyan-200">Sign in to see the projects, requests, files, questions, and project journal entries that belong to your workspace.</p>
           </div>
 
           <form onSubmit={onSubmit} className="mt-6 rounded-3xl border border-white/10 bg-slate-950/55 p-5">
             <div>
               <p className="text-sm font-semibold text-white">Sign in to your workspace</p>
-              <p className="mt-1 text-sm text-slate-400">Use your work email and password to continue.</p>
+              <p className="mt-1 text-sm text-cyan-200">Use your work email and password to continue.</p>
             </div>
             <div className="mt-4 grid gap-4">
               <label className="grid gap-2 text-sm text-slate-300">
@@ -196,7 +234,7 @@ export function LoginPage() {
         <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-6 shadow-soft backdrop-blur-xl">
           <p className="text-xs uppercase tracking-[0.3em] text-teal-200/80">Workspace access</p>
           <h3 className="mt-3 text-2xl font-semibold text-white">This is a private client workspace instance.</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
+          <p className="mt-2 text-sm leading-6 text-cyan-200">
             Sign in with the account assigned to your active workspace. Public enquiries and commercial onboarding are handled outside this operational environment before users are invited here.
           </p>
           <div className="mt-5 grid gap-3 text-sm text-slate-300">
@@ -206,10 +244,64 @@ export function LoginPage() {
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <p className="font-semibold text-white">Operational records stay here</p>
-              <p className="mt-1 text-slate-400">Projects, files, questions, approvals, updates, and reports remain tied to this workspace instance.</p>
+              <p className="mt-1 text-cyan-200">Projects, files, questions, approvals, updates, and reports remain tied to this workspace instance.</p>
             </div>
           </div>
         </section>
+
+        {/* Password Change Required Dialog */}
+        {passwordChangeRequired && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-slate-950 p-8 shadow-2xl">
+              <h2 className="text-2xl font-semibold text-white">Change Your Password</h2>
+              <p className="mt-2 text-sm text-slate-400">
+                Welcome! You've been registered with a temporary password. Please set a permanent password to continue.
+              </p>
+
+              <form onSubmit={onPasswordChange} className="mt-6 space-y-4">
+                <label className="grid gap-2 text-sm text-slate-300">
+                  New Password
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    {...registerPasswordChange('newPassword')}
+                    className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-300 focus:border-sky-400/50"
+                    placeholder="••••••••"
+                  />
+                  {passwordErrors.newPassword ? (
+                    <span className="text-xs text-red-300">{passwordErrors.newPassword.message}</span>
+                  ) : null}
+                </label>
+
+                <label className="grid gap-2 text-sm text-slate-300">
+                  Confirm Password
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    {...registerPasswordChange('confirmPassword')}
+                    className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-300 focus:border-sky-400/50"
+                    placeholder="••••••••"
+                  />
+                  {passwordErrors.confirmPassword ? (
+                    <span className="text-xs text-red-300">{passwordErrors.confirmPassword.message}</span>
+                  ) : null}
+                </label>
+
+                {passwordChangeError ? (
+                  <p className="text-sm text-red-300">{passwordChangeError}</p>
+                ) : null}
+
+                <button
+                  type="submit"
+                  disabled={isPasswordSubmitting}
+                  className="mt-6 w-full rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPasswordSubmitting ? 'Setting password...' : 'Set Password & Continue'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

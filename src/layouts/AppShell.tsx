@@ -128,7 +128,7 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
                   className={({ isActive }) =>
                     cn(
                       'grid min-h-14 place-items-center gap-1 rounded-2xl px-1 py-2 text-[0.68rem] font-semibold transition',
-                      isActive ? 'bg-sky-500/18 text-sky-100 ring-1 ring-sky-400/25' : 'text-slate-400 hover:bg-white/5 hover:text-white',
+                      isActive ? 'bg-slate-900/60 text-white ring-1 ring-slate-700/30' : 'text-slate-400 hover:bg-white/5 hover:text-white',
                     )
                   }
                 >

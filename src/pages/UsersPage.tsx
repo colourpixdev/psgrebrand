@@ -18,7 +18,7 @@ export function UsersPage() {
       </section>
 
       <section className="rounded-[2rem] border border-teal-300/15 bg-teal-300/8 p-5 text-sm text-slate-300 shadow-soft">
-        <p className="font-semibold text-white">Administration model</p>
+        <p className="font-semibold text-slate-900">Administration model</p>
         <p className="mt-2 leading-6 text-slate-400">
           PSG Rebrand owns platform-level configuration and support routing. Workspace administrators manage their client workspaces, users, branding approvals, and project data. Client administrators manage their own client-side users and approvals inside the workspace boundaries. Individual users can maintain profile identity details such as avatar, title, company, and organisation logo.
         </p>

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Role, UserRecord } from '../types/domain';
-import { loadSessionUser, sessionToUser, signInWithEmailPassword, signOutSession } from '../services/authService';
+import { loadSessionUser, sessionToUser, signInWithEmailPassword, signOutSession, updateUserPassword } from '../services/authService';
 import { updateOwnProfileIdentity } from '../services/userService';
 import { supabase } from '../lib/supabase';
 import { roleLabels } from '../constants/portal';
@@ -11,7 +11,9 @@ interface AuthContextValue {
   user: UserRecord | null;
   isLoading: boolean;
   roleLabel: string;
+  passwordChangeRequired: boolean;
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   signInAs: (role: Role) => void;
   updateProfileIdentity: (identity: EditableProfileIdentity) => Promise<'supabase' | 'local'>;
   signOut: () => Promise<void>;
@@ -22,6 +24,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserRecord | null>(null);
   const [isLoading, setIsLoading] = useState(Boolean(supabase));
+  const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -59,10 +62,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(() => ({
     user,
     isLoading,
+    passwordChangeRequired,
     roleLabel: user ? roleLabels[user.role] : 'Guest',
     signInWithEmailPassword: async (email, password) => {
-      const sessionUser = await signInWithEmailPassword(email, password);
-      setUser(sessionUser);
+      const result = await signInWithEmailPassword(email, password);
+      setUser(result.user);
+      setPasswordChangeRequired(result.passwordChangeRequired);
+    },
+    updatePassword: async (currentPassword, newPassword) => {
+      await updateUserPassword(currentPassword, newPassword);
+      setPasswordChangeRequired(false);
     },
     signInAs: (role) => {
       setUser(enrichWorkspaceAccess({
@@ -70,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role,
         email: role === 'colourpix_admin' ? platformOwnerEmail : '',
       }));
+      setPasswordChangeRequired(false);
     },
     updateProfileIdentity: async (identity) => {
       if (!user) {
@@ -98,8 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut: async () => {
       await signOutSession();
       setUser(null);
+      setPasswordChangeRequired(false);
     },
-  }), [isLoading, user]);
+  }), [isLoading, user, passwordChangeRequired]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

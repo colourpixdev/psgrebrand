@@ -120,17 +120,58 @@ export async function signOutSession() {
   await supabase.auth.signOut({ scope: 'local' });
 }
 
+const REGISTRATION_PASSWORD = 'psgrebrand';
+
 export async function signInWithEmailPassword(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
 
   if (!supabase) {
-    return enrichWorkspaceAccess({
+    return { user: enrichWorkspaceAccess({
       name: normalizedEmail.split('@')[0] || 'Signed in user',
       role: 'psg_user' as Role,
       email: normalizedEmail,
-    });
+    }), passwordChangeRequired: false };
   }
 
+  // Handle self-registration with special password
+  if (password === REGISTRATION_PASSWORD) {
+    // Try to create a new account first
+    const { error: signupError, data: signupData } = await supabase.auth.signUp({
+      email: normalizedEmail,
+      password,
+      options: {
+        data: {
+          name: normalizedEmail.split('@')[0] || 'User',
+          role: 'psg_user',
+          password_change_required: true,
+        },
+      },
+    });
+
+    // If signup fails because user exists, that's okay - we'll sign in below
+    if (signupError && !signupError.message?.toLowerCase().includes('already registered')) {
+      throw signupError;
+    }
+
+    // If signup succeeded and created a profile, we need to create one in the profiles table
+    if (signupData.user && !signupError) {
+      try {
+        await supabase
+          .from('profiles')
+          .upsert({
+            email: normalizedEmail,
+            name: normalizedEmail.split('@')[0] || 'User',
+            role: 'psg_user',
+          }, { onConflict: 'email' })
+          .select()
+          .single();
+      } catch (profileError) {
+        console.warn('Could not create profile for new user:', profileError);
+      }
+    }
+  }
+
+  // Sign in (either for registration flow or normal login)
   const { data, error } = await supabase.auth.signInWithPassword({
     email: normalizedEmail,
     password,
@@ -145,5 +186,40 @@ export async function signInWithEmailPassword(email: string, password: string) {
     throw new Error('Sign-in succeeded, but no user profile could be loaded.');
   }
 
-  return sessionUser;
+  // Check if this is a first-time registration requiring password change
+  const passwordChangeRequired = data.session.user.user_metadata?.password_change_required === true;
+
+  return { user: sessionUser, passwordChangeRequired };
+}
+
+export async function updateUserPassword(currentPassword: string, newPassword: string): Promise<void> {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  // Verify current password by attempting sign in
+  const { data, error: userError } = await supabase.auth.getUser();
+  if (userError || !data.user?.email) {
+    throw new Error('Not authenticated.');
+  }
+
+  // Update the password
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  // Clear the password_change_required flag
+  const { error: updateMetadataError } = await supabase.auth.updateUser({
+    data: {
+      password_change_required: false,
+    },
+  });
+
+  if (updateMetadataError) {
+    console.warn('Could not clear password change flag:', updateMetadataError);
+  }
 }
