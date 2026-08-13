@@ -109,7 +109,15 @@ export function BranchDetailPage() {
   const [renameDraft, setRenameDraft] = useState('');
   const [quickUpdateDrafts, setQuickUpdateDrafts] = useState<Record<string, { taskId: string; message: string }>>({});
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
-  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set());
+  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(() => {
+    const initialCollapsed = new Set<string>();
+    branchProjects.forEach((project) => {
+      project.tasks.forEach((task) => {
+        initialCollapsed.add(`${project.id}-${task.id}`);
+      });
+    });
+    return initialCollapsed;
+  });
   const thumbnailRequestedKeys = useRef(new Set<string>());
   const queryClient = useQueryClient();
 
@@ -209,6 +217,16 @@ export function BranchDetailPage() {
       });
     });
   }, [branchFiles, thumbnails]);
+
+  useEffect(() => {
+    const allTaskIds = new Set<string>();
+    branchProjects.forEach((project) => {
+      project.tasks.forEach((task) => {
+        allTaskIds.add(`${project.id}-${task.id}`);
+      });
+    });
+    setCollapsedTasks(allTaskIds);
+  }, [branchProjects]);
 
   if (isLoadingBranches || isLoadingProjects) {
     return <div className="rounded-[2rem] border border-white/10 bg-white/6 p-6 text-sm text-slate-300 shadow-soft">Loading branch workspace...</div>;
