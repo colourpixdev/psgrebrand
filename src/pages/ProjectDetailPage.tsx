@@ -567,44 +567,44 @@ export function ProjectDetailPage() {
   return (
     <div className="relative space-y-6">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 rounded-[2.5rem] bg-[radial-gradient(circle_at_20%_15%,rgba(34,211,238,0.25),transparent_55%),radial-gradient(circle_at_85%_20%,rgba(56,189,248,0.22),transparent_50%)]" />
-      <section className="rounded-[2rem] border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
+      <section className="rounded-[2rem] border border-slate-700/50 bg-slate-900/80 p-6 shadow-soft backdrop-blur-sm">
         <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Branch reference</p>
         <h2 className="mt-2 text-3xl font-semibold text-white">{selectedProject.branch}</h2>
         <p className="mt-2 text-sm text-slate-400">
           {selectedProject.town}, {selectedProject.province} · Manager {selectedProject.manager}
         </p>
-        <div className="mt-5 grid gap-3 md:grid-cols-4 text-sm text-slate-300">
+        <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4 text-sm text-slate-300">
           {canEditNotes ? (
             <label className="grid gap-2">
-              <span>Current Status</span>
+              <span className="text-slate-100">Current Status</span>
               <select value={currentStageDraft} onChange={(event) => setCurrentStageDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50">
                 {summaryStageOptions.map((stageName) => <option key={stageName} value={stageName}>{stageName}</option>)}
               </select>
             </label>
-          ) : <div>Current Status: <span className="text-white">{selectedProject.currentStage}</span></div>}
+          ) : <div className="text-slate-200">Current Status: <span className="text-white">{selectedProject.currentStage}</span></div>}
 
           {canEditNotes ? (
             <label className="grid gap-2">
-              <span>Target Date</span>
+              <span className="text-slate-100">Target Date</span>
               <input value={targetDateDraft} onChange={(event) => setTargetDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
             </label>
-          ) : <div>Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>}
+          ) : <div className="text-slate-200">Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>}
 
           {canEditNotes ? (
             <label className="grid gap-2">
-              <span>Installation Date</span>
+              <span className="text-slate-100">Installation Date</span>
               <input value={installationDateDraft} onChange={(event) => setInstallationDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
             </label>
-          ) : <div>Installation Date: <span className="text-white">{selectedProject.installationDate}</span></div>}
+          ) : <div className="text-slate-200">Installation Date: <span className="text-white">{selectedProject.installationDate}</span></div>}
 
           {canEditNotes ? (
             <label className="grid gap-2">
-              <span>Completion Date</span>
+              <span className="text-slate-100">Completion Date</span>
               <input value={completionDateDraft} onChange={(event) => setCompletionDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
             </label>
-          ) : <div>Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>}
+          ) : <div className="text-slate-200">Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>}
 
-          <div className="md:col-span-4">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
+          <div className="md:col-span-2 lg:col-span-4 text-slate-200">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
         </div>
         {canEditNotes ? (
           <div className="mt-3 flex">
