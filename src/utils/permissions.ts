@@ -130,14 +130,14 @@ export const rolePolicies: Record<Role, RolePolicy> = {
     notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: [] },
   },
   psg_head_office: {
-    projectAccess: { canViewAssignedProjects: true, canViewAllProjects: false, canCreateProjects: false, canArchiveProjects: false, canDeleteProjects: false, canExportProject: true, canDuplicateProject: false },
+    projectAccess: { canViewAssignedProjects: true, canViewAllProjects: true, canCreateProjects: false, canArchiveProjects: false, canDeleteProjects: false, canExportProject: true, canDuplicateProject: false },
     workflow: { canChangeStage: false, canChangeStatus: false, canChangeProgress: false, canMarkCompleted: false, canReopenCompletedProjects: false, canChangeTargetDates: false },
-    communication: { canCreateComments: false, canReply: false, canEditOwnComments: false, canDeleteOwnComments: false, canDeleteOthersComments: false, canAskQuestions: false, canAnswerQuestions: false, canCloseQuestions: false, canMentionUsers: false, canCreateInternalNotes: false },
+    communication: { canCreateComments: true, canReply: true, canEditOwnComments: true, canDeleteOwnComments: true, canDeleteOthersComments: false, canAskQuestions: true, canAnswerQuestions: false, canCloseQuestions: false, canMentionUsers: true, canCreateInternalNotes: false },
     files: { canUploadFiles: false, canDownloadFiles: true, canDeleteFiles: false, canReplaceFiles: false, allowedFileTypes: [] },
     tasks: { canCreateTasks: false, canAssignTasks: false, canCompleteTasks: false, canDeleteTasks: false, canReassignTasks: false },
-    reports: { canViewReports: false, canExportReports: false, canCreateCustomReports: false, canScheduleReports: false },
+    reports: { canViewReports: true, canExportReports: true, canCreateCustomReports: false, canScheduleReports: false },
     userManagement: { canInviteUsers: false, canDisableUsers: false, canEditUsers: false, canResetPasswords: false },
-    notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: [] },
+    notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: ['question', 'project_updated'] },
   },
   psg_branch_manager: {
     projectAccess: { canViewAssignedProjects: true, canViewAllProjects: false, canCreateProjects: false, canArchiveProjects: false, canDeleteProjects: false, canExportProject: true, canDuplicateProject: false },
