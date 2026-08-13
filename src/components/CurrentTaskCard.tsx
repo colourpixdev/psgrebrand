@@ -27,27 +27,27 @@ export default function CurrentTaskCard({ project, canSave = true, onSave }: Pro
 
   return (
     <div className="current-task-card rounded-2xl border border-white/10 bg-slate-950/65 p-4 text-white">
-      <p className="text-xs uppercase tracking-[0.12em]">Current task</p>
+      <p className="text-xs uppercase tracking-[0.12em] text-sky-300">Current task</p>
       <div className="mt-3">
-        <p className="font-semibold">{outstanding ? outstanding.text : 'No outstanding tasks'}</p>
-        <p className="mt-1 text-xs text-white">
+        <p className="font-semibold text-white">{outstanding ? outstanding.text : 'No outstanding tasks'}</p>
+        <p className="mt-1 text-xs text-sky-100">
           {outstanding ? `Assigned: ${outstanding.assignees?.map((a) => a.name).join(', ') || outstanding.assigneeName || 'unassigned'}` : 'All tasks complete'}
         </p>
-        <p className="mt-2 text-xs text-white">Stage: {project.currentStage} · Updated: {project.updatedAt || 'Unknown'}</p>
+        <p className="mt-2 text-xs text-sky-100">Stage: {project.currentStage} · Updated: {project.updatedAt || 'Unknown'}</p>
       </div>
 
       {onSave ? (
         <div className="mt-6 rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-white">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-white">Quick update</p>
-              <p className="mt-1 text-xs text-white">Capture progress or issues for this branch at the top of the page.</p>
+              <p className="text-sm font-semibold text-sky-300">Quick update</p>
+              <p className="mt-1 text-xs text-sky-100">Capture progress or issues for this branch at the top of the page.</p>
             </div>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">Fast entry</span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-sky-200">Fast entry</span>
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-[1.4fr_1fr]">
-            <label className="grid gap-2 text-sm text-white">
+            <label className="grid gap-2 text-sm text-sky-300">
               Related task
               <select
                 value={taskId}
@@ -60,7 +60,7 @@ export default function CurrentTaskCard({ project, canSave = true, onSave }: Pro
                 ))}
               </select>
             </label>
-            <label className="grid gap-2 text-sm text-white">
+            <label className="grid gap-2 text-sm text-sky-300">
               Update message
               <textarea
                 value={message}
@@ -89,7 +89,7 @@ export default function CurrentTaskCard({ project, canSave = true, onSave }: Pro
             >
               Save quick update
             </button>
-            <p className="text-xs text-slate-300">This update is added to the project journal and linked to the selected task.</p>
+            <p className="text-xs text-sky-100">This update is added to the project journal and linked to the selected task.</p>
           </div>
         </div>
       ) : null}

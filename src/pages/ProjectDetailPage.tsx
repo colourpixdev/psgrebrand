@@ -624,10 +624,10 @@ export function ProjectDetailPage() {
         {branch ? (
           <div className="mt-5 border-t border-white/10 pt-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Branch and contact persons</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-300">Branch and contact persons</h3>
               <Link to={`/branches/${branch.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-slate-800/60 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-slate-700/60">View branch details</Link>
             </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-4 text-sm text-slate-300">
+            <div className="mt-3 grid gap-3 md:grid-cols-4 text-sm text-sky-200">
               <div>Branch: <span className="text-white">{branch.name}</span></div>
               <div>Division: <span className="text-white">{branch.division}</span></div>
               <div>Town/Province: <span className="text-white">{branch.town}, {branch.province}</span></div>
@@ -638,13 +638,13 @@ export function ProjectDetailPage() {
                 {branchParticipants.map((participant, index) => (
                   <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3">
                     <p className="font-medium text-white">{participant.name}</p>
-                    <p className="mt-1 text-sm text-slate-400">{participant.designation}</p>
-                    {participant.email ? <p className="mt-2 text-xs text-slate-400">{participant.email}</p> : null}
-                    {participant.phone ? <p className="mt-1 text-xs text-slate-400">{participant.phone}</p> : null}
+                    <p className="mt-1 text-sm text-sky-200">{participant.designation}</p>
+                    {participant.email ? <p className="mt-2 text-xs text-sky-100">{participant.email}</p> : null}
+                    {participant.phone ? <p className="mt-1 text-xs text-sky-100">{participant.phone}</p> : null}
                   </div>
                 ))}
               </div>
-            ) : <p className="mt-4 text-sm text-slate-400">No branch contact persons have been added yet.</p>}
+            ) : <p className="mt-4 text-sm text-sky-100">No branch contact persons have been added yet.</p>}
           </div>
         ) : null}
 
