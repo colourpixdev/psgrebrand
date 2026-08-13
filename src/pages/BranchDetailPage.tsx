@@ -220,13 +220,20 @@ export function BranchDetailPage() {
   }, [branchFiles, thumbnails]);
 
   useEffect(() => {
-    const allTaskIds = new Set<string>();
-    branchProjects.forEach((project) => {
-      project.tasks.forEach((task) => {
-        allTaskIds.add(`${project.id}-${task.id}`);
+    // Only add newly discovered tasks as collapsed, preserve user's expansion choices
+    setCollapsedTasks((prev) => {
+      const next = new Set(prev);
+      branchProjects.forEach((project) => {
+        project.tasks.forEach((task) => {
+          const taskId = `${project.id}-${task.id}`;
+          // Only add if this is a new task (not previously seen)
+          if (!prev.has(taskId)) {
+            next.add(taskId);
+          }
+        });
       });
+      return next;
     });
-    setCollapsedTasks(allTaskIds);
   }, [branchProjects]);
 
   if (isLoadingBranches || isLoadingProjects) {
