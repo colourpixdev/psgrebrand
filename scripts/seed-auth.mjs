@@ -85,6 +85,11 @@ const SEED_USERS = [
     user_metadata: { name: 'PSG Head Office', role: 'psg_head_office' },
   },
   {
+    email: 'judith@psg.co.za',
+    password: 'psgrebrand',
+    user_metadata: { name: 'Judith', role: 'psg_head_office' },
+  },
+  {
     email: 'john.smith@psg.co.za',
     user_metadata: { name: 'John Smith', role: 'psg_branch_manager', branch: 'PSG Hermanus' },
   },
@@ -101,9 +106,10 @@ async function seedAuthUsers() {
   console.log(`\nSeeding ${SEED_USERS.length} Supabase Auth users…\n`);
 
   for (const seed of SEED_USERS) {
+    const password = seed.password || DEFAULT_PASSWORD;
     const { data, error } = await adminClient.auth.admin.createUser({
       email: seed.email,
-      password: DEFAULT_PASSWORD,
+      password: password,
       email_confirm: true,           // skip the confirmation email step
       user_metadata: seed.user_metadata,
     });
