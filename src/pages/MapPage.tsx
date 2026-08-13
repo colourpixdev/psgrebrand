@@ -182,10 +182,29 @@ function FitProjectBounds({ locations }: { locations: ProjectLocation[] }) {
   return null;
 }
 
+function MapDragGuard({ isActivated }: { isActivated: boolean }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (isActivated) {
+      map.dragging.enable();
+      map.touchZoom.enable();
+      map.doubleClickZoom.enable();
+    } else {
+      map.dragging.disable();
+      map.touchZoom.disable();
+      map.doubleClickZoom.disable();
+    }
+  }, [isActivated, map]);
+
+  return null;
+}
+
 export function MapPage() {
   const { user } = useAuth();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(true);
+  const [mapActivated, setMapActivated] = useState(false);
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: getProjects,
@@ -243,19 +262,24 @@ export function MapPage() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1fr_22rem]">
-        <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 shadow-soft">
+        <div 
+          className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 shadow-soft"
+          onClick={() => setMapActivated(true)}
+          onTouchStart={() => setMapActivated(true)}
+        >
           <MapContainer
             center={[-28.8, 24.8]}
             zoom={5}
             minZoom={4}
             scrollWheelZoom
-            className="h-[34rem] w-full"
+            className="md:h-[34rem] h-[24rem] w-full"
           >
             <TileLayer
               attribution="&copy; OpenStreetMap contributors"
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <FitProjectBounds locations={locations} />
+            <MapDragGuard isActivated={mapActivated} />
             {branches.map((branch) => {
               if (!branch.latitude || !branch.longitude) return null;
               const branchProjects = projectsByBranch[branch.name] || [];
@@ -306,6 +330,13 @@ export function MapPage() {
               </Marker>
             ))}
           </MapContainer>
+          {!mapActivated && (
+            <div className="absolute inset-0 md:hidden flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-[2rem]">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-white">Tap map to scroll</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <aside className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft">
