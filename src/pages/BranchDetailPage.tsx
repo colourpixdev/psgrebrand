@@ -245,20 +245,20 @@ export function BranchDetailPage() {
 
             {branchParticipants.length > 0 && (
               <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
-                <p className="text-xs uppercase tracking-[0.12em] text-sky-300">Contact persons</p>
+                <p className="text-xs uppercase tracking-[0.12em] text-white">Contact persons</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {branchParticipants.slice(0, 4).map((p, i) => (
                     <div key={`${p.email ?? p.name}-${i}`} className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
                       <p className="font-semibold text-white">{p.name}</p>
-                      {p.designation ? <p className="mt-1 text-xs text-sky-200">{p.designation}</p> : null}
+                      {p.designation ? <p className="mt-1 text-xs text-white">{p.designation}</p> : null}
                       {p.phone ? (
-                        <p className="mt-2 text-xs text-sky-100">
-                          <a href={formatPhoneHref(p.phone)} className="hover:text-white">{p.phone}</a>
+                        <p className="mt-2 text-xs text-white">
+                          <a href={formatPhoneHref(p.phone)} className="hover:text-sky-300">{p.phone}</a>
                         </p>
                       ) : null}
                       {p.email ? (
-                        <p className="mt-1 text-xs text-sky-100">
-                          <a href={`mailto:${p.email}`} className="hover:text-white">{p.email}</a>
+                        <p className="mt-1 text-xs text-white">
+                          <a href={`mailto:${p.email}`} className="hover:text-sky-300">{p.email}</a>
                         </p>
                       ) : null}
                     </div>
@@ -336,10 +336,10 @@ export function BranchDetailPage() {
                 <div className="mt-4 border-t border-white/10 pt-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-sky-300">Quick update</p>
-                      <p className="text-xs text-sky-100">Leave a short task update for this project.</p>
+                      <p className="text-sm font-semibold text-white">Quick update</p>
+                      <p className="text-xs text-white">Leave a short task update for this project.</p>
                     </div>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-sky-200">Fast entry</span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">Fast entry</span>
                   </div>
                   <QuickUpdate
                     project={project}
