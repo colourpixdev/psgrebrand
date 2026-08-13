@@ -184,7 +184,7 @@ async function upsertProfile({ userId, name, email, role }) {
     role,
     branch: null,
     company: 'Colourpix CC',
-    profile_title: role === 'colourpix_admin' ? 'Workspace Administrator' : 'Workspace User',
+    profile_title: null,
     workspace_ids: ['*'],
     updated_at: new Date().toISOString(),
   };
