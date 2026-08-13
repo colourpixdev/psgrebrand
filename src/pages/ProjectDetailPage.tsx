@@ -88,6 +88,7 @@ export function ProjectDetailPage() {
   const [answerInstallationDate, setAnswerInstallationDate] = useState('');
   const [taskText, setTaskText] = useState('');
   const [taskAssigneeEmails, setTaskAssigneeEmails] = useState<string[]>([]);
+  const [expandedAccordionTaskIds, setExpandedAccordionTaskIds] = useState<string[]>([]);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskText, setEditingTaskText] = useState('');
   const [editingTaskAssigneeEmails, setEditingTaskAssigneeEmails] = useState<string[]>([]);
@@ -719,7 +720,27 @@ export function ProjectDetailPage() {
         />
 
         <div className="mt-6 border-t border-white/10 pt-6">
-          <h3 className="text-lg font-semibold text-white">Tasks</h3>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h3 className="text-lg font-semibold text-white">Tasks</h3>
+            {mergedTasks.length > 0 && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setExpandedAccordionTaskIds(mergedTasks.map((t) => t.id))}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
+                >
+                  Expand All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExpandedAccordionTaskIds([])}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
+                >
+                  Collapse All
+                </button>
+              </div>
+            )}
+          </div>
           <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem_auto]">
             <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder={canAddTasks ? 'Add next action...' : 'Task updates restricted'} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
             <select multiple value={taskAssigneeEmails} disabled={!canAddTasks} onChange={(event) => setTaskAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
@@ -745,9 +766,39 @@ export function ProjectDetailPage() {
                 done: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25',
               };
               const statusLabels: Record<'pending' | 'open' | 'busy' | 'done', string> = { pending: 'Pending', open: 'Open', busy: 'Busy', done: 'Done' };
+              const isAccordionExpanded = expandedAccordionTaskIds.includes(task.id);
+              const taskBodyId = `task-body-${task.id}`;
 
               return (
-              <div key={task.id} className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200">
+              <div key={task.id} className="rounded-2xl border border-white/10 bg-slate-950/50 overflow-hidden">
+                {/* Accordion Header */}
+                <button
+                  type="button"
+                  aria-expanded={isAccordionExpanded}
+                  aria-controls={taskBodyId}
+                  onClick={() => setExpandedAccordionTaskIds((current) =>
+                    current.includes(task.id) ? current.filter((id) => id !== task.id) : [...current, task.id]
+                  )}
+                  className="w-full px-4 py-3 text-sm text-slate-200 hover:bg-slate-900/40 transition text-left focus:outline-none focus:ring-2 focus:ring-sky-400/50 rounded-2xl"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <span className="shrink-0 text-slate-400">{isAccordionExpanded ? '▼' : '▶'}</span>
+                      <span className={`truncate ${taskStatus === 'done' ? 'text-slate-500 line-through' : 'text-slate-200 font-medium'}`}>{task.text}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 text-xs text-slate-500">
+                      <span className="rounded-full bg-white/5 px-2 py-1">{statusLabels[taskStatus]}</span>
+                      <span>·</span>
+                      <span>{taskUpdates.length} comment{taskUpdates.length === 1 ? '' : 's'}</span>
+                      <span>·</span>
+                      <span>{taskFiles.length} file{taskFiles.length === 1 ? '' : 's'}</span>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Accordion Body */}
+                {isAccordionExpanded && (
+                  <div id={taskBodyId} className="border-t border-white/10 px-4 py-3 text-sm text-slate-200">
                 {editingTaskId === task.id ? (
                   <div className="grid gap-3">
                     <input value={editingTaskText} onChange={(event) => setEditingTaskText(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" />
@@ -942,6 +993,8 @@ export function ProjectDetailPage() {
                     )}
                   </div>
                 ) : null}
+                  </div>
+                )}
               </div>
               );
             }) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No tasks yet. Add a task to create the first timeline stage.</p>}
