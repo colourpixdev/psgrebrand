@@ -317,19 +317,11 @@ export function ReportsPage() {
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft">
-        <div className="grid gap-4 lg:grid-cols-4">
+        <div className="grid gap-4 lg:grid-cols-3">
           <label className="grid gap-2 text-sm text-slate-300 lg:col-span-2">
             Report type
             <select value={reportType} onChange={(event) => setReportType(event.target.value as ReportType)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
               {reportTypes.map((report) => <option key={report.value} value={report.value}>{report.label}</option>)}
-            </select>
-          </label>
-
-          <label className="grid gap-2 text-sm text-slate-300">
-            Active branch
-            <select value={branchName} onChange={(event) => setBranchName(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-              <option value="all">All branches</option>
-              {availableBranches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
             </select>
           </label>
 
@@ -380,11 +372,11 @@ export function ReportsPage() {
         <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm leading-6 text-slate-400">{selectedReport.description}</p>
           <div className="flex flex-wrap gap-3">
-            <button type="button" disabled={!canExportReports || (reportType === 'single-branch-detail' && branchName === 'all')} onClick={() => downloadExcel(exportProjects, reportName)} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!canExportReports} onClick={() => downloadExcel(exportProjects, reportName)} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
               <FileText className="h-4 w-4" />
               Excel report
             </button>
-            <button type="button" disabled={!canExportReports || (reportType === 'single-branch-detail' && branchName === 'all')} onClick={() => openPdfReport(exportProjects, reportName, reportType, branchName, user?.name)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!canExportReports} onClick={() => openPdfReport(exportProjects, reportName, reportType, branchName, user?.name)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">
               <FileText className="h-4 w-4" />
               PDF report
             </button>
@@ -433,7 +425,7 @@ export function ReportsPage() {
                   <td className="px-5 py-4">{project.tasks.filter((task) => !task.completed).length}</td>
                 </tr>
               )) : (
-                <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">{reportType === 'single-branch-detail' && branchName === 'all' ? 'Select a specific branch for a single-branch report.' : 'No projects match the selected filters.'}</td></tr>
+                <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">No projects match the selected filters.</td></tr>
               )}
             </tbody>
           </table>
