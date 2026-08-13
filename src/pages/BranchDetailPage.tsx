@@ -375,39 +375,47 @@ export function BranchDetailPage() {
                       const taskFiles = project.files.filter((file) => file.taskId === task.id);
                       const taskKey = `${project.id}-${task.id}`;
                       const taskComments = (project.comments ?? []).filter((c) => c.taskId === task.id).sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
+                      const taskId = `${project.id}-${task.id}`;
+                      const isExpanded = !collapsedTasks.has(taskId);
                       return (
-                        <div key={`${project.id}-${task.id}`} className="border-b border-white/10 py-3 last:border-0">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex flex-1 items-start gap-3">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const taskId = `${project.id}-${task.id}`;
-                                  setCollapsedTasks((prev) => {
-                                    const next = new Set(prev);
-                                    if (next.has(taskId)) {
-                                      next.delete(taskId);
-                                    } else {
-                                      next.add(taskId);
-                                    }
-                                    return next;
-                                  });
-                                }}
-                                className="shrink-0 rounded-lg p-1 text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
-                                aria-label={collapsedTasks.has(`${project.id}-${task.id}`) ? 'Expand task' : 'Collapse task'}
-                              >
-                                <span className="text-lg leading-none">
-                                  {collapsedTasks.has(`${project.id}-${task.id}`) ? '▶' : '▼'}
-                                </span>
-                              </button>
-                              <p className={task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}>{task.text}</p>
+                        <div key={taskId} className="rounded-2xl border border-white/10 bg-slate-950/50 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCollapsedTasks((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(taskId)) {
+                                  next.delete(taskId);
+                                } else {
+                                  next.add(taskId);
+                                }
+                                return next;
+                              });
+                            }}
+                            className="w-full px-4 py-3 text-sm text-slate-200 hover:bg-slate-900/40 transition text-left focus:outline-none focus:ring-2 focus:ring-sky-400/50 rounded-2xl"
+                            aria-label={isExpanded ? 'Collapse task' : 'Expand task'}
+                            aria-expanded={isExpanded}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <span className="shrink-0 text-slate-400">{isExpanded ? '▼' : '▶'}</span>
+                                <span className={`truncate ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200 font-medium'}`}>{task.text}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0 text-xs text-slate-500">
+                                <span className="rounded-full bg-white/5 px-2 py-1">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
+                                <span>·</span>
+                                <span>{taskComments.length} comment{taskComments.length === 1 ? '' : 's'}</span>
+                                <span>·</span>
+                                <span>{taskFiles.length} file{taskFiles.length === 1 ? '' : 's'}</span>
+                              </div>
                             </div>
-                            <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-300">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
-                          </div>
-                          {!collapsedTasks.has(`${project.id}-${task.id}`) && taskFiles.length > 0 ? (
-                            <div className="mt-3 space-y-3 rounded-2xl bg-slate-950/70 p-3">
-                              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
-                              <div className="grid gap-3 sm:grid-cols-2">
+                          </button>
+                          {isExpanded && (
+                            <div className="border-t border-white/10 px-4 py-3 text-sm text-slate-200 space-y-3">
+                              {taskFiles.length > 0 ? (
+                                <div className="space-y-3">
+                                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
+                                  <div className="grid gap-3 sm:grid-cols-2">
                                 {taskFiles.map((file) => {
                                   const key = file.path ?? file.name;
                                   const thumbnailUrl = thumbnails[key];
@@ -480,25 +488,23 @@ export function BranchDetailPage() {
                                   );
                                 })}
                               </div>
-                            </div>
-                          ) : null}
-                          {/* Task comments */}
-                          {!collapsedTasks.has(`${project.id}-${task.id}`) ? (
-                          <div className="mt-3">
-                            <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
-                            <div className="mt-2 space-y-2">
-                              {taskComments.length > 0 ? taskComments.map((c, i) => (
-                                <div key={`${taskKey}-comment-${i}-${c.taskId ?? 'general'}`} className="rounded-2xl bg-slate-950/80 p-3">
-                                  <p className="text-xs text-slate-400">{c.date}</p>
-                                  <p className="mt-1 font-medium text-white">{c.author}</p>
-                                  <p className="mt-1 text-slate-300">{c.message}</p>
                                 </div>
-                              )) : <p className="text-slate-400">No comments yet.</p>}
-                            </div>
+                              ) : null}
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
+                                <div className="mt-2 space-y-2">
+                                  {taskComments.length > 0 ? taskComments.map((c, i) => (
+                                    <div key={`${taskKey}-comment-${i}-${c.taskId ?? 'general'}`} className="rounded-2xl bg-slate-950/80 p-3">
+                                      <p className="text-xs text-slate-400">{c.date}</p>
+                                      <p className="mt-1 font-medium text-white">{c.author}</p>
+                                      <p className="mt-1 text-slate-300">{c.message}</p>
+                                    </div>
+                                  )) : <p className="text-slate-400">No comments yet.</p>}
+                                </div>
 
-                            {/* Add comment */}
-                            {can(user, 'add_comments') ? (
-                              <div className="mt-3 grid gap-2">
+                                {/* Add comment */}
+                                {can(user, 'add_comments') ? (
+                                  <div className="mt-3 grid gap-2">
                                 <textarea
                                   value={taskCommentDrafts[taskKey] ?? ''}
                                   onChange={(e) => setTaskCommentDrafts((cur) => ({ ...cur, [taskKey]: e.target.value }))}
@@ -518,9 +524,10 @@ export function BranchDetailPage() {
                                   <p className="text-xs text-slate-400">Comments appear in the project journal and under the task.</p>
                                 </div>
                               </div>
-                            ) : null}
-                          </div>
-                          ) : null}
+                                ) : null}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     }) : <p className="text-slate-400">No tasks added yet.</p>}
