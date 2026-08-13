@@ -479,7 +479,7 @@ export function BranchesPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Branch Rebrand Projects</h1>
+            <h1 className="text-4xl font-bold text-slate-900 mb-2">Branch Rebrand Projects</h1>
             <p className="text-slate-400">List of PSG branches in South Africa and Namibia. Each branch is managed as a rebrand project.</p>
           </div>
           {isAdmin && (
