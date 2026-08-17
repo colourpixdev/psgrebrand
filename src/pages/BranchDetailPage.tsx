@@ -348,11 +348,18 @@ export function BranchDetailPage() {
               </div>
             )}
             <div className="mt-4">
-              <CurrentTaskCard
-                project={branchProject}
-                canSave={!quickUpdateMutation.isPending}
-                onSave={(taskId, message) => quickUpdateMutation.mutate({ projectId: branchProject?.id ?? '', taskId: taskId ?? '', message })}
-              />
+              {(() => {
+                const policy = getRolePolicy(user);
+                const canQuickUpdate = policy && (policy.communication.canCreateComments || policy.tasks.canCreateTasks);
+                
+                return canQuickUpdate ? (
+                  <CurrentTaskCard
+                    project={branchProject}
+                    canSave={!quickUpdateMutation.isPending}
+                    onSave={(taskId, message) => quickUpdateMutation.mutate({ projectId: branchProject?.id ?? '', taskId: taskId ?? '', message })}
+                  />
+                ) : null;
+              })()}
             </div>
           </div>
 
