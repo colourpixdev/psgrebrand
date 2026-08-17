@@ -314,7 +314,7 @@ export function BranchDetailPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
-        <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
+        <div className="grid gap-6">
           <div className="space-y-6">
             <div>
               <div className="mb-3">
