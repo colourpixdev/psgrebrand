@@ -399,34 +399,36 @@ export function BranchDetailPage() {
 
             return (
               <article key={project.id} className="rounded-2xl border border-white/10 bg-slate-950/90 p-5 shadow-soft">
-                <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <p className="text-base font-semibold text-white">{project.branch}</p>
-                    <p className="mt-1 text-sm text-slate-300">{project.currentStage} · {project.status.replace('_', ' ')}</p>
-                    <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
+                {project.branch !== 'PSG Jan Kemp Dorp Wealth' ? (
+                  <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-base font-semibold text-white">{project.branch}</p>
+                      <p className="mt-1 text-sm text-slate-300">{project.currentStage} · {project.status.replace('_', ' ')}</p>
+                      <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      {(() => {
+                        const policy = getRolePolicy(user);
+                        const canEditProject = policy && (
+                          policy.projectAccess.canCreateProjects ||
+                          policy.projectAccess.canArchiveProjects ||
+                          policy.projectAccess.canDeleteProjects ||
+                          policy.projectAccess.canDuplicateProject ||
+                          policy.workflow.canChangeStage ||
+                          policy.workflow.canChangeStatus ||
+                          policy.workflow.canChangeProgress ||
+                          policy.workflow.canChangeTargetDates ||
+                          policy.communication.canCreateComments ||
+                          policy.tasks.canCreateTasks
+                        );
+                        
+                        return canEditProject ? (
+                          <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
+                        ) : null;
+                      })()}
+                    </div>
                   </div>
-                  <div className="mt-3 flex gap-2">
-                    {(() => {
-                      const policy = getRolePolicy(user);
-                      const canEditProject = policy && (
-                        policy.projectAccess.canCreateProjects ||
-                        policy.projectAccess.canArchiveProjects ||
-                        policy.projectAccess.canDeleteProjects ||
-                        policy.projectAccess.canDuplicateProject ||
-                        policy.workflow.canChangeStage ||
-                        policy.workflow.canChangeStatus ||
-                        policy.workflow.canChangeProgress ||
-                        policy.workflow.canChangeTargetDates ||
-                        policy.communication.canCreateComments ||
-                        policy.tasks.canCreateTasks
-                      );
-                      
-                      return canEditProject ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
-                      ) : null;
-                    })()}
-                  </div>
-                </div>
+                ) : null}
 
                 {(() => {
                   const policy = getRolePolicy(user);
