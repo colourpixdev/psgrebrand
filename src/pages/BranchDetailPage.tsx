@@ -351,8 +351,8 @@ export function BranchDetailPage() {
             <div className="mt-4">
               <CurrentTaskCard
                 project={branchProject}
-                canSave={!quickUpdateMutation.isPending}
-                onSave={(taskId, message) => quickUpdateMutation.mutate({ projectId: branchProject?.id ?? '', taskId: taskId ?? '', message })}
+                canSave={normalizeRole(user?.role) !== 'psg_user' && !quickUpdateMutation.isPending}
+                onSave={normalizeRole(user?.role) !== 'psg_user' ? (taskId, message) => quickUpdateMutation.mutate({ projectId: branchProject?.id ?? '', taskId: taskId ?? '', message }) : undefined}
               />
             </div>
           </div>
