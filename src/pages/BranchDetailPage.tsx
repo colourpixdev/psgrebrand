@@ -93,6 +93,10 @@ export function BranchDetailPage() {
     return scopedProjects
       .filter((project) => {
         const projectBranch = typeof project.branch === 'string' ? project.branch : '';
+        // Exclude PSG Jan Kemp Dorp Wealth project
+        if (projectBranch === 'PSG Jan Kemp Dorp Wealth') {
+          return false;
+        }
         return project.branchId === branch.id || projectBranch.toLowerCase() === branchName.toLowerCase();
       })
       .sort(byUpdatedAtDesc);
