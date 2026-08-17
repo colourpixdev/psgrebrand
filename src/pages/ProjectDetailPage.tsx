@@ -136,6 +136,11 @@ export function ProjectDetailPage() {
   }, [project]);
 
   useEffect(() => {
+    // Reset accordion state when project ID changes to ensure accordions are collapsed by default
+    setExpandedAccordionTaskIds([]);
+  }, [projectId]);
+
+  useEffect(() => {
     // Filter out accordion IDs for tasks that no longer exist
     if (project?.tasks) {
       setExpandedAccordionTaskIds((current) => current.filter((taskId) => project.tasks.some((task) => task.id === taskId)));
