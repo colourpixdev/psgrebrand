@@ -892,6 +892,47 @@ export async function deleteProject(projectId: string): Promise<void> {
   }
 }
 
+async function getDefaultTasksForBranch(branchId: string, branchName: string): Promise<TaskItem[]> {
+  try {
+    const client = supabase;
+    
+    if (!client) {
+      return [];
+    }
+
+    // Try to find the template project for this branch (usually the first or Jan Kemp Dorp project)
+    const { data: projects, error } = await client
+      .from('projects')
+      .select('tasks')
+      .eq('branch_id', branchId)
+      .order('created_at', { ascending: true })
+      .limit(1);
+
+    if (error || !projects || projects.length === 0) {
+      return [];
+    }
+
+    const templateProject = projects[0];
+    const templateTasks = templateProject.tasks;
+
+    if (!Array.isArray(templateTasks) || templateTasks.length === 0) {
+      return [];
+    }
+
+    // Clone the tasks for the new project
+    return templateTasks.map((task) => ({
+      ...task,
+      id: `task-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      completed: false,
+      status: 'open',
+      assignees: task.assignees ? [...task.assignees] : undefined,
+    })) as TaskItem[];
+  } catch (err) {
+    // Silently fail - new projects without template tasks are still valid
+    return [];
+  }
+}
+
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   const client = supabase;
 
@@ -903,6 +944,10 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   const normalizedProjectId = input.id?.trim()
     || input.branch.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
     || `project-${Date.now()}`;
+
+  // Fetch default tasks from template project for this branch
+  const defaultTasks = await getDefaultTasksForBranch(resolvedBranchId, input.branch.trim());
+
   const basePayload = {
     id: normalizedProjectId,
     branch_id: resolvedBranchId,
@@ -926,7 +971,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     branch_manager_view_only: false,
     notes: input.notes?.trim() ?? '',
     files: [],
-    tasks: [],
+    tasks: defaultTasks,
     comments: [],
     activity: [createActivity('Project Created', `${normalizedProjectId} was created in ${workspaceName} for ${clientCompany}.`, 'success')],
   };
