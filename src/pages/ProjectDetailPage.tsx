@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
-import { Timeline } from '../components/timeline/Timeline';
 import { roleLabels } from '../constants/portal';
-import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectNotes, updateProjectSummary, updateProjectTask, updateProjectWorkflow, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectNotes, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById } from '../services/branchService';
 import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,13 +24,12 @@ const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-type ProjectSectionId = 'timeline' | 'taskUpdates' | 'files' | 'notes';
+type ProjectSectionId = 'taskUpdates' | 'files' | 'notes';
 
 const projectSections: Array<{ id: ProjectSectionId; number: string; label: string }> = [
-  { id: 'timeline', number: '01', label: 'Project Tasks' },
-  { id: 'taskUpdates', number: '02', label: 'Task Updates' },
-  { id: 'files', number: '03', label: 'Files' },
-  { id: 'notes', number: '04', label: 'Last note:' },
+  { id: 'taskUpdates', number: '01', label: 'Task Updates' },
+  { id: 'files', number: '02', label: 'Files' },
+  { id: 'notes', number: '03', label: 'Last note:' },
 ];
 
 function getStagePlan(project: Project): ProjectStage[] {
@@ -72,7 +70,7 @@ export function ProjectDetailPage() {
   const { user } = useAuth();
   const { showSuccess } = useSaveFeedback();
   const queryClient = useQueryClient();
-  const [activeProjectSection, setActiveProjectSection] = useState<ProjectSectionId>('timeline');
+  const [activeProjectSection, setActiveProjectSection] = useState<ProjectSectionId>('taskUpdates');
   const [commentMessage, setCommentMessage] = useState('');
   const [journalTaskId, setJournalTaskId] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
@@ -312,86 +310,6 @@ export function ProjectDetailPage() {
     return currentProject;
   }
 
-  const timelineTaskMutation = useMutation({
-    mutationFn: async ({ stage: timelineStage, completed, assigneeEmail }: { stage: ProjectStage; completed?: boolean; assigneeEmail?: string }) => {
-      let working = await ensureStagesMaterialized(selectedProject);
-      const assignee = assigneeEmail !== undefined ? getAssignee(assigneeEmail) : undefined;
-      working = await upsertProjectStageTask({
-        projectId: projectId ?? '',
-        stage: timelineStage,
-        completed,
-        assigneeName: assigneeEmail !== undefined ? assignee?.name : undefined,
-        assigneeEmail,
-        actor: user?.name ?? 'Workspace user',
-      });
-
-      const stagePlan = getStagePlan(working);
-      const workflow = deriveWorkflowFromStagePlan(working, stagePlan);
-      working = await updateProjectWorkflow({
-        projectId: projectId ?? '',
-        currentStage: workflow.currentStage,
-        status: workflow.status,
-        progress: workflow.progress,
-        actor: user?.name ?? 'Workspace user',
-      });
-
-      return working;
-    },
-    onSuccess: (updatedProject) => syncProject(updatedProject, 'Project task updated.'),
-  });
-
-  const addStageMutation = useMutation({
-    mutationFn: async (stageName: string) => {
-      let working = await ensureStagesMaterialized(selectedProject);
-      working = await upsertProjectStageTask({
-        projectId: projectId ?? '',
-        stage: stageName,
-        completed: false,
-        actor: user?.name ?? 'Workspace user',
-      });
-
-      const stagePlan = getStagePlan(working);
-      const workflow = deriveWorkflowFromStagePlan(working, stagePlan);
-      working = await updateProjectWorkflow({
-        projectId: projectId ?? '',
-        currentStage: workflow.currentStage,
-        status: workflow.status,
-        progress: workflow.progress,
-        actor: user?.name ?? 'Workspace user',
-      });
-
-      return working;
-    },
-    onSuccess: (updatedProject) => syncProject(updatedProject, 'Project stage added.'),
-  });
-
-  const removeStageMutation = useMutation({
-    mutationFn: async (stageName: string) => {
-      let working = await ensureStagesMaterialized(selectedProject);
-      const stageTask = working.tasks.find((task) => task.stage === stageName);
-      if (stageTask) {
-        working = await deleteProjectTask({
-          projectId: projectId ?? '',
-          taskId: stageTask.id,
-          actor: user?.name ?? 'Workspace user',
-        });
-      }
-
-      const stagePlan = getStagePlan(working);
-      const workflow = deriveWorkflowFromStagePlan(working, stagePlan);
-      working = await updateProjectWorkflow({
-        projectId: projectId ?? '',
-        currentStage: workflow.currentStage,
-        status: workflow.status,
-        progress: workflow.progress,
-        actor: user?.name ?? 'Workspace user',
-      });
-
-      return working;
-    },
-    onSuccess: (updatedProject) => syncProject(updatedProject, 'Project stage removed.'),
-  });
-
   const deleteTaskMutation = useMutation({
     mutationFn: (task: TaskItem) => deleteProjectTask({
       projectId: projectId ?? '',
@@ -478,7 +396,7 @@ export function ProjectDetailPage() {
   });
 
   const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error ?? deleteFileMutation.error;
-  const workflowError = timelineTaskMutation.error ?? addStageMutation.error ?? removeStageMutation.error ?? taskUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
+  const workflowError = taskUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
   const notesError = notesMutation.error;
   const rolePolicy = getRolePolicy(user);
   const canAdministerProjectDetails = Boolean(user?.isPlatformOwner);
@@ -561,8 +479,6 @@ export function ProjectDetailPage() {
   const isQuestionRequester = (question: CommentItem) => (question.requesterEmail ? question.requesterEmail === user?.email : question.author === user?.name);
   const unreadAnswers = projectQuestions.filter((question) => question.status === 'answered' && question.unreadForRequester && isQuestionRequester(question));
   const mergedTasks = selectedProject.tasks;
-  const canUpdateTimelineStages = canViewProject(user, selectedProject);
-  const canManageStages = false;
   const stagePlan = getStagePlan(selectedProject);
   const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
   const canEditNotes = canViewProject(user, selectedProject);
@@ -721,24 +637,8 @@ export function ProjectDetailPage() {
         </nav>
       </section>
 
-      <section className={activeProjectSection === 'timeline' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
-        {workflowError instanceof Error ? <p className="mb-4 text-sm text-red-300">{workflowError.message}</p> : null}
-        <Timeline
-          stages={stagePlan}
-          activeStage={selectedProject.currentStage}
-          tasks={selectedProject.tasks}
-          users={users}
-          canCompleteStages={canUpdateTimelineStages}
-          canAssignStages={canAdministerProjectDetails && canAssignTasks}
-          canManageStages={canManageStages}
-          isUpdating={timelineTaskMutation.isPending || addStageMutation.isPending || removeStageMutation.isPending}
-          onToggleStage={(timelineStage, completed) => timelineTaskMutation.mutate({ stage: timelineStage, completed })}
-          onAssignStage={(timelineStage, assigneeEmail) => timelineTaskMutation.mutate({ stage: timelineStage, assigneeEmail })}
-          onAddStage={(stageName) => addStageMutation.mutate(stageName)}
-          onRemoveStage={(timelineStage) => removeStageMutation.mutate(timelineStage)}
-        />
-
-        <div className="mt-6 border-t border-white/10 pt-6">
+      <section className={activeProjectSection === 'taskUpdates' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
+        <div className="mt-6 border-t border-white/10 pt-0">
           <div className="flex items-center justify-between gap-3 mb-4">
             <h3 className="text-lg font-semibold text-white">Tasks</h3>
             {mergedTasks.length > 0 && (
