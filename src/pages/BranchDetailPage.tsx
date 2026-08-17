@@ -432,20 +432,27 @@ export function BranchDetailPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 border-t border-white/10 pt-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-white">Quick update</p>
-                      <p className="text-xs text-white">Leave a short task update for this project.</p>
+                {(() => {
+                  const policy = getRolePolicy(user);
+                  const canQuickUpdate = policy && (policy.communication.canCreateComments || policy.tasks.canCreateTasks);
+                  
+                  return canQuickUpdate ? (
+                    <div className="mt-4 border-t border-white/10 pt-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">Quick update</p>
+                          <p className="text-xs text-white">Leave a short task update for this project.</p>
+                        </div>
+                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">Fast entry</span>
+                      </div>
+                      <QuickUpdate
+                        project={project}
+                        canSave={!quickUpdateMutation.isPending}
+                        onSave={(taskId, message) => quickUpdateMutation.mutate({ projectId: project.id, taskId: taskId ?? '', message })}
+                      />
                     </div>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">Fast entry</span>
-                  </div>
-                  <QuickUpdate
-                    project={project}
-                    canSave={!quickUpdateMutation.isPending}
-                    onSave={(taskId, message) => quickUpdateMutation.mutate({ projectId: project.id, taskId: taskId ?? '', message })}
-                  />
-                </div>
+                  ) : null;
+                })()}
 
                 <div className="mt-6 grid gap-3 md:grid-cols-2">
                   <div>
