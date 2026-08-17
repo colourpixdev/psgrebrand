@@ -2,7 +2,7 @@
   {
     "id": "branch-johannesburg",
     "code": "JHB",
-    "name": "Johannesburg Branch",
+    "name": "PSG Wealth Johannesburg",
     "division": "Wealth",
     "province": "Gauteng",
     "town": "Johannesburg",
@@ -21,7 +21,7 @@
   {
     "id": "branch-cape-town",
     "code": "CPT",
-    "name": "Cape Town Branch",
+    "name": "PSG Insure Cape Town",
     "division": "Insure",
     "province": "Western Cape",
     "town": "Cape Town",

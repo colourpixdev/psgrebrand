@@ -3,6 +3,27 @@ import type { Branch, ContactPerson, Division } from '../types/domain';
 
 const branchesStorageKey = 'psg-rebrand:branches';
 
+/**
+ * Format a branch name as "PSG [Division] [Branch Name]"
+ */
+export function formatBranchName(division: Division, branchName: string): string {
+  const baseName = extractBranchName(branchName).trim();
+  return `PSG ${division} ${baseName}`;
+}
+
+/**
+ * Extract the base branch name by removing "PSG [Division] " prefix
+ */
+export function extractBranchName(fullName: string): string {
+  // If the name already starts with "PSG ", extract the part after "PSG Division "
+  const psgMatch = fullName.match(/^PSG\s+(?:Wealth|Insure|Wealth\s+Insure|Asset|Trust)\s+(.+)$/i);
+  if (psgMatch) {
+    return psgMatch[1];
+  }
+  // Otherwise, return the name as-is
+  return fullName;
+}
+
 export interface CreateBranchInput {
   name: string;
   division: Division;

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { getAllBranches, createBranch, updateBranch, deleteBranch } from '../services/branchService';
+import { getAllBranches, createBranch, updateBranch, deleteBranch, formatBranchName, extractBranchName } from '../services/branchService';
 import { getProjects } from '../services/portalService';
 import type { Branch, ContactPerson, Division, Project } from '../types/domain';
 import { useAuth } from '../contexts/AuthContext';
@@ -184,7 +184,7 @@ export function BranchesPage() {
     try {
       setSaving(true);
       await createBranch({
-        name: formData.name,
+        name: formatBranchName(formData.division, formData.name),
         division: formData.division,
         province: formData.province,
         city: null,
@@ -237,7 +237,7 @@ export function BranchesPage() {
     setEditingBranchId(branch.id);
     const primaryContact = getEditablePrimaryContact(branch);
     setEditData({
-      name: branch.name,
+      name: extractBranchName(branch.name),
       division: branch.division,
       province: branch.province,
       town: branch.town,
@@ -284,7 +284,7 @@ export function BranchesPage() {
     try {
       setSaving(true);
       await updateBranch(id, {
-        name: editData.name,
+        name: formatBranchName(editData.division, editData.name),
         division: editData.division,
         province: editData.province,
         city: null,
@@ -515,7 +515,7 @@ export function BranchesPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
-                  placeholder="e.g., Johannesburg Branch"
+                  placeholder="e.g., Jan Kemp Dorp (will be saved as PSG Wealth Jan Kemp Dorp)"
                   required
                 />
               </div>
