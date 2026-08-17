@@ -9,6 +9,7 @@ import QuickUpdate from '../components/QuickUpdate/QuickUpdate';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { can, canAddTaskComments, getRolePolicy, filterProjectsForUser } from '../utils/permissions';
+import { normalizeRole } from '../types/domain';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { isTaskOutstanding } from '../utils/taskStatus';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
@@ -580,20 +581,21 @@ export function BranchDetailPage() {
                               </div>
                                 </div>
                               ) : null}
-                              <div>
-                                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
-                                <div className="mt-2 space-y-2">
-                                  {taskComments.length > 0 ? taskComments.map((c, i) => (
-                                    <div key={`${taskKey}-comment-${i}-${c.taskId ?? 'general'}`} className="rounded-2xl bg-slate-950/80 p-3">
-                                      <p className="text-xs text-slate-400">{c.date}</p>
-                                      <p className="mt-1 font-medium text-white">{c.author}</p>
-                                      <p className="mt-1 text-slate-300">{c.message}</p>
-                                    </div>
-                                  )) : <p className="text-slate-400">No comments yet.</p>}
-                                </div>
+                              {normalizeRole(user?.role) !== 'psg_user' ? (
+                                <div>
+                                  <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
+                                  <div className="mt-2 space-y-2">
+                                    {taskComments.length > 0 ? taskComments.map((c, i) => (
+                                      <div key={`${taskKey}-comment-${i}-${c.taskId ?? 'general'}`} className="rounded-2xl bg-slate-950/80 p-3">
+                                        <p className="text-xs text-slate-400">{c.date}</p>
+                                        <p className="mt-1 font-medium text-white">{c.author}</p>
+                                        <p className="mt-1 text-slate-300">{c.message}</p>
+                                      </div>
+                                    )) : <p className="text-slate-400">No comments yet.</p>}
+                                  </div>
 
-                                {/* Add comment */}
-                                {canAddTaskComments(user) ? (
+                                  {/* Add comment */}
+                                  {canAddTaskComments(user) ? (
                                   <div className="mt-3 grid gap-2">
                                 <textarea
                                   value={taskCommentDrafts[taskKey] ?? ''}
@@ -614,8 +616,9 @@ export function BranchDetailPage() {
                                   <p className="text-xs text-slate-400">Comments appear in the project journal and under the task.</p>
                                 </div>
                               </div>
-                                ) : null}
-                              </div>
+                                  ) : null}
+                                </div>
+                              ) : null}
                             </div>
                           )}
                         </div>

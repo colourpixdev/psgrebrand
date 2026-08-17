@@ -13,6 +13,7 @@ import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { canViewProject, canAddTaskComments, getRolePolicy } from '../utils/permissions';
 import { getTaskStatus } from '../utils/taskStatus';
 import type { CommentItem, Project, ProjectFile, ProjectStatus, ProjectStage, TaskAssignee, TaskItem } from '../types/domain';
+import { normalizeRole } from '../types/domain';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'busy', label: 'Busy' },
@@ -684,7 +685,13 @@ export function ProjectDetailPage() {
           <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">Back to branches</Link>
         </div>
         <nav className="mt-4 flex flex-wrap gap-2">
-          {projectSections.map((item) => (
+          {projectSections.filter((item) => {
+            // PSG users cannot access task updates
+            if (item.id === 'taskUpdates' && normalizeRole(user?.role) === 'psg_user') {
+              return false;
+            }
+            return true;
+          }).map((item) => (
             <button
               key={item.id}
               type="button"
@@ -942,7 +949,7 @@ export function ProjectDetailPage() {
                     )}
                   </div>
                 ) : null}
-                {taskUpdates.length > 0 ? (
+                {taskUpdates.length > 0 && normalizeRole(user?.role) !== 'psg_user' ? (
                   <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Recent comments</p>
