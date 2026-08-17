@@ -340,7 +340,8 @@ export function getRolePolicy(user: UserRecord | null | undefined) {
   }
 
   const normalizedRole = normalizeRole(user.role);
-  return rolePolicies[normalizedRole] ?? rolePolicies.psg_user;
+  const basePolicy = rolePolicies[normalizedRole] ?? rolePolicies.psg_user;
+  return applyPolicyOverrides(basePolicy, user.permissionOverrides);
 }
 
 export function can(user: UserRecord | null | undefined, permission: Permission) {
