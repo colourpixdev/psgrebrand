@@ -364,14 +364,6 @@ export function BranchDetailPage() {
           </div>
         </div>
 
-        <div className="mt-4">
-          <CurrentTaskCard
-            project={branchProject}
-            canSave={normalizeRole(user?.role) !== 'psg_user' && !quickUpdateMutation.isPending}
-            onSave={normalizeRole(user?.role) !== 'psg_user' ? (taskId, message) => quickUpdateMutation.mutate({ projectId: branchProject?.id ?? '', taskId: taskId ?? '', message }) : undefined}
-          />
-        </div>
-
         {branchLatestUpdates.length > 0 ? (
           <div className="mt-6 grid gap-3 md:grid-cols-2">
             {branchLatestUpdates.map(({ project, comment }, index) => (
