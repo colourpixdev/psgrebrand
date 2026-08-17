@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { roleLabels } from '../constants/portal';
@@ -31,6 +31,7 @@ type PasswordChangeValues = z.infer<typeof passwordChangeSchema>;
 export function LoginPage() {
   const { signInAs, signInWithEmailPassword, passwordChangeRequired, updatePassword } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [formError, setFormError] = useState<string | null>(null);
   const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null);
   const [setupBannerDismissed, setSetupBannerDismissed] = useState(false);
@@ -70,7 +71,8 @@ export function LoginPage() {
       await signInWithEmailPassword(values.email, values.password);
       // If passwordChangeRequired is true, the dialog will show automatically
       if (!passwordChangeRequired) {
-        navigate('/');
+        const from = (location.state as { from?: string } | null)?.from || '/';
+        navigate(from);
       }
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Unable to sign in. Check your credentials and Supabase config.');
@@ -84,7 +86,8 @@ export function LoginPage() {
       // The special registration password is "psgrebrand"
       await updatePassword('psgrebrand', values.newPassword);
       resetPasswordForm();
-      navigate('/');
+      const from = (location.state as { from?: string } | null)?.from || '/';
+      navigate(from);
     } catch (error) {
       setPasswordChangeError(error instanceof Error ? error.message : 'Unable to update password.');
     }
@@ -233,7 +236,7 @@ export function LoginPage() {
 
         <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-6 shadow-soft backdrop-blur-xl">
           <p className="text-xs uppercase tracking-[0.3em] text-teal-200/80">Workspace access</p>
-          <h3 className="mt-3 text-2xl font-semibold text-white">This is a private client workspace instance.</h3>
+          <h3 className="mt-3 text-2xl font-semibold text-slate-900">This is a private client workspace instance.</h3>
           <p className="mt-2 text-sm leading-6 text-cyan-200">
             Sign in with the account assigned to your active workspace. Public enquiries and commercial onboarding are handled outside this operational environment before users are invited here.
           </p>
@@ -253,7 +256,7 @@ export function LoginPage() {
         {passwordChangeRequired && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-slate-950 p-8 shadow-2xl">
-              <h2 className="text-2xl font-semibold text-white">Change Your Password</h2>
+              <h2 className="text-2xl font-semibold text-slate-900">Change Your Password</h2>
               <p className="mt-2 text-sm text-slate-400">
                 Welcome! You've been registered with a temporary password. Please set a permanent password to continue.
               </p>

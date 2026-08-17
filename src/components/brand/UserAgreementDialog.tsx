@@ -10,17 +10,22 @@ function agreementKey(user: UserRecord) {
 
 export function UserAgreementDialog({ user }: { user: UserRecord | null }) {
   const [isVisible, setIsVisible] = useState(false);
+  const [hasAccepted, setHasAccepted] = useState(false);
 
   useEffect(() => {
     if (!user) {
       setIsVisible(false);
+      setHasAccepted(false);
       return;
     }
 
-    setIsVisible(localStorage.getItem(agreementKey(user)) !== 'accepted');
+    // Check if user has accepted the agreement
+    const accepted = localStorage.getItem(agreementKey(user)) === 'accepted';
+    setHasAccepted(accepted);
+    setIsVisible(!accepted);
   }, [user]);
 
-  if (!user || !isVisible) {
+  if (!user || !isVisible || hasAccepted) {
     return null;
   }
 
@@ -29,7 +34,7 @@ export function UserAgreementDialog({ user }: { user: UserRecord | null }) {
       <section className="flex max-h-[calc(100vh-1.5rem)] w-full max-w-xl flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950 shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
         <div className="overflow-y-auto p-5 sm:p-6">
           <p className="text-xs uppercase tracking-[0.32em] text-teal-200">User agreement</p>
-          <h2 className="mt-3 text-2xl font-semibold text-white">Before using {productBrand.name}</h2>
+          <h2 className="mt-3 text-2xl font-semibold text-slate-900">Before using {productBrand.name}</h2>
           <p className="mt-3 text-sm leading-6 text-slate-300">By using this platform you acknowledge that:</p>
           <ul className="mt-4 grid gap-2 text-sm text-slate-200">
             {userAgreementPoints.map((point) => (
@@ -44,8 +49,16 @@ export function UserAgreementDialog({ user }: { user: UserRecord | null }) {
           <button
             type="button"
             onClick={() => {
-              localStorage.setItem(agreementKey(user), 'accepted');
-              setIsVisible(false);
+              if (!user) return;
+              try {
+                localStorage.setItem(agreementKey(user), 'accepted');
+                setHasAccepted(true);
+                setIsVisible(false);
+              } catch (error) {
+                console.error('Failed to save agreement acceptance:', error);
+                // Still hide the dialog even if localStorage fails
+                setIsVisible(false);
+              }
             }}
             className="w-full rounded-2xl bg-teal-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-300"
           >

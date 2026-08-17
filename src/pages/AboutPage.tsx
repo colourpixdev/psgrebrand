@@ -130,7 +130,7 @@ function OfflineRunnerGame() {
   return (
     <section className="rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft">
       <p className="text-sm uppercase tracking-[0.32em] text-teal-200/80">Offline Game</p>
-      <h3 className="mt-3 text-2xl font-semibold text-white">Press space to play</h3>
+      <h3 className="mt-3 text-2xl font-semibold text-slate-900">Press space to play</h3>
       <p className="mt-2 text-sm text-slate-300">No internet. Jump over obstacles and beat your best score.</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.2em] text-slate-400">

@@ -776,9 +776,9 @@ export function ProjectDetailPage() {
                   type="button"
                   aria-expanded={isAccordionExpanded}
                   aria-controls={taskBodyId}
-                  onClick={() => setExpandedAccordionTaskIds((current) =>
+                  onClick={(e) => { e.stopPropagation(); setExpandedAccordionTaskIds((current) =>
                     current.includes(task.id) ? current.filter((id) => id !== task.id) : [...current, task.id]
-                  )}
+                  ); }}
                   className="w-full px-4 py-3 text-sm text-slate-200 hover:bg-slate-900/40 transition text-left focus:outline-none focus:ring-2 focus:ring-sky-400/50 rounded-2xl"
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -898,7 +898,7 @@ export function ProjectDetailPage() {
                                   <button
                                     type="button"
                                     disabled={previewMutation.isPending}
-                                    onClick={() => previewMutation.mutate(file)}
+                                    onClick={(e) => { e.stopPropagation(); previewMutation.mutate(file); }}
                                     className="rounded-xl border border-slate-700 bg-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     Preview
@@ -907,7 +907,7 @@ export function ProjectDetailPage() {
                                 <button
                                   type="button"
                                   disabled={downloadMutation.isPending}
-                                  onClick={() => downloadMutation.mutate(file)}
+                                  onClick={(e) => { e.stopPropagation(); downloadMutation.mutate(file); }}
                                   className="rounded-xl border border-slate-700 bg-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   Download

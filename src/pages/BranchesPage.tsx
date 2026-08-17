@@ -70,7 +70,7 @@ function ParticipantFields({ contacts, onChange }: { contacts: ContactPerson[]; 
           <p className="text-sm font-medium text-white">Additional contact persons</p>
           <p className="mt-1 text-xs text-white">Add other contact persons and their designations.</p>
         </div>
-        <button type="button" onClick={() => onChange([...contacts, { name: '', email: '', phone: '', designation: '' }])} className="rounded-xl border border-sky-400/30 px-3 py-2 text-sm text-white transition hover:bg-sky-400/10">Add contact person</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onChange([...contacts, { name: '', email: '', phone: '', designation: '' }]); }} className="rounded-xl border border-sky-400/30 px-3 py-2 text-sm text-white transition hover:bg-sky-400/10">Add contact person</button>
       </div>
       <div className="mt-3 space-y-3">
         {contacts.map((contact, index) => (
@@ -79,7 +79,7 @@ function ParticipantFields({ contacts, onChange }: { contacts: ContactPerson[]; 
             <input type="text" value={contact.designation} onChange={(event) => updateContact(index, 'designation', event.target.value)} placeholder="Designation" className="rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white" />
             <input type="email" value={contact.email ?? ''} onChange={(event) => updateContact(index, 'email', event.target.value)} placeholder="Email" className="rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white" />
             <input type="text" value={contact.phone ?? ''} onChange={(event) => updateContact(index, 'phone', event.target.value)} placeholder="Phone" className="rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white" />
-            <button type="button" onClick={() => onChange(contacts.filter((_, contactIndex) => contactIndex !== index))} className="text-sm text-red-200 transition hover:text-red-100">Remove</button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); onChange(contacts.filter((_, contactIndex) => contactIndex !== index)); }} className="text-sm text-red-200 transition hover:text-red-100">Remove</button>
           </div>
         ))}
       </div>
@@ -484,7 +484,7 @@ export function BranchesPage() {
           </div>
           {isAdmin && (
             <button
-              onClick={() => setShowForm(!showForm)}
+              onClick={(e) => { e.stopPropagation(); setShowForm(!showForm); }}
               className="rounded-2xl bg-sky-500 px-6 py-3 text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={saving}
             >
@@ -801,7 +801,7 @@ export function BranchesPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={cancelEdit}
+                        onClick={(e) => { e.stopPropagation(); cancelEdit(); }}
                         className="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-slate-200 transition hover:bg-slate-900"
                         disabled={saving}
                       >
@@ -849,7 +849,7 @@ export function BranchesPage() {
                       <div className="flex gap-2 lg:justify-end">
                         <button
                           type="button"
-                          onClick={() => beginEdit(branch)}
+                          onClick={(e) => { e.stopPropagation(); beginEdit(branch); }}
                           className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-900"
                           disabled={saving}
                         >
@@ -857,7 +857,7 @@ export function BranchesPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => requestDelete(branch)}
+                          onClick={(e) => { e.stopPropagation(); requestDelete(branch); }}
                           className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200 transition hover:bg-red-500/20"
                           disabled={saving}
                         >
@@ -887,7 +887,7 @@ export function BranchesPage() {
               <div className="mt-6 flex gap-3">
                 <button
                   type="button"
-                  onClick={confirmDeleteStep}
+                  onClick={(e) => { e.stopPropagation(); confirmDeleteStep(); }}
                   className="rounded-xl border border-red-400/30 bg-red-600 px-4 py-2 text-white transition hover:bg-red-500 disabled:opacity-50"
                   disabled={saving}
                 >
@@ -895,7 +895,7 @@ export function BranchesPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={cancelDelete}
+                  onClick={(e) => { e.stopPropagation(); cancelDelete(); }}
                   className="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-slate-200 transition hover:bg-slate-900"
                   disabled={saving}
                 >

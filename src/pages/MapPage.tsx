@@ -258,7 +258,7 @@ export function MapPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
-        <h2 className="text-2xl font-semibold text-white">Map View</h2>
+        <h2 className="text-2xl font-semibold text-slate-900">Map View</h2>
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1fr_22rem]">

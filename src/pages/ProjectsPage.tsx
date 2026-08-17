@@ -21,7 +21,7 @@ export function ProjectsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
-        <h2 className="text-2xl font-semibold text-white">Projects</h2>
+        <h2 className="text-2xl font-semibold text-slate-900">Projects</h2>
         <p className="mt-2 text-sm text-slate-400">{projects.length} projects · {outstandingTasks} outstanding tasks</p>
       </section>
 

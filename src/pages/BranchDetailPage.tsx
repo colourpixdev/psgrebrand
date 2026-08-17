@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileText, Download, Eye } from 'lucide-react';
@@ -121,8 +121,13 @@ export function BranchDetailPage() {
   });
   const thumbnailRequestedKeys = useRef(new Set<string>());
   const previousTaskIdsRef = useRef<Set<string>>(new Set());
-  const isFirstMountRef = useRef(true);
+  const collapsedTasksRef = useRef(collapsedTasks);
   const queryClient = useQueryClient();
+
+  // Keep ref in sync with state to avoid stale closures
+  useEffect(() => {
+    collapsedTasksRef.current = collapsedTasks;
+  }, [collapsedTasks]);
 
   const quickUpdateMutation = useMutation({
     mutationFn: ({ projectId, taskId, message }: { projectId: string; taskId: string; message: string }) => addProjectComment({
@@ -222,18 +227,7 @@ export function BranchDetailPage() {
   }, [branchFiles, thumbnails]);
 
   useEffect(() => {
-    // On first mount, just track the task IDs and preserve initial collapsed state
-    if (isFirstMountRef.current) {
-      branchProjects.forEach((project) => {
-        project.tasks.forEach((task) => {
-          previousTaskIdsRef.current.add(`${project.id}-${task.id}`);
-        });
-      });
-      isFirstMountRef.current = false;
-      return;
-    }
-
-    // On subsequent updates, only add truly NEW tasks as collapsed, preserve user's expansion choices
+    // Track task IDs and preserve collapsed state when tasks change
     const currentTaskIds = new Set<string>();
     branchProjects.forEach((project) => {
       project.tasks.forEach((task) => {
@@ -241,19 +235,35 @@ export function BranchDetailPage() {
       });
     });
 
+    // Only update if tasks actually changed
+    if (previousTaskIdsRef.current.size === 0) {
+      // First mount: initialize with all tasks collapsed
+      previousTaskIdsRef.current = currentTaskIds;
+      return;
+    }
+
+    const previousIds = previousTaskIdsRef.current;
+    const hasTaskChanges = currentTaskIds.size !== previousIds.size || 
+      [...currentTaskIds].some(id => !previousIds.has(id));
+
+    if (!hasTaskChanges) {
+      return; // No changes, skip state update
+    }
+
+    // Add new tasks as collapsed, preserve user's expansion choices
     setCollapsedTasks((prev) => {
       const next = new Set<string>();
       
-      // Keep all previously collapsed tasks that still exist in current data
+      // Keep all previously collapsed tasks that still exist
       prev.forEach((taskId) => {
         if (currentTaskIds.has(taskId)) {
           next.add(taskId);
         }
       });
       
-      // Add any tasks that are new (weren't in previous data)
+      // Add any truly new tasks as collapsed
       currentTaskIds.forEach((taskId) => {
-        if (!previousTaskIdsRef.current.has(taskId)) {
+        if (!previousIds.has(taskId)) {
           next.add(taskId);
         }
       });
@@ -261,9 +271,22 @@ export function BranchDetailPage() {
       return next;
     });
 
-    // Update the ref with current task IDs for next comparison
     previousTaskIdsRef.current = currentTaskIds;
   }, [branchProjects]);
+
+  // Memoized callback for toggling accordion
+  const toggleTaskAccordion = useCallback((taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    setCollapsedTasks((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  }, []);
 
   if (isLoadingBranches || isLoadingProjects) {
     return <div className="rounded-[2rem] border border-white/10 bg-white/6 p-6 text-sm text-slate-300 shadow-soft">Loading branch workspace...</div>;
@@ -299,11 +322,11 @@ export function BranchDetailPage() {
             </div>
 
             {branchParticipants.length > 0 && (
-              <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+              <div className="rounded-2xl border border-white/10 bg-blue-950/60 p-4">
                 <p className="text-xs uppercase tracking-[0.12em] text-white">Contact persons</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {branchParticipants.slice(0, 4).map((p, i) => (
-                    <div key={`${p.email ?? p.name}-${i}`} className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
+                    <div key={`${p.email ?? p.name}-${i}`} className="rounded-2xl border border-white/10 bg-blue-900/50 p-4">
                       <p className="font-semibold text-white">{p.name}</p>
                       {p.designation ? <p className="mt-1 text-xs text-white">{p.designation}</p> : null}
                       {p.phone ? (
@@ -384,7 +407,7 @@ export function BranchDetailPage() {
                     <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <button type="button" onClick={() => navigate(`/projects/${project.id}`)} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
                   </div>
                 </div>
 
@@ -436,17 +459,7 @@ export function BranchDetailPage() {
                         <div key={taskId} className="rounded-2xl border border-white/10 bg-slate-950/50 overflow-hidden">
                           <button
                             type="button"
-                            onClick={() => {
-                              setCollapsedTasks((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(taskId)) {
-                                  next.delete(taskId);
-                                } else {
-                                  next.add(taskId);
-                                }
-                                return next;
-                              });
-                            }}
+                            onClick={(e) => toggleTaskAccordion(taskId, e)}
                             className="w-full px-4 py-3 text-sm text-slate-200 hover:bg-slate-900/40 transition text-left focus:outline-none focus:ring-2 focus:ring-sky-400/50 rounded-2xl"
                             aria-label={isExpanded ? 'Collapse task' : 'Expand task'}
                             aria-expanded={isExpanded}
@@ -492,19 +505,16 @@ export function BranchDetailPage() {
                                       <p className="truncate font-medium text-white">{file.name}</p>
                                       <div className="mt-2 flex flex-wrap items-center gap-2">
                                         {isPreviewable ? (
-                                          <button type="button" onClick={() => previewMutation.mutate(file)} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
+                                          <button type="button" onClick={(e) => { e.stopPropagation(); previewMutation.mutate(file); }} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
                                             <Eye className="mr-1 inline h-3.5 w-3.5" /> Preview
                                           </button>
                                         ) : null}
-                                        <button type="button" onClick={() => downloadMutation.mutate(file)} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
+                                        <button type="button" onClick={(e) => { e.stopPropagation(); downloadMutation.mutate(file); }} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
                                           <Download className="mr-1 inline h-3.5 w-3.5" /> Download
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={() => {
-                                            setRenamingFileKey(key);
-                                            setRenameDraft(file.name);
-                                          }}
+                                          onClick={(e) => { e.stopPropagation(); setRenamingFileKey(key); setRenameDraft(file.name); }}
                                           className="text-xs font-semibold text-sky-200 transition hover:text-sky-100"
                                         >
                                           Rename
@@ -521,17 +531,14 @@ export function BranchDetailPage() {
                                             <button
                                               type="button"
                                               disabled={!renameDraft.trim()}
-                                              onClick={() => {
-                                                renameFileMutation.mutate({ file, nextName: renameDraft });
-                                                setRenamingFileKey(null);
-                                              }}
+                                              onClick={(e) => { e.stopPropagation(); renameFileMutation.mutate({ file, nextName: renameDraft }); setRenamingFileKey(null); }}
                                               className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                               Save
                                             </button>
                                             <button
                                               type="button"
-                                              onClick={() => setRenamingFileKey(null)}
+                                              onClick={(e) => { e.stopPropagation(); setRenamingFileKey(null); }}
                                               className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
                                             >
                                               Cancel
@@ -571,7 +578,7 @@ export function BranchDetailPage() {
                                   <button
                                     type="button"
                                     disabled={!taskCommentDrafts[taskKey]?.trim() || taskCommentMutation.isPending}
-                                    onClick={() => taskCommentMutation.mutate({ projectId: project.id, taskId: task.id, message: taskCommentDrafts[taskKey] ?? '' })}
+                                    onClick={(e) => { e.stopPropagation(); taskCommentMutation.mutate({ projectId: project.id, taskId: task.id, message: taskCommentDrafts[taskKey] ?? '' }); }}
                                     className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     {taskCommentMutation.isPending ? 'Posting...' : 'Add comment'}
