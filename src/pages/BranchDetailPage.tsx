@@ -7,6 +7,7 @@ import { addProjectComment, getProjectFileUrl, getProjects, renameProjectFile } 
 import CurrentTaskCard from '../components/CurrentTaskCard';
 import QuickUpdate from '../components/QuickUpdate/QuickUpdate';
 import { useAuth } from '../contexts/AuthContext';
+import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { isTaskOutstanding } from '../utils/taskStatus';
@@ -62,6 +63,7 @@ export function BranchDetailPage() {
   const { branchId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showSuccess } = useSaveFeedback();
 
   const { data: branches = [], isLoading: isLoadingBranches } = useQuery({
     queryKey: ['branches'],
@@ -144,6 +146,7 @@ export function BranchDetailPage() {
           message: '',
         },
       }));
+      showSuccess('Quick update saved');
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['branches'] });
     },
