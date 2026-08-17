@@ -9,6 +9,7 @@ import { getAllBranches } from '../../services/branchService';
 import { timelineStages } from '../../constants/portal';
 import { defaultGraphicsPartner, defaultWorkspace } from '../../constants/workspaces';
 import { defaultProjectTemplate, projectTemplateOptions } from '../../constants/projectTemplates';
+import { defaultTaskPool } from '../../constants/taskPool';
 import { useSaveFeedback } from '../../contexts/SaveFeedbackContext';
 
 const optionalText = z.string().optional().default('');
@@ -33,6 +34,7 @@ const projectSchema = z.object({
   completionDate: optionalText,
   progress: z.coerce.number().min(0).max(100),
   notes: optionalText,
+  selectedTaskIds: z.array(z.string()).default([]),
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -132,6 +134,7 @@ export function ProjectCreateForm() {
       completionDate: '',
       progress: 0,
       notes: '',
+      selectedTaskIds: [],
     },
   });
 
@@ -163,6 +166,7 @@ export function ProjectCreateForm() {
         completionDate: '',
         progress: 0,
         notes: '',
+        selectedTaskIds: [],
       });
     },
   });
@@ -327,6 +331,24 @@ export function ProjectCreateForm() {
           Notes
           <textarea {...register('notes')} rows={4} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none" />
         </label>
+
+        <fieldset className="md:col-span-2">
+          <legend className="mb-3 text-sm font-semibold text-slate-300">Initial tasks (optional)</legend>
+          <p className="mb-3 text-xs text-slate-400">Select tasks to add to this project, or start with none and add tasks later.</p>
+          <div className="grid gap-2 rounded-2xl border border-white/10 bg-slate-900/30 p-4">
+            {defaultTaskPool.map((task) => (
+              <label key={task.id} className="flex items-center gap-2 text-sm text-slate-300 hover:text-slate-100 cursor-pointer">
+                <input
+                  type="checkbox"
+                  value={task.id}
+                  {...register('selectedTaskIds')}
+                  className="rounded border border-white/10 bg-slate-900/50 text-emerald-500 cursor-pointer"
+                />
+                <span>{task.text}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         {projectSaveError ? (
           <div role="alert" className="md:col-span-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
