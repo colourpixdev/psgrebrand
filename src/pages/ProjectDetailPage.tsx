@@ -92,6 +92,7 @@ export function ProjectDetailPage() {
   const [editingTaskText, setEditingTaskText] = useState('');
   const [editingTaskAssigneeEmails, setEditingTaskAssigneeEmails] = useState<string[]>([]);
   const [expandedTaskUpdateTaskIds, setExpandedTaskUpdateTaskIds] = useState<string[]>([]);
+  const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
   const [deleteConfirmationArmed, setDeleteConfirmationArmed] = useState(false);
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', projectId],
@@ -232,6 +233,20 @@ export function ProjectDetailPage() {
       questionId: question.id ?? '',
     }),
     onSuccess: (updatedProject) => syncProject(updatedProject, 'Answer marked as read.'),
+  });
+
+  const taskCommentMutation = useMutation({
+    mutationFn: ({ projectId: pid, taskId, message }: { projectId: string; taskId: string; message: string }) => addProjectComment({
+      projectId: pid,
+      author: user?.name ?? 'Workspace user',
+      message,
+      taskId: taskId || undefined,
+    }),
+    onSuccess: async (_, variables) => {
+      setTaskCommentDrafts((current) => ({ ...current, [variables.taskId]: '' }));
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      showSuccess('Comment added.');
+    },
   });
 
   const taskMutation = useMutation({
@@ -861,35 +876,42 @@ export function ProjectDetailPage() {
                     )}
                   </div>
                 ) : null}
-                {taskUpdates.length > 0 && normalizeRole(user?.role) !== 'psg_user' ? (
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Recent comments</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setJournalTaskId(task.id);
-                          setActiveProjectSection('taskUpdates');
-                        }}
-                        className="text-xs font-semibold text-sky-200 transition hover:text-sky-100"
-                      >
-                        Comment on this task
-                      </button>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      {taskUpdates.slice(0, 2).map((update, commentIndex) => (
-                        <div key={`${update.date}-${update.author}-${commentIndex}`} className="rounded-2xl border border-white/10 bg-slate-900/80 p-3">
-                          <div className="flex items-center justify-between gap-2 text-xs text-slate-400">
-                            <span className="font-semibold text-white">{update.author}</span>
-                            <span>{update.date}</span>
-                          </div>
-                          <p className="mt-2 text-sm text-slate-300">{update.message}</p>
+                {normalizeRole(user?.role) !== 'psg_user' ? (
+                  <div className="mt-4">
+                    <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
+                    <div className="mt-2 space-y-2">
+                      {taskUpdates.length > 0 ? taskUpdates.map((c, i) => (
+                        <div key={`${task.id}-comment-${i}`} className="rounded-2xl bg-slate-950/80 p-3">
+                          <p className="text-xs text-slate-400">{c.date}</p>
+                          <p className="mt-1 font-medium text-white">{c.author}</p>
+                          <p className="mt-1 text-slate-300">{c.message}</p>
                         </div>
-                      ))}
-                      {taskUpdates.length > 2 ? (
-                        <p className="text-xs text-slate-500">{taskUpdates.length - 2} more update{taskUpdates.length - 2 === 1 ? '' : 's'}</p>
-                      ) : null}
+                      )) : <p className="text-slate-400">No comments yet.</p>}
                     </div>
+
+                    {/* Add comment */}
+                    {canAddTaskComments(user) ? (
+                      <div className="mt-3 grid gap-2">
+                        <textarea
+                          value={taskCommentDrafts[task.id] ?? ''}
+                          onChange={(e) => setTaskCommentDrafts((cur) => ({ ...cur, [task.id]: e.target.value }))}
+                          rows={2}
+                          placeholder="Leave a comment for this task"
+                          className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={!taskCommentDrafts[task.id]?.trim() || taskCommentMutation.isPending}
+                            onClick={() => taskCommentMutation.mutate({ projectId: projectId ?? '', taskId: task.id, message: taskCommentDrafts[task.id] ?? '' })}
+                            className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {taskCommentMutation.isPending ? 'Posting...' : 'Add comment'}
+                          </button>
+                          <p className="text-xs text-slate-400">Comments appear in the project journal and under the task.</p>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
                 {editingTaskId !== task.id && isTaskUpdatesOpen ? (
