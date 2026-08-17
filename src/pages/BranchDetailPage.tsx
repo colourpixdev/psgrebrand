@@ -356,12 +356,6 @@ export function BranchDetailPage() {
               />
             </div>
           </div>
-
-          <div className="grid gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-sm text-slate-200">
-            <p>Rebrand records: <span className="text-white">{branchProjects.length}</span></p>
-            <p>Outstanding tasks: <span className="text-white">{outstandingTasks}</span></p>
-            <p>Files: <span className="text-white">{totalFiles}</span></p>
-          </div>
         </div>
       </section>
 
