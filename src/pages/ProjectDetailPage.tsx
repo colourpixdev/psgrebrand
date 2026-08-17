@@ -573,7 +573,7 @@ export function ProjectDetailPage() {
         <p className="mt-2 text-sm text-slate-400">
           {selectedProject.town}, {selectedProject.province} · Manager {selectedProject.manager}
         </p>
-        <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4 text-sm text-slate-300">
+        <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-2 text-sm text-slate-300">
           {canEditNotes ? (
             <label className="grid gap-2">
               <span className="text-slate-100">Current Status</span>
@@ -604,7 +604,7 @@ export function ProjectDetailPage() {
             </label>
           ) : <div className="text-slate-200">Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>}
 
-          <div className="md:col-span-2 lg:col-span-4 text-slate-200">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
+          <div className="md:col-span-2 lg:col-span-2 text-slate-200">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
         </div>
         {canEditNotes ? (
           <div className="mt-3 flex">
