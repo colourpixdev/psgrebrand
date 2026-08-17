@@ -28,6 +28,7 @@ const projectSchema = z.object({
   currentStage: z.string().min(1, 'Stage is required'),
   status: z.enum(['completed', 'busy', 'in_progress', 'awaiting_approval', 'delayed', 'on_hold', 'cancelled']),
   targetDate: optionalText,
+  briefRequestedDate: optionalText,
   installationDate: optionalText,
   completionDate: optionalText,
   progress: z.coerce.number().min(0).max(100),
@@ -126,6 +127,7 @@ export function ProjectCreateForm() {
       currentStage: 'New Project',
       status: 'in_progress',
       targetDate: '',
+      briefRequestedDate: '',
       installationDate: '',
       completionDate: '',
       progress: 0,
@@ -156,6 +158,7 @@ export function ProjectCreateForm() {
         currentStage: 'New Project',
         status: 'in_progress',
         targetDate: '',
+        briefRequestedDate: '',
         installationDate: '',
         completionDate: '',
         progress: 0,
@@ -298,6 +301,11 @@ export function ProjectCreateForm() {
         <label className="grid gap-2 text-sm text-slate-300">
           Target date
           <input {...register('targetDate')} type="date" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
+        </label>
+
+        <label className="grid gap-2 text-sm text-slate-300">
+          Brief requested date
+          <input {...register('briefRequestedDate')} type="date" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
         </label>
 
         <label className="grid gap-2 text-sm text-slate-300">

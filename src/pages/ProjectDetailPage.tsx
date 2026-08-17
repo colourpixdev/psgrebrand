@@ -76,6 +76,7 @@ export function ProjectDetailPage() {
   const [notesDraft, setNotesDraft] = useState('');
   const [currentStageDraft, setCurrentStageDraft] = useState<ProjectStage>('New Project');
   const [targetDateDraft, setTargetDateDraft] = useState('');
+  const [briefRequestedDateDraft, setBriefRequestedDateDraft] = useState('');
   const [installationDateDraft, setInstallationDateDraft] = useState('');
   const [completionDateDraft, setCompletionDateDraft] = useState('');
   const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
@@ -88,6 +89,7 @@ export function ProjectDetailPage() {
   const [taskText, setTaskText] = useState('');
   const [taskAssigneeEmails, setTaskAssigneeEmails] = useState<string[]>([]);
   const [expandedAccordionTaskIds, setExpandedAccordionTaskIds] = useState<string[]>([]);
+  const [taskInstallationDrafts, setTaskInstallationDrafts] = useState<Record<string, string>>({});
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskText, setEditingTaskText] = useState('');
   const [editingTaskAssigneeEmails, setEditingTaskAssigneeEmails] = useState<string[]>([]);
@@ -129,6 +131,7 @@ export function ProjectDetailPage() {
       setNotesDraft(project.notes);
       setCurrentStageDraft(project.currentStage);
       setTargetDateDraft(project.targetDate);
+      setBriefRequestedDateDraft(project.briefRequestedDate);
       setInstallationDateDraft(project.installationDate);
       setCompletionDateDraft(project.completionDate);
     }
@@ -187,6 +190,7 @@ export function ProjectDetailPage() {
       actor: user?.name ?? 'Workspace user',
       currentStage: currentStageDraft,
       targetDate: targetDateDraft,
+      briefRequestedDate: briefRequestedDateDraft,
       installationDate: installationDateDraft,
       completionDate: completionDateDraft,
     }),
@@ -283,7 +287,7 @@ export function ProjectDetailPage() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ task, text, completed, status, assigneeEmails }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; assigneeEmails?: string[] }) => {
+    mutationFn: ({ task, text, completed, status, assigneeEmails, installationRequest }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; assigneeEmails?: string[]; installationRequest?: string }) => {
       const assignees = assigneeEmails !== undefined ? buildTaskAssignees(assigneeEmails) : undefined;
       const primaryAssignee = assignees?.[assignees.length - 1];
       const nextText = text?.trim();
@@ -297,6 +301,7 @@ export function ProjectDetailPage() {
         assigneeName: assigneeEmails !== undefined ? primaryAssignee?.name : undefined,
         assigneeEmail: assigneeEmails !== undefined ? primaryAssignee?.email : undefined,
         assignees,
+        installationRequest,
         actor: user?.name ?? 'Workspace user',
         actorEmail: user?.email,
       });
@@ -500,6 +505,7 @@ export function ProjectDetailPage() {
   const hasNotesChange = notesDraft.trim() !== selectedProject.notes.trim();
   const hasSummaryChange = currentStageDraft.trim() !== selectedProject.currentStage.trim()
     || targetDateDraft.trim() !== selectedProject.targetDate.trim()
+    || briefRequestedDateDraft.trim() !== selectedProject.briefRequestedDate.trim()
     || installationDateDraft.trim() !== selectedProject.installationDate.trim()
     || completionDateDraft.trim() !== selectedProject.completionDate.trim();
   const branchParticipants = branch?.contacts?.length
@@ -533,6 +539,13 @@ export function ProjectDetailPage() {
               <input value={targetDateDraft} onChange={(event) => setTargetDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
             </label>
           ) : <div className="text-slate-200">Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>}
+
+          {canEditNotes ? (
+            <label className="grid gap-2">
+              <span className="text-slate-100">Brief Requested Date</span>
+              <input value={briefRequestedDateDraft} onChange={(event) => setBriefRequestedDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
+            </label>
+          ) : <div className="text-slate-200">Brief Requested Date: <span className="text-white">{selectedProject.briefRequestedDate}</span></div>}
 
           {canEditNotes ? (
             <label className="grid gap-2">
@@ -820,6 +833,30 @@ export function ProjectDetailPage() {
                         </label>
                       ) : null}
                     </div>
+                    {task.text.toLowerCase().includes('schedule installation') ? (
+                      <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-3">
+                        <label className="grid gap-2 text-xs uppercase tracking-[0.18em] text-cyan-100">
+                          Installation instructions / requests
+                          <textarea
+                            value={taskInstallationDrafts[task.id] ?? task.installationRequest ?? ''}
+                            onChange={(event) => setTaskInstallationDrafts((current) => ({ ...current, [task.id]: event.target.value }))}
+                            rows={3}
+                            placeholder="Add installation instructions, site notes, or requests for this task"
+                            className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-400 focus:border-cyan-300/50"
+                          />
+                        </label>
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            type="button"
+                            disabled={updateTaskMutation.isPending}
+                            onClick={() => updateTaskMutation.mutate({ task, installationRequest: taskInstallationDrafts[task.id] ?? task.installationRequest ?? '' })}
+                            className="rounded-xl bg-cyan-500 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Save instructions
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                     {taskFiles.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>

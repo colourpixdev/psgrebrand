@@ -32,6 +32,7 @@ type ProjectRow = {
   current_stage: string;
   status: Project['status'];
   target_date: string;
+  brief_requested_date?: string | null;
   installation_date: string;
   completion_date: string;
   updated_at: string;
@@ -163,6 +164,7 @@ function normalizeProjectTasks(tasks: unknown[] | null): TaskItem[] {
           assigneeName: typeof candidate.assigneeName === 'string' ? candidate.assigneeName : undefined,
           assigneeEmail: typeof candidate.assigneeEmail === 'string' ? candidate.assigneeEmail : undefined,
           assignees: normalizeTaskAssignees(candidate),
+          installationRequest: typeof candidate.installationRequest === 'string' ? candidate.installationRequest : undefined,
           status: typeof candidate.status === 'string' ? candidate.status as TaskItem['status'] : undefined,
           createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : undefined,
           completedAt: typeof candidate.completedAt === 'string' ? candidate.completedAt : undefined,
@@ -223,6 +225,7 @@ export type CreateProjectInput = {
   currentStage: Project['currentStage'];
   status: Project['status'];
   targetDate?: string;
+  briefRequestedDate?: string;
   installationDate?: string;
   completionDate?: string;
   progress: number;
@@ -551,6 +554,7 @@ export type UpdateProjectSummaryInput = {
   actor: string;
   currentStage: Project['currentStage'];
   targetDate: string;
+  briefRequestedDate: string;
   installationDate: string;
   completionDate: string;
 };
@@ -585,6 +589,7 @@ export type AnswerProjectQuestionInput = {
   status?: Project['status'];
   progress?: number;
   targetDate?: string;
+  briefRequestedDate?: string;
   installationDate?: string;
   completionDate?: string;
 };
@@ -614,6 +619,7 @@ export type UpdateProjectTaskInput = {
   assigneeName?: string;
   assigneeEmail?: string;
   assignees?: TaskAssignee[];
+  installationRequest?: string;
   actor: string;
   actorEmail?: string;
 };
@@ -757,6 +763,7 @@ function mapProjectRow(row: ProjectRow): Project {
     currentStage: typeof row.current_stage === 'string' ? row.current_stage as Project['currentStage'] : template.name,
     status: row.status ?? 'busy',
     targetDate: row.target_date ?? '',
+    briefRequestedDate: row.brief_requested_date ?? '',
     installationDate: row.installation_date ?? '',
     completionDate: row.completion_date ?? '',
     updatedAt: row.updated_at ?? new Date().toISOString(),
@@ -965,6 +972,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     current_stage: input.currentStage,
     status: input.status,
     target_date: input.targetDate?.trim() ?? '',
+    brief_requested_date: input.briefRequestedDate?.trim() ?? '',
     installation_date: input.installationDate?.trim() ?? '',
     completion_date: input.completionDate?.trim() ?? '',
     progress: input.progress,
@@ -1002,6 +1010,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
       current_stage: basePayload.current_stage,
       status: basePayload.status,
       target_date: basePayload.target_date,
+      brief_requested_date: basePayload.brief_requested_date,
       installation_date: basePayload.installation_date,
       completion_date: basePayload.completion_date,
       updated_at: now,
@@ -1085,6 +1094,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
       current_stage: basePayload.current_stage,
       status: basePayload.status,
       target_date: basePayload.target_date,
+      brief_requested_date: basePayload.brief_requested_date,
       installation_date: basePayload.installation_date,
       completion_date: basePayload.completion_date,
       updated_at: now,
@@ -1248,6 +1258,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
   }
 
   const targetDate = input.targetDate.trim();
+  const briefRequestedDate = input.briefRequestedDate.trim();
   const installationDate = input.installationDate.trim();
   const completionDate = input.completionDate.trim();
   const activity = [
@@ -1260,6 +1271,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     .update({
       current_stage: currentStage,
       target_date: targetDate,
+      brief_requested_date: briefRequestedDate,
       installation_date: installationDate,
       completion_date: completionDate,
       activity,
@@ -1429,6 +1441,7 @@ export async function answerProjectQuestion(input: AnswerProjectQuestionInput): 
     input.progress !== undefined && input.progress !== existingProject.progress ? `Progress changed to ${input.progress}%` : null,
     input.installationDate && input.installationDate !== existingProject.installationDate ? `Installation date changed to ${input.installationDate}` : null,
     input.targetDate && input.targetDate !== existingProject.targetDate ? `Target date changed to ${input.targetDate}` : null,
+    input.briefRequestedDate && input.briefRequestedDate !== existingProject.briefRequestedDate ? `Brief requested date changed to ${input.briefRequestedDate}` : null,
     input.completionDate && input.completionDate !== existingProject.completionDate ? `Completion date changed to ${input.completionDate}` : null,
   ].filter((change): change is string => Boolean(change));
 
@@ -1468,6 +1481,7 @@ export async function answerProjectQuestion(input: AnswerProjectQuestionInput): 
       status: input.status ?? existingProject.status,
       progress: input.progress ?? existingProject.progress,
       target_date: input.targetDate ?? existingProject.targetDate,
+      brief_requested_date: input.briefRequestedDate ?? existingProject.briefRequestedDate,
       installation_date: input.installationDate ?? existingProject.installationDate,
       completion_date: input.completionDate ?? existingProject.completionDate,
       comments,
@@ -1649,6 +1663,11 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
 
     const status = input.status ?? (input.completed !== undefined ? (input.completed ? 'done' : 'open') : task.status ?? (task.completed ? 'done' : 'open'));
     const completed = status === 'done';
+    const installationRequest = input.installationRequest !== undefined
+      ? input.installationRequest.trim()
+      : (input.text?.trim() && input.text.trim().toLowerCase().includes('schedule installation')
+        ? (task.installationRequest ?? '')
+        : task.installationRequest);
     const assignees = input.assignees !== undefined
       ? (input.assignees.length > 0 ? input.assignees : undefined)
       : task.assignees;
@@ -1671,6 +1690,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       assigneeName: primaryAssignee?.name ?? (input.assigneeName !== undefined ? input.assigneeName || undefined : task.assigneeName),
       assigneeEmail: primaryAssignee?.email ?? (input.assigneeEmail !== undefined ? input.assigneeEmail || undefined : task.assigneeEmail),
       assignees: resolvedAssignees,
+      installationRequest,
       completedAt: completed ? task.completedAt ?? new Date().toISOString() : undefined,
       completedByName: completed ? input.actor : undefined,
       completedByEmail: completed ? input.actorEmail : undefined,

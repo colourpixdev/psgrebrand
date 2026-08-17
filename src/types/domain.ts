@@ -89,6 +89,7 @@ export interface Project {
   currentStage: ProjectStage;
   status: ProjectStatus;
   targetDate: string;
+  briefRequestedDate: string;
   installationDate: string;
   completionDate: string;
   updatedAt: string;
@@ -121,6 +122,7 @@ export interface TaskItem {
   assigneeName?: string;
   assigneeEmail?: string;
   assignees?: TaskAssignee[];
+  installationRequest?: string;
   createdAt?: string;
   completedAt?: string;
   completedByName?: string;
