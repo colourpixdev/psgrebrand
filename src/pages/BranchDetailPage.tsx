@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileText, Download, Eye } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
-import { addProjectComment, getProjectFileUrl, getProjects, renameProjectFile } from '../services/portalService';
+import { addProjectComment, deleteProjectFile, getProjectFileUrl, getProjects, renameProjectFile, uploadProjectFile } from '../services/portalService';
 import CurrentTaskCard from '../components/CurrentTaskCard';
 import QuickUpdate from '../components/QuickUpdate/QuickUpdate';
 import { useAuth } from '../contexts/AuthContext';
@@ -208,6 +208,16 @@ export function BranchDetailPage() {
       setTaskCommentDrafts((current) => ({ ...current, [`${variables.projectId}-${variables.taskId}`]: '' }));
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['branches'] });
+    },
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: ({ file, taskId, projectId }: { file: File; taskId: string; projectId: string }) =>
+      uploadProjectFile(projectId, file, branchProjects.find(p => p.id === projectId)?.files ?? [], taskId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['branches'] });
+      showSuccess('File uploaded successfully');
     },
   });
 
@@ -505,6 +515,29 @@ export function BranchDetailPage() {
                           </button>
                           {isExpanded && (
                             <div className="border-t border-white/10 px-4 py-3 text-sm text-slate-200 space-y-3">
+                              {isPlatformOwnerEmail(user?.email) ? (
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <span className="text-xs text-slate-500">
+                                    {taskFiles.length} file{taskFiles.length === 1 ? '' : 's'} attached to this task
+                                  </span>
+                                  <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-white/10 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
+                                    {uploadMutation.isPending ? 'Uploading...' : 'Upload file'}
+                                    <input
+                                      type="file"
+                                      disabled={uploadMutation.isPending}
+                                      accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
+                                      className="sr-only"
+                                      onChange={(event) => {
+                                        const file = event.target.files?.[0];
+                                        event.target.value = '';
+                                        if (file) {
+                                          uploadMutation.mutate({ file, taskId: task.id, projectId: project.id });
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              ) : null}
                               {taskFiles.length > 0 ? (
                                 <div className="space-y-3">
                                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>

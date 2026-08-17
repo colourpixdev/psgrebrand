@@ -408,12 +408,6 @@ export function ProjectDetailPage() {
   const canAddTasks = Boolean(rolePolicy?.tasks.canCreateTasks);
   const canCompleteTasks = Boolean(rolePolicy?.tasks.canCompleteTasks);
   const canAssignTasks = Boolean(rolePolicy?.tasks.canAssignTasks || rolePolicy?.tasks.canReassignTasks);
-  
-  // Debug: log permission state
-  if (user) {
-    console.log('[ProjectDetail] User:', { email: user.email, role: user.role, isPlatformOwner: user.isPlatformOwner });
-    console.log('[ProjectDetail] Permissions:', { canAdministerProjectDetails, canUploadFiles, rolePolicy: rolePolicy?.files });
-  }
   const isBranchContact = Boolean(branch && user && (
     (branch.contactEmail && user.email && branch.contactEmail.toLowerCase() === user.email.toLowerCase()) ||
     (branch.contacts && branch.contacts.some((c) => c.email && user.email && c.email.toLowerCase() === user.email.toLowerCase()))
