@@ -400,9 +400,7 @@ export function BranchDetailPage() {
                   return shouldShow ? (
                     <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
                       <div>
-                        <p className="text-base font-semibold text-white">{project.branch}</p>
-                        <p className="mt-1 text-sm text-slate-300">{project.currentStage} · {project.status.replace('_', ' ')}</p>
-                        <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
+                        {/* Project info display removed */}
                       </div>
                       <div className="mt-3 flex gap-2">
                         {(() => {
