@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { FileText, Download, Eye } from 'lucide-react';
+import { FileText, Download, Eye, CheckCircle2, X } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
-import { addProjectComment, deleteProjectFile, getProjectFileUrl, getProjects, renameProjectFile, uploadProjectFile } from '../services/portalService';
+import { addProjectComment, addProjectTask, deleteProjectFile, deleteProjectTask, getProjectFileUrl, getProjects, renameProjectFile, updateProjectTask, uploadProjectFile } from '../services/portalService';
 import CurrentTaskCard from '../components/CurrentTaskCard';
 import QuickUpdate from '../components/QuickUpdate/QuickUpdate';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,6 +13,7 @@ import { normalizeRole } from '../types/domain';
 import { isPlatformOwnerEmail } from '../constants/workspaces';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { isTaskOutstanding } from '../utils/taskStatus';
+import { getApplicableTaskTemplates } from '../constants/taskTemplates';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
 
 function canPreviewFile(file: ProjectFile) {
@@ -123,6 +124,7 @@ export function BranchDetailPage() {
     });
     return initialCollapsed;
   });
+  const [expandedTaskPoolProjects, setExpandedTaskPoolProjects] = useState<Set<string>>(new Set());
   const thumbnailRequestedKeys = useRef(new Set<string>());
   const previousTaskIdsRef = useRef<Set<string>>(new Set());
   const collapsedTasksRef = useRef(collapsedTasks);
@@ -218,6 +220,51 @@ export function BranchDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['branches'] });
       showSuccess('File uploaded successfully');
+    },
+  });
+
+  const addTaskFromPoolMutation = useMutation({
+    mutationFn: ({ projectId, templateName }: { projectId: string; templateName: string }) =>
+      addProjectTask({
+        projectId,
+        task: templateName,
+        stage: templateName,
+        actor: user?.name ?? 'Workspace user',
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['branches'] });
+      showSuccess('Task added successfully');
+    },
+  });
+
+  const completeTaskMutation = useMutation({
+    mutationFn: ({ projectId, taskId, completed }: { projectId: string; taskId: string; completed: boolean }) =>
+      updateProjectTask({
+        projectId,
+        taskId,
+        completed,
+        actor: user?.name ?? 'Workspace user',
+        actorEmail: user?.email,
+      }),
+    onSuccess: async (_, { completed }) => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['branches'] });
+      showSuccess(completed ? 'Task marked as complete' : 'Task marked as open');
+    },
+  });
+
+  const removeTaskMutation = useMutation({
+    mutationFn: ({ projectId, taskId }: { projectId: string; taskId: string }) =>
+      deleteProjectTask({
+        projectId,
+        taskId,
+        actor: user?.name ?? 'Workspace user',
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['branches'] });
+      showSuccess('Task removed');
     },
   });
 
@@ -515,6 +562,34 @@ export function BranchDetailPage() {
                           </button>
                           {isExpanded && (
                             <div className="border-t border-white/10 px-4 py-3 text-sm text-slate-200 space-y-3">
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); completeTaskMutation.mutate({ projectId: project.id, taskId: task.id, completed: !task.completed }); }}
+                                  disabled={completeTaskMutation.isPending}
+                                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:opacity-50"
+                                >
+                                  {task.completed ? (
+                                    <>
+                                      ◯ Reopen task
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 className="h-3.5 w-3.5" />
+                                      Mark complete
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); removeTaskMutation.mutate({ projectId: project.id, taskId: task.id }); }}
+                                  disabled={removeTaskMutation.isPending}
+                                  className="inline-flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                  Remove task
+                                </button>
+                              </div>
                               {isPlatformOwnerEmail(user?.email) ? (
                                 <div className="flex flex-wrap items-center gap-3">
                                   <span className="text-xs text-slate-500">
@@ -655,6 +730,76 @@ export function BranchDetailPage() {
                     }) : <p className="text-slate-400">No tasks added yet.</p>}
                   </div>
                 </div>
+
+                {/* Available Tasks to Add */}
+                {(() => {
+                  const policy = getRolePolicy(user);
+                  const canAddTasks = Boolean(policy && policy.tasks.canCreateTasks) || Boolean(user && (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email)));
+                  
+                  if (!canAddTasks) {
+                    return null;
+                  }
+
+                  const availableTemplates = getApplicableTaskTemplates(project.projectType);
+                  const existingTaskTexts = new Set(project.tasks.map((t) => t.text.toLowerCase()));
+                  const unusedTemplates = availableTemplates.filter((template) => !existingTaskTexts.has(template.name.toLowerCase()));
+
+                  if (unusedTemplates.length === 0) {
+                    return null;
+                  }
+
+                  const isExpanded = expandedTaskPoolProjects.has(project.id);
+
+                  return (
+                    <div className="mt-6 border-t border-white/10 pt-4">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedTaskPoolProjects((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(project.id)) {
+                              next.delete(project.id);
+                            } else {
+                              next.add(project.id);
+                            }
+                            return next;
+                          });
+                        }}
+                        className="flex w-full items-center gap-2 rounded-2xl p-3 text-left transition hover:bg-slate-900/40"
+                      >
+                        <span className="text-slate-400">{isExpanded ? '▼' : '▶'}</span>
+                        <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Available tasks to add ({unusedTemplates.length})</p>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {unusedTemplates.map((template) => (
+                            <div key={template.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
+                              <p className="font-medium text-white">{template.name}</p>
+                              <p className="mt-1 text-xs text-slate-400">{template.description}</p>
+                              <p className="mt-2 text-xs text-slate-500 capitalize">{template.category}</p>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addTaskFromPoolMutation.mutate({
+                                    projectId: project.id,
+                                    templateName: template.name,
+                                  });
+                                }}
+                                disabled={addTaskFromPoolMutation.isPending}
+                                className="mt-3 inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-50"
+                              >
+                                + Add task
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="mt-6 grid gap-3 md:grid-cols-2">
                   <div className="rounded-2xl bg-slate-950/70 p-4">
