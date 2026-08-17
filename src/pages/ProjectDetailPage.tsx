@@ -1055,7 +1055,7 @@ export function ProjectDetailPage() {
                 </button>
               ) : null}
             </div>
-            <p className="text-xs text-slate-300/80">One composer, two actions: save an update or send a request. Both can be linked to the same task.</p>
+            <p className="text-xs text-slate-600">One composer, two actions: save an update or send a request. Both can be linked to the same task.</p>
           </div>
         ) : null}
 
