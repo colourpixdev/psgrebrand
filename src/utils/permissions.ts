@@ -353,6 +353,15 @@ export function can(user: UserRecord | null | undefined, permission: Permission)
   return permissionCapabilities[permission](policy);
 }
 
+export function canAddTaskComments(user: UserRecord | null | undefined) {
+  // PSG users cannot add comments to tasks, even with permission overrides
+  if (!user || normalizeRole(user.role) === 'psg_user') {
+    return false;
+  }
+  
+  return can(user, 'add_comments');
+}
+
 export function canManageAccessControls(user: UserRecord | null | undefined) {
   if (!user) {
     return false;

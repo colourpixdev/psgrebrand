@@ -8,7 +8,7 @@ import CurrentTaskCard from '../components/CurrentTaskCard';
 import QuickUpdate from '../components/QuickUpdate/QuickUpdate';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
-import { can, getRolePolicy, filterProjectsForUser } from '../utils/permissions';
+import { can, canAddTaskComments, getRolePolicy, filterProjectsForUser } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { isTaskOutstanding } from '../utils/taskStatus';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
@@ -348,18 +348,11 @@ export function BranchDetailPage() {
               </div>
             )}
             <div className="mt-4">
-              {(() => {
-                const policy = getRolePolicy(user);
-                const canQuickUpdate = policy && (policy.communication.canCreateComments || policy.tasks.canCreateTasks);
-                
-                return canQuickUpdate ? (
-                  <CurrentTaskCard
-                    project={branchProject}
-                    canSave={!quickUpdateMutation.isPending}
-                    onSave={(taskId, message) => quickUpdateMutation.mutate({ projectId: branchProject?.id ?? '', taskId: taskId ?? '', message })}
-                  />
-                ) : null;
-              })()}
+              <CurrentTaskCard
+                project={branchProject}
+                canSave={!quickUpdateMutation.isPending}
+                onSave={(taskId, message) => quickUpdateMutation.mutate({ projectId: branchProject?.id ?? '', taskId: taskId ?? '', message })}
+              />
             </div>
           </div>
 
@@ -600,7 +593,7 @@ export function BranchDetailPage() {
                                 </div>
 
                                 {/* Add comment */}
-                                {can(user, 'add_comments') ? (
+                                {canAddTaskComments(user) ? (
                                   <div className="mt-3 grid gap-2">
                                 <textarea
                                   value={taskCommentDrafts[taskKey] ?? ''}

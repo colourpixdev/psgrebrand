@@ -10,7 +10,7 @@ import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
-import { canViewProject, getRolePolicy } from '../utils/permissions';
+import { canViewProject, canAddTaskComments, getRolePolicy } from '../utils/permissions';
 import { getTaskStatus } from '../utils/taskStatus';
 import type { CommentItem, Project, ProjectFile, ProjectStatus, ProjectStage, TaskAssignee, TaskItem } from '../types/domain';
 
@@ -471,7 +471,7 @@ export function ProjectDetailPage() {
   const canAdministerProjectDetails = Boolean(user?.isPlatformOwner);
   const canUploadFiles = canAdministerProjectDetails && Boolean(rolePolicy?.files.canUploadFiles);
   const canDeleteFiles = canAdministerProjectDetails && Boolean(rolePolicy?.files.canDeleteFiles);
-  const canAddComments = Boolean(rolePolicy?.communication.canCreateComments);
+  const canAddComments = canAddTaskComments(user);
   const canAskColourpix = Boolean(rolePolicy?.communication.canAskQuestions);
   const canAnswerColourpixQuestions = canAdministerProjectDetails && Boolean(rolePolicy?.communication.canAnswerQuestions);
   const canAddTasks = Boolean(rolePolicy?.tasks.canCreateTasks);
