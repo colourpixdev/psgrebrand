@@ -97,6 +97,11 @@ const SEED_USERS = [
     email: 'ops@abcsignage.co.za',
     user_metadata: { name: 'ABC Signage', role: 'sign_company' },
   },
+  {
+    email: 'psg@psg.co.za',
+    password: 'PSGrebrand',
+    user_metadata: { name: 'PSG User', role: 'psg_user' },
+  },
 ];
 
 // ---------------------------------------------------------------------------

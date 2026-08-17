@@ -6,7 +6,7 @@ create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid unique references auth.users(id) on delete set null,
   name text not null,
-  role text not null check (role in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company')),
+  role text not null check (role in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'psg_user', 'sign_company')),
   branch text,
   company text,
   profile_title text,
@@ -29,7 +29,7 @@ alter table public.profiles add column if not exists workspace_ids text[] not nu
 alter table public.profiles add column if not exists permission_overrides jsonb not null default '{}'::jsonb;
 
 do $$ begin
-  alter table public.profiles add constraint profiles_role_check check (role in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'));
+  alter table public.profiles add constraint profiles_role_check check (role in ('colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'psg_user', 'sign_company'));
 exception when duplicate_object then null;
 end $$;
 
