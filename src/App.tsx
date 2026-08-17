@@ -153,15 +153,11 @@ function AppRoutes() {
     );
   }
 
-  if (!user && location.pathname !== '/login') {
-    return <Navigate to="/login" replace />;
-  }
-
+  // Show login/auth pages without AppShell, regardless of auth state
   if (location.pathname === '/login') {
     if (user) {
       return <Navigate to="/" replace />;
     }
-
     return <LoginPage />;
   }
 
@@ -169,8 +165,9 @@ function AppRoutes() {
     return <AuthCallbackPage />;
   }
 
-  if (!canAccessRoute(user, location.pathname)) {
-    return <Navigate to="/" replace />;
+  // Protect all other routes - require authentication
+  if (!user) {
+    return <Navigate to="/login" replace />;
   }
 
   const visibleNavigation = navigation.filter((item) => canAccessRoute(user, item.to));
@@ -195,15 +192,13 @@ function AppRoutes() {
       <Suspense fallback={<RouteLoading />}>
         <RouteErrorBoundary>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="/" element={<DashboardPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
             <Route path="/branches" element={<BranchesPage />} />
             <Route path="/branches/:branchId" element={<BranchDetailPage />} />
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/access-controls" element={<AccessControlsPage />} />
+            <Route path="/users" element={canAccessRoute(user, '/users') ? <UsersPage /> : <Navigate to="/" replace />} />
+            <Route path="/access-controls" element={canAccessRoute(user, '/access-controls') ? <AccessControlsPage /> : <Navigate to="/" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/map" element={<MapPage />} />
