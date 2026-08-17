@@ -348,13 +348,6 @@ export function BranchDetailPage() {
                 </div>
               </div>
             )}
-            <div className="mt-4">
-              <CurrentTaskCard
-                project={branchProject}
-                canSave={normalizeRole(user?.role) !== 'psg_user' && !quickUpdateMutation.isPending}
-                onSave={normalizeRole(user?.role) !== 'psg_user' ? (taskId, message) => quickUpdateMutation.mutate({ projectId: branchProject?.id ?? '', taskId: taskId ?? '', message }) : undefined}
-              />
-            </div>
           </div>
         </div>
       </section>
@@ -369,6 +362,14 @@ export function BranchDetailPage() {
               <Link to={`/projects?branchId=${encodeURIComponent(branch.id)}`} className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">Add project</Link>
             ) : null}
           </div>
+        </div>
+
+        <div className="mt-4">
+          <CurrentTaskCard
+            project={branchProject}
+            canSave={normalizeRole(user?.role) !== 'psg_user' && !quickUpdateMutation.isPending}
+            onSave={normalizeRole(user?.role) !== 'psg_user' ? (taskId, message) => quickUpdateMutation.mutate({ projectId: branchProject?.id ?? '', taskId: taskId ?? '', message }) : undefined}
+          />
         </div>
 
         {branchLatestUpdates.length > 0 ? (
