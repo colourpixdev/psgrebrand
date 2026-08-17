@@ -450,25 +450,27 @@ export function BranchDetailPage() {
                   ) : null;
                 })()}
 
-                <div className="mt-6 grid gap-3 md:grid-cols-2">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Assigned participants</p>
-                    <div className="mt-3 space-y-2 text-sm text-slate-200">
-                      {participants.length > 0 ? participants.map((participant, index) => (
-                        <p key={`${project.id}-${participant.email ?? participant.name ?? index}`}>{participant.name} · {participant.designation}</p>
-                      )) : <p className="text-slate-400">No participants assigned yet.</p>}
+                {project.branch !== 'PSG Jan Kemp Dorp Wealth' ? (
+                  <div className="mt-6 grid gap-3 md:grid-cols-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Assigned participants</p>
+                      <div className="mt-3 space-y-2 text-sm text-slate-200">
+                        {participants.length > 0 ? participants.map((participant, index) => (
+                          <p key={`${project.id}-${participant.email ?? participant.name ?? index}`}>{participant.name} · {participant.designation}</p>
+                        )) : <p className="text-slate-400">No participants assigned yet.</p>}
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Pending tasks</p>
-                    <div className="mt-3 space-y-2 text-sm text-slate-200">
-                      {pendingTasks.length > 0 ? pendingTasks.slice(0, 5).map((task) => (
-                        <p key={`${project.id}-${task.id}`}>{task.text}</p>
-                      )) : <p className="text-slate-400">No pending tasks.</p>}
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Pending tasks</p>
+                      <div className="mt-3 space-y-2 text-sm text-slate-200">
+                        {pendingTasks.length > 0 ? pendingTasks.slice(0, 5).map((task) => (
+                          <p key={`${project.id}-${task.id}`}>{task.text}</p>
+                        )) : <p className="text-slate-400">No pending tasks.</p>}
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : null}
 
                 <div className="mt-6 border-t border-white/10 pt-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-500">All tasks</p>
