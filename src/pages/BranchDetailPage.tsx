@@ -8,7 +8,7 @@ import CurrentTaskCard from '../components/CurrentTaskCard';
 import QuickUpdate from '../components/QuickUpdate/QuickUpdate';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
-import { can, filterProjectsForUser } from '../utils/permissions';
+import { can, getRolePolicy, filterProjectsForUser } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { isTaskOutstanding } from '../utils/taskStatus';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
@@ -410,7 +410,25 @@ export function BranchDetailPage() {
                     <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
+                    {(() => {
+                      const policy = getRolePolicy(user);
+                      const canEditProject = policy && (
+                        policy.projectAccess.canCreateProjects ||
+                        policy.projectAccess.canArchiveProjects ||
+                        policy.projectAccess.canDeleteProjects ||
+                        policy.projectAccess.canDuplicateProject ||
+                        policy.workflow.canChangeStage ||
+                        policy.workflow.canChangeStatus ||
+                        policy.workflow.canChangeProgress ||
+                        policy.workflow.canChangeTargetDates ||
+                        policy.communication.canCreateComments ||
+                        policy.tasks.canCreateTasks
+                      );
+                      
+                      return canEditProject ? (
+                        <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
 
