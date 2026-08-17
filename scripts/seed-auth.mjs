@@ -73,8 +73,12 @@ const DEFAULT_PASSWORD = 'Rebrand2026!';
 
 const SEED_USERS = [
   {
+    email: 'bd@colourpix.co.za',
+    user_metadata: { name: 'Beverley Dippenaar', role: 'colourpix_admin' },
+  },
+  {
     email: 'beverley@colourpix.co.za',
-    user_metadata: { name: 'Beverley', role: 'colourpix_admin' },
+    user_metadata: { name: 'Beverley Dippenaar', role: 'colourpix_admin' },
   },
   {
     email: 'francois@colourpix.co.za',

@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { can, canAddTaskComments, getRolePolicy, filterProjectsForUser } from '../utils/permissions';
 import { normalizeRole } from '../types/domain';
+import { isPlatformOwnerEmail } from '../constants/workspaces';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { isTaskOutstanding } from '../utils/taskStatus';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
@@ -82,7 +83,7 @@ export function BranchDetailPage() {
     || branches.find((item) => item.code === normalizedParam)
     || branches.find((item) => encodeURIComponent(item.id) === normalizedParam)
     || branches.find((item) => typeof item.name === 'string' && item.name.toLowerCase() === decodedParam.toLowerCase());
-  const canCreateProjects = can(user, 'create_project');
+  const canCreateProjects = can(user, 'create_project') || Boolean(user && (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email)));
   const scopedProjects = filterProjectsForUser(projects, user);
   const branchProjects = useMemo(() => {
     if (!branch) {
@@ -391,36 +392,42 @@ export function BranchDetailPage() {
 
             return (
               <article key={project.id} className="rounded-2xl border border-white/10 bg-slate-950/90 p-5 shadow-soft">
-                {project.branch !== 'PSG Jan Kemp Dorp Wealth' ? (
-                  <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="text-base font-semibold text-white">{project.branch}</p>
-                      <p className="mt-1 text-sm text-slate-300">{project.currentStage} · {project.status.replace('_', ' ')}</p>
-                      <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
+                {(() => {
+                  const isSpecialBranch = project.branch === 'PSG Jan Kemp Dorp Wealth';
+                  const isAdmin = user && (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email));
+                  const shouldShow = !isSpecialBranch || isAdmin;
+
+                  return shouldShow ? (
+                    <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <p className="text-base font-semibold text-white">{project.branch}</p>
+                        <p className="mt-1 text-sm text-slate-300">{project.currentStage} · {project.status.replace('_', ' ')}</p>
+                        <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
+                      </div>
+                      <div className="mt-3 flex gap-2">
+                        {(() => {
+                          const policy = getRolePolicy(user);
+                          const canEditProject = Boolean(user && (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email))) || Boolean(policy && (
+                            policy.projectAccess.canCreateProjects ||
+                            policy.projectAccess.canArchiveProjects ||
+                            policy.projectAccess.canDeleteProjects ||
+                            policy.projectAccess.canDuplicateProject ||
+                            policy.workflow.canChangeStage ||
+                            policy.workflow.canChangeStatus ||
+                            policy.workflow.canChangeProgress ||
+                            policy.workflow.canChangeTargetDates ||
+                            policy.communication.canCreateComments ||
+                            policy.tasks.canCreateTasks
+                          ));
+                          
+                          return canEditProject ? (
+                            <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
+                          ) : null;
+                        })()}
+                      </div>
                     </div>
-                    <div className="mt-3 flex gap-2">
-                      {(() => {
-                        const policy = getRolePolicy(user);
-                        const canEditProject = policy && (
-                          policy.projectAccess.canCreateProjects ||
-                          policy.projectAccess.canArchiveProjects ||
-                          policy.projectAccess.canDeleteProjects ||
-                          policy.projectAccess.canDuplicateProject ||
-                          policy.workflow.canChangeStage ||
-                          policy.workflow.canChangeStatus ||
-                          policy.workflow.canChangeProgress ||
-                          policy.workflow.canChangeTargetDates ||
-                          policy.communication.canCreateComments ||
-                          policy.tasks.canCreateTasks
-                        );
-                        
-                        return canEditProject ? (
-                          <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
-                        ) : null;
-                      })()}
-                    </div>
-                  </div>
-                ) : null}
+                  ) : null;
+                })()}
 
                 {(() => {
                   const policy = getRolePolicy(user);

@@ -135,6 +135,13 @@ export function ProjectDetailPage() {
     }
   }, [project]);
 
+  useEffect(() => {
+    // Filter out accordion IDs for tasks that no longer exist
+    if (project?.tasks) {
+      setExpandedAccordionTaskIds((current) => current.filter((taskId) => project.tasks.some((task) => task.id === taskId)));
+    }
+  }, [project?.tasks]);
+
   const syncProject = async (updatedProject: Project, successMessage?: string) => {
     queryClient.setQueryData(['project', projectId], updatedProject);
     await Promise.all([

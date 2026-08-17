@@ -54,7 +54,8 @@ const adminClient = createClient(supabaseUrl, serviceRoleKey, {
 });
 
 const PROFILES = [
-  { name: 'Beverley', role: 'colourpix_admin', branch: null, email: 'bd@colourpix.co.za' },
+  { name: 'Beverley Dippenaar', role: 'colourpix_admin', branch: null, email: 'bd@colourpix.co.za' },
+  { name: 'Beverley Dippenaar', role: 'colourpix_admin', branch: null, email: 'beverley@colourpix.co.za' },
   { name: 'Francois', role: 'colourpix_admin', branch: null, email: 'francois@colourpix.co.za' },
   { name: 'PSG Head Office', role: 'psg_head_office', branch: null, email: 'head.office@psg.co.za' },
   { name: 'Judith', role: 'psg_head_office', branch: null, email: 'judith@psg.co.za' },
