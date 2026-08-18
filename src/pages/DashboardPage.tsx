@@ -96,10 +96,6 @@ export function DashboardPage() {
             <p className="text-xs uppercase tracking-[0.14em] text-slate-200 font-medium">Completed</p>
             <p className="mt-2 text-3xl font-bold text-white">{stats.completed}</p>
           </div>
-          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-4">
-            <p className="text-xs uppercase tracking-[0.14em] text-slate-200 font-medium">At Risk</p>
-            <p className="mt-2 text-3xl font-bold text-amber-200">{delayedCount}</p>
-          </div>
         </section>
       )}
 

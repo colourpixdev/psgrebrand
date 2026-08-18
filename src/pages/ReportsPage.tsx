@@ -413,7 +413,7 @@ export function ReportsPage() {
                 <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
-                  <td className="px-5 py-4 text-white"><Link to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`} className="inline-flex items-center justify-center rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Open branch hub</Link></td>
+                  <td className="px-5 py-4 text-white"><Link to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`} className="inline-flex items-center justify-center rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Open branch record</Link></td>
                   <td className="px-5 py-4"><Link to="/branches" className="hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectTypeName}</td>
                   <td className="px-5 py-4">{project.town}, {project.province}</td>

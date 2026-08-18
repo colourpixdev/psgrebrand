@@ -698,13 +698,13 @@ export function BranchesPage() {
                         value={editData.name}
                         onChange={(e) => setEditData({ ...editData, name: e.target.value })}
                         placeholder="Branch name"
-                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
                         required
                       />
                       <select
                         value={editData.division}
                         onChange={(e) => setEditData({ ...editData, division: e.target.value as Division })}
-                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
                         required
                       >
                         {divisions.map((d) => (
@@ -716,7 +716,7 @@ export function BranchesPage() {
                         value={editData.province}
                         onChange={(e) => setEditData({ ...editData, province: e.target.value })}
                         placeholder="Province"
-                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
                         required
                       />
                       <input
@@ -724,7 +724,7 @@ export function BranchesPage() {
                         value={editData.town}
                         onChange={(e) => setEditData({ ...editData, town: e.target.value })}
                         placeholder="Town"
-                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
                         required
                       />
                     </div>
@@ -735,7 +735,7 @@ export function BranchesPage() {
                         value={editData.physicalAddress}
                         onChange={(e) => setEditData({ ...editData, physicalAddress: e.target.value })}
                         placeholder="Physical address"
-                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
                         required
                       />
                       <input
@@ -744,7 +744,7 @@ export function BranchesPage() {
                         value={editData.latitude}
                         onChange={(e) => setEditData({ ...editData, latitude: e.target.value })}
                         placeholder="Latitude"
-                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
                       />
                       <input
                         type="number"
@@ -752,7 +752,7 @@ export function BranchesPage() {
                         value={editData.longitude}
                         onChange={(e) => setEditData({ ...editData, longitude: e.target.value })}
                         placeholder="Longitude"
-                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
                       />
                     </div>
 
@@ -762,28 +762,28 @@ export function BranchesPage() {
                         value={editData.contactName}
                         onChange={(e) => setEditData({ ...editData, contactName: e.target.value })}
                         placeholder="Contact name"
-                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
                       />
                       <input
                         type="email"
                         value={editData.contactEmail}
                         onChange={(e) => setEditData({ ...editData, contactEmail: e.target.value })}
                         placeholder="Contact email"
-                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-700"
                       />
                       <input
                         type="text"
                         value={editData.contactPhone}
                         onChange={(e) => setEditData({ ...editData, contactPhone: e.target.value })}
                         placeholder="Contact phone"
-                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-700"
                       />
                       <input
                         type="text"
                         value={editData.contactDesignation}
                         onChange={(e) => setEditData({ ...editData, contactDesignation: e.target.value })}
                         placeholder="Contact person designation"
-                        className="rounded-lg border border-slate-300 px-3 py-2"
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-700"
                       />
                     </div>
 

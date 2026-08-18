@@ -51,7 +51,7 @@ export function ProjectCard({ project, user }: { project: Project; user?: UserRe
 
       <div className="mt-4 flex items-center gap-3">
         <Link to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`} className="inline-flex items-center justify-center rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">
-          Open branch hub
+          Open branch record
         </Link>
         <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-200 transition hover:bg-white/10">
           Project details

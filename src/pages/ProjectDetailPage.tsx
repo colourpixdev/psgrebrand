@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
+import { DatePickerInput } from '../components/DatePickerInput';
 import { roleLabels } from '../constants/portal';
 import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectNotes, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById } from '../services/branchService';
@@ -11,6 +12,8 @@ import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { canViewProject, canAddTaskComments, getRolePolicy } from '../utils/permissions';
 import { getTaskStatus } from '../utils/taskStatus';
+import { getApplicableTaskTemplates } from '../constants/taskTemplates';
+import { isPlatformOwnerEmail } from '../constants/workspaces';
 import type { CommentItem, Project, ProjectFile, ProjectStatus, ProjectStage, TaskAssignee, TaskItem } from '../types/domain';
 import { normalizeRole } from '../types/domain';
 
@@ -83,7 +86,6 @@ export function ProjectDetailPage() {
   const [answerMessage, setAnswerMessage] = useState('');
   const [answerStage, setAnswerStage] = useState<ProjectStage>('New Project');
   const [answerStatus, setAnswerStatus] = useState<ProjectStatus>('in_progress');
-  const [answerProgress, setAnswerProgress] = useState(0);
   const [answerTargetDate, setAnswerTargetDate] = useState('');
   const [answerInstallationDate, setAnswerInstallationDate] = useState('');
   const [taskText, setTaskText] = useState('');
@@ -96,6 +98,7 @@ export function ProjectDetailPage() {
   const [expandedTaskUpdateTaskIds, setExpandedTaskUpdateTaskIds] = useState<string[]>([]);
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
   const [deleteConfirmationArmed, setDeleteConfirmationArmed] = useState(false);
+  const [expandedTaskPoolProjects, setExpandedTaskPoolProjects] = useState<Set<string>>(new Set());
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => getProjectById(projectId ?? ''),
@@ -220,7 +223,6 @@ export function ProjectDetailPage() {
       answer: answerMessage,
       currentStage: answerStage,
       status: answerStatus,
-      progress: answerProgress,
       targetDate: answerTargetDate,
       installationDate: answerInstallationDate,
     }),
@@ -355,6 +357,21 @@ export function ProjectDetailPage() {
     },
   });
 
+  const addTaskFromPoolMutation = useMutation({
+    mutationFn: ({ projectId: pid, templateName }: { projectId: string; templateName: string }) =>
+      addProjectTask({
+        projectId: pid,
+        task: templateName,
+        stage: templateName,
+        actor: user?.name ?? 'Workspace user',
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      showSuccess('Task added successfully');
+    },
+  });
+
   const uploadMutation = useMutation({
     mutationFn: ({ file, taskId }: { file: File; taskId?: string }) => uploadProjectFile(projectId ?? '', file, project?.files ?? [], taskId),
     onSuccess: async () => {
@@ -476,7 +493,6 @@ export function ProjectDetailPage() {
     setAnswerMessage(question.answer ?? '');
     setAnswerStage(project?.currentStage ?? 'New Project');
     setAnswerStatus(project?.status ?? 'in_progress');
-    setAnswerProgress(project?.progress ?? 0);
     setAnswerTargetDate(project?.targetDate ?? '');
     setAnswerInstallationDate(project?.installationDate ?? '');
   }
@@ -534,31 +550,39 @@ export function ProjectDetailPage() {
           ) : <div className="text-slate-200">Current Status: <span className="text-white">{selectedProject.currentStage}</span></div>}
 
           {canEditNotes ? (
-            <label className="grid gap-2">
-              <span className="text-slate-100">Target Date</span>
-              <input value={targetDateDraft} onChange={(event) => setTargetDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
-            </label>
+            <DatePickerInput
+              label="Target Date"
+              value={targetDateDraft}
+              onChange={setTargetDateDraft}
+              placeholder="Select target date"
+            />
           ) : <div className="text-slate-200">Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>}
 
           {canEditNotes ? (
-            <label className="grid gap-2">
-              <span className="text-slate-100">Brief Requested Date</span>
-              <input value={briefRequestedDateDraft} onChange={(event) => setBriefRequestedDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
-            </label>
+            <DatePickerInput
+              label="Brief Requested Date"
+              value={briefRequestedDateDraft}
+              onChange={setBriefRequestedDateDraft}
+              placeholder="Select brief requested date"
+            />
           ) : <div className="text-slate-200">Brief Requested Date: <span className="text-white">{selectedProject.briefRequestedDate}</span></div>}
 
           {canEditNotes ? (
-            <label className="grid gap-2">
-              <span className="text-slate-100">Installation Date</span>
-              <input value={installationDateDraft} onChange={(event) => setInstallationDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
-            </label>
+            <DatePickerInput
+              label="Installation Date"
+              value={installationDateDraft}
+              onChange={setInstallationDateDraft}
+              placeholder="Select installation date"
+            />
           ) : <div className="text-slate-200">Installation Date: <span className="text-white">{selectedProject.installationDate}</span></div>}
 
           {canEditNotes ? (
-            <label className="grid gap-2">
-              <span className="text-slate-100">Completion Date</span>
-              <input value={completionDateDraft} onChange={(event) => setCompletionDateDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50" />
-            </label>
+            <DatePickerInput
+              label="Completion Date"
+              value={completionDateDraft}
+              onChange={setCompletionDateDraft}
+              placeholder="Select completion date"
+            />
           ) : <div className="text-slate-200">Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>}
 
           <div className="md:col-span-2 lg:col-span-2 text-slate-200">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
@@ -595,10 +619,10 @@ export function ProjectDetailPage() {
               <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {branchParticipants.map((participant, index) => (
                   <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3">
-                    <p className="font-medium text-white">{participant.name}</p>
-                    <p className="mt-1 text-sm text-white">{participant.designation}</p>
-                    {participant.email ? <p className="mt-2 text-xs text-white">{participant.email}</p> : null}
-                    {participant.phone ? <p className="mt-1 text-xs text-white">{participant.phone}</p> : null}
+                    <p className="font-medium text-cyan-400">{participant.name}</p>
+                    <p className="mt-1 text-sm text-cyan-400">{participant.designation}</p>
+                    {participant.email ? <p className="mt-2 text-xs text-cyan-400">{participant.email}</p> : null}
+                    {participant.phone ? <p className="mt-1 text-xs text-cyan-400">{participant.phone}</p> : null}
                   </div>
                 ))}
               </div>
@@ -977,6 +1001,76 @@ export function ProjectDetailPage() {
               );
             }) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No tasks yet. Add a task to create the first timeline stage.</p>}
           </div>
+
+          {/* Available Tasks to Add */}
+          {(() => {
+            const policy = getRolePolicy(user);
+            const canAddTasksFromPool = Boolean(policy && policy.tasks.canCreateTasks) || Boolean(user && (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email)));
+            
+            if (!canAddTasksFromPool) {
+              return null;
+            }
+
+            const availableTemplates = getApplicableTaskTemplates(selectedProject.projectType);
+            const existingTaskTexts = new Set(selectedProject.tasks.map((t) => t.text.toLowerCase()));
+            const unusedTemplates = availableTemplates.filter((template) => !existingTaskTexts.has(template.name.toLowerCase()));
+
+            if (unusedTemplates.length === 0) {
+              return null;
+            }
+
+            const isExpanded = expandedTaskPoolProjects.has(selectedProject.id);
+
+            return (
+              <div className="mt-6 border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpandedTaskPoolProjects((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(selectedProject.id)) {
+                        next.delete(selectedProject.id);
+                      } else {
+                        next.add(selectedProject.id);
+                      }
+                      return next;
+                    });
+                  }}
+                  className="flex w-full items-center gap-2 rounded-2xl p-3 text-left transition hover:bg-slate-900/40"
+                >
+                  <span className="text-slate-400">{isExpanded ? '▼' : '▶'}</span>
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Available tasks to add ({unusedTemplates.length})</p>
+                </button>
+
+                {isExpanded && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {unusedTemplates.map((template) => (
+                      <div key={template.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
+                        <p className="font-medium text-white">{template.name}</p>
+                        <p className="mt-1 text-xs text-slate-400">{template.description}</p>
+                        <p className="mt-2 text-xs text-slate-500 capitalize">{template.category}</p>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addTaskFromPoolMutation.mutate({
+                              projectId: selectedProject.id,
+                              templateName: template.name,
+                            });
+                          }}
+                          disabled={addTaskFromPoolMutation.isPending}
+                          className="mt-3 inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-50"
+                        >
+                          + Add task
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </section>
 
@@ -1083,10 +1177,6 @@ export function ProjectDetailPage() {
                             </select>
                           </label>
                           <label className="grid gap-2 text-sm text-slate-300">
-                            Answer progress
-                            <input type="number" min="0" max="100" value={answerProgress} onChange={(event) => setAnswerProgress(Number(event.target.value))} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50" />
-                          </label>
-                          <label className="grid gap-2 text-sm text-slate-300">
                             Target date
                             <input value={answerTargetDate} onChange={(event) => setAnswerTargetDate(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50" />
                           </label>
@@ -1096,7 +1186,7 @@ export function ProjectDetailPage() {
                           </label>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <button type="button" disabled={answerQuestionMutation.isPending || (!answerMessage.trim() && answerStage === selectedProject.currentStage && answerStatus === selectedProject.status && answerProgress === selectedProject.progress && answerTargetDate === selectedProject.targetDate && answerInstallationDate === selectedProject.installationDate)} onClick={() => answerQuestionMutation.mutate(question)} className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+                          <button type="button" disabled={answerQuestionMutation.isPending || (!answerMessage.trim() && answerStage === selectedProject.currentStage && answerStatus === selectedProject.status && answerTargetDate === selectedProject.targetDate && answerInstallationDate === selectedProject.installationDate)} onClick={() => answerQuestionMutation.mutate(question)} className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
                             {answerQuestionMutation.isPending ? 'Sending answer...' : 'Answer and update'}
                           </button>
                           <button type="button" onClick={() => setAnsweringQuestionId(null)} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>

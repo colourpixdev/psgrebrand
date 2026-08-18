@@ -114,8 +114,7 @@ export function BranchDetailPage() {
   const [renamingFileKey, setRenamingFileKey] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [quickUpdateDrafts, setQuickUpdateDrafts] = useState<Record<string, { taskId: string; message: string }>>({});
-  const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
-  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(() => {
+  const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});  const [taskStatusDrafts, setTaskStatusDrafts] = useState<Record<string, string>>({});  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(() => {
     const initialCollapsed = new Set<string>();
     branchProjects.forEach((project) => {
       project.tasks.forEach((task) => {
@@ -254,6 +253,23 @@ export function BranchDetailPage() {
     },
   });
 
+  const updateTaskStatusMutation = useMutation({
+    mutationFn: ({ projectId, taskId, status }: { projectId: string; taskId: string; status: string }) =>
+      updateProjectTask({
+        projectId,
+        taskId,
+        status: status as any,
+        actor: user?.name ?? 'Workspace user',
+        actorEmail: user?.email,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['branches'] });
+      showSuccess('Task status updated');
+    },
+  });
+
+
   const removeTaskMutation = useMutation({
     mutationFn: ({ projectId, taskId }: { projectId: string; taskId: string }) =>
       deleteProjectTask({
@@ -389,15 +405,15 @@ export function BranchDetailPage() {
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {branchParticipants.slice(0, 4).map((p, i) => (
                     <div key={`${p.email ?? p.name}-${i}`} className="rounded-2xl border border-white/10 bg-blue-900/50 p-4">
-                      <p className="font-semibold text-white">{p.name}</p>
-                      {p.designation ? <p className="mt-1 text-xs text-white">{p.designation}</p> : null}
+                      <p className="font-semibold text-cyan-400">{p.name}</p>
+                      {p.designation ? <p className="mt-1 text-xs text-cyan-400">{p.designation}</p> : null}
                       {p.phone ? (
-                        <p className="mt-2 text-xs text-white">
+                        <p className="mt-2 text-xs text-cyan-400">
                           <a href={formatPhoneHref(p.phone)} className="hover:text-sky-300">{p.phone}</a>
                         </p>
                       ) : null}
                       {p.email ? (
-                        <p className="mt-1 text-xs text-white">
+                        <p className="mt-1 text-xs text-cyan-400">
                           <a href={`mailto:${p.email}`} className="hover:text-sky-300">{p.email}</a>
                         </p>
                       ) : null}
@@ -435,7 +451,7 @@ export function BranchDetailPage() {
           </div>
         ) : (
           <div className="mt-6 rounded-2xl border border-dashed border-white/15 bg-slate-900/60 p-4 text-sm text-slate-300">
-            No recent branch updates yet. Use the quick update form below to capture progress instantly.
+            No recent branch updates yet. Use the quick update form below to add updates.
           </div>
         )}
 
@@ -562,33 +578,55 @@ export function BranchDetailPage() {
                           </button>
                           {isExpanded && (
                             <div className="border-t border-white/10 px-4 py-3 text-sm text-slate-200 space-y-3">
-                              <div className="flex flex-wrap gap-2">
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); completeTaskMutation.mutate({ projectId: project.id, taskId: task.id, completed: !task.completed }); }}
-                                  disabled={completeTaskMutation.isPending}
-                                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:opacity-50"
-                                >
-                                  {task.completed ? (
-                                    <>
-                                      ◯ Reopen task
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle2 className="h-3.5 w-3.5" />
-                                      Mark complete
-                                    </>
-                                  )}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); removeTaskMutation.mutate({ projectId: project.id, taskId: task.id }); }}
-                                  disabled={removeTaskMutation.isPending}
-                                  className="inline-flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                  Remove task
-                                </button>
+                              <div className="flex flex-wrap gap-2 items-end">
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); completeTaskMutation.mutate({ projectId: project.id, taskId: task.id, completed: !task.completed }); }}
+                                    disabled={completeTaskMutation.isPending}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:opacity-50"
+                                  >
+                                    {task.completed ? (
+                                      <>
+                                        ◯ Reopen task
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                        Mark complete
+                                      </>
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); removeTaskMutation.mutate({ projectId: project.id, taskId: task.id }); }}
+                                    disabled={removeTaskMutation.isPending}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                    Remove task
+                                  </button>
+                                </div>
+                                {!task.completed && (
+                                  <label className="grid gap-1 text-xs text-slate-300">
+                                    Status
+                                    <select
+                                      value={taskStatusDrafts[taskKey] ?? task.status ?? 'open'}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        setTaskStatusDrafts((current) => ({ ...current, [taskKey]: e.target.value }));
+                                        updateTaskStatusMutation.mutate({ projectId: project.id, taskId: task.id, status: e.target.value });
+                                      }}
+                                      disabled={updateTaskStatusMutation.isPending}
+                                      className="rounded-lg border border-white/10 bg-slate-900/80 px-2 py-1.5 text-white outline-none focus:border-sky-400/50 disabled:opacity-50"
+                                    >
+                                      <option value="pending">Pending</option>
+                                      <option value="open">Open</option>
+                                      <option value="busy">Busy</option>
+                                      <option value="done">Done</option>
+                                    </select>
+                                  </label>
+                                )}
                               </div>
                               {isPlatformOwnerEmail(user?.email) ? (
                                 <div className="flex flex-wrap items-center gap-3">

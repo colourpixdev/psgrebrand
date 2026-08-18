@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { defaultGraphicsPartner, defaultWorkspace } from '../../constants/worksp
 import { defaultProjectTemplate, projectTemplateOptions } from '../../constants/projectTemplates';
 import { defaultTaskPool } from '../../constants/taskPool';
 import { useSaveFeedback } from '../../contexts/SaveFeedbackContext';
+import { DatePickerInput } from '../DatePickerInput';
 
 const optionalText = z.string().optional().default('');
 const optionalEmail = z.string().trim().refine((value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), 'Enter a valid manager email');
@@ -113,7 +114,7 @@ export function ProjectCreateForm() {
     queryFn: getAllBranches,
   });
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ProjectFormValues>({
+  const { register, handleSubmit, reset, setValue, watch, control, formState: { errors } } = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
       projectType: defaultProjectTemplate.id,
@@ -302,25 +303,57 @@ export function ProjectCreateForm() {
           </select>
         </label>
 
-        <label className="grid gap-2 text-sm text-slate-300">
-          Target date
-          <input {...register('targetDate')} type="date" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
-        </label>
+        <Controller
+          name="targetDate"
+          control={control}
+          render={({ field }) => (
+            <DatePickerInput
+              label="Target date"
+              value={field.value}
+              onChange={field.onChange}
+              placeholder="Select target date"
+            />
+          )}
+        />
 
-        <label className="grid gap-2 text-sm text-slate-300">
-          Brief requested date
-          <input {...register('briefRequestedDate')} type="date" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
-        </label>
+        <Controller
+          name="briefRequestedDate"
+          control={control}
+          render={({ field }) => (
+            <DatePickerInput
+              label="Brief requested date"
+              value={field.value}
+              onChange={field.onChange}
+              placeholder="Select brief requested date"
+            />
+          )}
+        />
 
-        <label className="grid gap-2 text-sm text-slate-300">
-          Installation date
-          <input {...register('installationDate')} type="date" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
-        </label>
+        <Controller
+          name="installationDate"
+          control={control}
+          render={({ field }) => (
+            <DatePickerInput
+              label="Installation date"
+              value={field.value}
+              onChange={field.onChange}
+              placeholder="Select installation date"
+            />
+          )}
+        />
 
-        <label className="grid gap-2 text-sm text-slate-300">
-          Completion date
-          <input {...register('completionDate')} type="date" className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
-        </label>
+        <Controller
+          name="completionDate"
+          control={control}
+          render={({ field }) => (
+            <DatePickerInput
+              label="Completion date"
+              value={field.value}
+              onChange={field.onChange}
+              placeholder="Select completion date"
+            />
+          )}
+        />
 
         <label className="grid gap-2 text-sm text-slate-300">
           Progress
