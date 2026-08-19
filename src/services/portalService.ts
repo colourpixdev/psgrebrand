@@ -317,6 +317,7 @@ function isMissingProjectColumnError(errorMessage: string | undefined) {
     'project_type_name',
     'site_label',
     'branch_code',
+    'brief_requested_date',
   ].some((column) => normalizedMessage.includes(column));
 }
 
@@ -324,6 +325,7 @@ function stripProjectPresentationColumns<T extends Record<string, unknown>>(payl
   const {
     latitude,
     longitude,
+    brief_requested_date,
     ...legacyPayload
   } = payload;
 
@@ -343,6 +345,7 @@ function stripLegacyProjectColumns<T extends Record<string, unknown>>(payload: T
     project_type,
     project_type_name,
     site_label,
+    brief_requested_date,
     ...legacyPayload
   } = payload;
 
