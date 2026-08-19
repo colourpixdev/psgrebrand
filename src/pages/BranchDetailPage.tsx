@@ -3,8 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileText, Download, Eye } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
-import { addProjectComment, getProjectFileUrl, getProjects, renameProjectFile } from '../services/portalService';
+import { addProjectComment, getProjectFileUrl, getProjects, renameProjectFile, uploadProjectFile } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
+import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { isTaskOutstanding } from '../utils/taskStatus';
@@ -59,6 +60,7 @@ function projectParticipants(project: Project) {
 export function BranchDetailPage() {
   const { branchId } = useParams();
   const { user } = useAuth();
+  const { showSuccess } = useSaveFeedback();
   const navigate = useNavigate();
 
   const { data: branches = [], isLoading: isLoadingBranches } = useQuery({
@@ -187,6 +189,16 @@ export function BranchDetailPage() {
       setTaskCommentDrafts((current) => ({ ...current, [`${variables.projectId}-${variables.taskId}`]: '' }));
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['branches'] });
+    },
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: ({ projectId, file, taskId }: { projectId: string; file: File; taskId: string }) =>
+      uploadProjectFile(projectId, file, branchProjects.find((project) => project.id === projectId)?.files ?? [], taskId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['branches'] });
+      showSuccess('File uploaded.');
     },
   });
 
@@ -420,6 +432,29 @@ export function BranchDetailPage() {
                           <div className="flex items-start justify-between gap-3">
                             <p className={task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}>{task.text}</p>
                             <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-300">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
+                          </div>
+                          <div className="mt-3 flex flex-wrap items-center gap-3">
+                            <span className="text-xs text-slate-500">
+                              {taskFiles.length} file{taskFiles.length === 1 ? '' : 's'} attached to this task
+                            </span>
+                            {can(user, 'upload_files') ? (
+                              <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-white/10 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
+                                {uploadMutation.isPending ? 'Uploading...' : 'Upload file'}
+                                <input
+                                  type="file"
+                                  disabled={uploadMutation.isPending}
+                                  accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
+                                  className="sr-only"
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    event.target.value = '';
+                                    if (file) {
+                                      uploadMutation.mutate({ projectId: project.id, file, taskId: task.id });
+                                    }
+                                  }}
+                                />
+                              </label>
+                            ) : null}
                           </div>
                           {taskFiles.length > 0 ? (
                             <div className="mt-3 space-y-3 rounded-2xl bg-slate-950/70 p-3">
