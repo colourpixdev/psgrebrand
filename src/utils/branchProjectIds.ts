@@ -26,7 +26,7 @@ export function buildBranchCodeMap(branches: Branch[]) {
 }
 
 export function getBranchCodeForBranch(branch: Branch, codeByBranchId: Record<string, string>) {
-  return codeByBranchId[branch.id] ?? branch.code ?? `${branchCodePrefix}000`;
+  return branch.code?.trim().toUpperCase() || codeByBranchId[branch.id] || `${branchCodePrefix}000`;
 }
 
 export function getBranchCodeForProject(project: Project, codeByBranchId: Record<string, string>) {

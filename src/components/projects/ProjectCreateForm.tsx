@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { createProject, type CreateProjectInput } from '../../services/portalService';
+import { createProject, getProjects, type CreateProjectInput } from '../../services/portalService';
 import { getAllBranches } from '../../services/branchService';
 import { timelineStages } from '../../constants/portal';
 import { defaultGraphicsPartner, defaultWorkspace } from '../../constants/workspaces';
@@ -12,6 +12,7 @@ import { defaultProjectTemplate, projectTemplateOptions } from '../../constants/
 import { defaultTaskPool } from '../../constants/taskPool';
 import { useSaveFeedback } from '../../contexts/SaveFeedbackContext';
 import { DatePickerInput } from '../DatePickerInput';
+import { buildBranchCodeMap, createNextProjectId, getBranchCodeForBranch } from '../../utils/branchProjectIds';
 
 const optionalText = z.string().optional().default('');
 const optionalEmail = z.string().trim().refine((value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), 'Enter a valid manager email');
@@ -83,7 +84,7 @@ function projectSaveNextStep(error: unknown) {
   }
 
   if (candidate.code === '23505' || text.includes('duplicate key')) {
-    return 'A project for this branch already exists in the workspace. Select a different branch or refresh the project list before saving.';
+    return 'The generated project reference is already in use. Refresh the project list and try saving again; the branch itself may not already have a project.';
   }
 
   if (candidate.code === '23503' || text.includes('foreign key')) {
@@ -112,6 +113,10 @@ export function ProjectCreateForm() {
   const { data: branches = [], isLoading: isLoadingBranches } = useQuery({
     queryKey: ['branches'],
     queryFn: getAllBranches,
+  });
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: getProjects,
   });
 
   const { register, handleSubmit, reset, setValue, watch, control, formState: { errors } } = useForm<ProjectFormValues>({
@@ -214,9 +219,13 @@ export function ProjectCreateForm() {
         throw new Error('The selected branch is unavailable. Refresh the page, select the branch again, and retry saving.');
       }
 
+      const branchCode = getBranchCodeForBranch(selectedBranch, buildBranchCodeMap(branches));
+      const projectId = createNextProjectId(branchCode, projects);
+
       await mutation.mutateAsync({
         ...values,
-        id: selectedBranch.name,
+        id: projectId,
+        branchCode,
         currentStage: values.currentStage as CreateProjectInput['currentStage'],
         workspaceName: defaultWorkspace.name,
         clientCompany: defaultWorkspace.clientCompany,
