@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   deploy:
-    timeout-minutes: 11
+    timeout-minutes: 12
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
