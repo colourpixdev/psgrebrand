@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { can, filterProjectsForUser, getRolePolicy } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
-import { isTaskOutstanding } from '../utils/taskStatus';
+import { getTaskStatus, isTaskOutstanding } from '../utils/taskStatus';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
 
 function canPreviewFile(file: ProjectFile) {
@@ -32,6 +32,10 @@ function formatPhoneHref(phone: string) {
 
 function byUpdatedAtDesc(a: Project, b: Project) {
   return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '');
+}
+
+function taskStatusLabel(status: ReturnType<typeof getTaskStatus>) {
+  return status === 'done' ? 'Done' : status === 'busy' ? 'Busy' : status === 'pending' ? 'Pending' : 'Open';
 }
 
 function projectParticipants(project: Project) {
@@ -337,6 +341,8 @@ export function BranchDetailPage() {
           {branchProjects.length > 0 ? branchProjects.map((project) => {
             const participants = projectParticipants(project);
             const pendingTasks = project.tasks.filter((task) => !task.completed);
+            const currentTask = project.tasks.find((task) => getTaskStatus(task) !== 'done') ?? null;
+            const currentTaskStatus = currentTask ? getTaskStatus(currentTask) : null;
             const latestUpdates = [...project.comments].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')).slice(0, 5);
             const latestActivity = filterActivityExcludingUser([...project.activity], user?.name)
               .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')).slice(0, 5);
@@ -355,6 +361,21 @@ export function BranchDetailPage() {
                 </div>
 
                 <div className="mt-4 border-t border-white/10 pt-4">
+                  <div className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Current task</p>
+                        <p className="mt-2 text-base font-semibold text-white">{currentTask?.text ?? 'No active task'}</p>
+                      </div>
+                      {currentTaskStatus ? (
+                        <span className="rounded-full border border-cyan-200/30 bg-slate-950/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-cyan-100">
+                          {taskStatusLabel(currentTaskStatus)}
+                        </span>
+                      ) : null}
+                    </div>
+                    {currentTask ? <p className="mt-2 text-xs text-cyan-100/75">Quick updates below will be linked to this task by default.</p> : null}
+                  </div>
+
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-white">Quick update</p>
@@ -366,7 +387,7 @@ export function BranchDetailPage() {
                     <label className="grid gap-2 text-sm text-slate-200">
                       Related task
                       <select
-                        value={quickUpdateDrafts[project.id]?.taskId ?? ''}
+                        value={quickUpdateDrafts[project.id]?.taskId ?? currentTask?.id ?? ''}
                         onChange={(event) => setQuickUpdateDrafts((current) => ({
                           ...current,
                           [project.id]: {
@@ -378,7 +399,7 @@ export function BranchDetailPage() {
                       >
                         <option value="">General project update</option>
                         {project.tasks.map((task) => (
-                          <option key={task.id} value={task.id}>{task.text}</option>
+                          <option key={task.id} value={task.id}>{task.text} · {taskStatusLabel(getTaskStatus(task))}</option>
                         ))}
                       </select>
                     </label>
