@@ -1,19 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { FileText, Download, Eye, CheckCircle2, X } from 'lucide-react';
+import { FileText, Download, Eye } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
-import { addProjectComment, addProjectTask, deleteProjectFile, deleteProjectTask, getProjectFileUrl, getProjects, renameProjectFile, updateProjectTask, uploadProjectFile } from '../services/portalService';
-import CurrentTaskCard from '../components/CurrentTaskCard';
-import QuickUpdate from '../components/QuickUpdate/QuickUpdate';
+import { addProjectComment, getProjectFileUrl, getProjects, renameProjectFile } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
-import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
-import { can, canAddTaskComments, getRolePolicy, filterProjectsForUser } from '../utils/permissions';
-import { normalizeRole } from '../types/domain';
-import { isPlatformOwnerEmail } from '../constants/workspaces';
+import { can, filterProjectsForUser } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { isTaskOutstanding } from '../utils/taskStatus';
-import { getApplicableTaskTemplates } from '../constants/taskTemplates';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
 
 function canPreviewFile(file: ProjectFile) {
@@ -66,7 +60,6 @@ export function BranchDetailPage() {
   const { branchId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { showSuccess } = useSaveFeedback();
 
   const { data: branches = [], isLoading: isLoadingBranches } = useQuery({
     queryKey: ['branches'],
@@ -84,7 +77,7 @@ export function BranchDetailPage() {
     || branches.find((item) => item.code === normalizedParam)
     || branches.find((item) => encodeURIComponent(item.id) === normalizedParam)
     || branches.find((item) => typeof item.name === 'string' && item.name.toLowerCase() === decodedParam.toLowerCase());
-  const canCreateProjects = can(user, 'create_project') || Boolean(user && (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email)));
+  const canCreateProjects = can(user, 'create_project');
   const scopedProjects = filterProjectsForUser(projects, user);
   const branchProjects = useMemo(() => {
     if (!branch) {
@@ -114,25 +107,11 @@ export function BranchDetailPage() {
   const [renamingFileKey, setRenamingFileKey] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [quickUpdateDrafts, setQuickUpdateDrafts] = useState<Record<string, { taskId: string; message: string }>>({});
-  const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});  const [taskStatusDrafts, setTaskStatusDrafts] = useState<Record<string, string>>({});  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(() => {
-    const initialCollapsed = new Set<string>();
-    branchProjects.forEach((project) => {
-      project.tasks.forEach((task) => {
-        initialCollapsed.add(`${project.id}-${task.id}`);
-      });
-    });
-    return initialCollapsed;
-  });
-  const [expandedTaskPoolProjects, setExpandedTaskPoolProjects] = useState<Set<string>>(new Set());
+  const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
   const thumbnailRequestedKeys = useRef(new Set<string>());
   const previousTaskIdsRef = useRef<Set<string>>(new Set());
-  const collapsedTasksRef = useRef(collapsedTasks);
+  const isFirstMountRef = useRef(true);
   const queryClient = useQueryClient();
-
-  // Keep ref in sync with state to avoid stale closures
-  useEffect(() => {
-    collapsedTasksRef.current = collapsedTasks;
-  }, [collapsedTasks]);
 
   const quickUpdateMutation = useMutation({
     mutationFn: ({ projectId, taskId, message }: { projectId: string; taskId: string; message: string }) => addProjectComment({
@@ -149,7 +128,6 @@ export function BranchDetailPage() {
           message: '',
         },
       }));
-      showSuccess('Quick update saved');
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['branches'] });
     },
@@ -212,78 +190,6 @@ export function BranchDetailPage() {
     },
   });
 
-  const uploadMutation = useMutation({
-    mutationFn: ({ file, taskId, projectId }: { file: File; taskId: string; projectId: string }) =>
-      uploadProjectFile(projectId, file, branchProjects.find(p => p.id === projectId)?.files ?? [], taskId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['projects'] });
-      await queryClient.invalidateQueries({ queryKey: ['branches'] });
-      showSuccess('File uploaded successfully');
-    },
-  });
-
-  const addTaskFromPoolMutation = useMutation({
-    mutationFn: ({ projectId, templateName }: { projectId: string; templateName: string }) =>
-      addProjectTask({
-        projectId,
-        task: templateName,
-        stage: templateName,
-        actor: user?.name ?? 'Workspace user',
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['projects'] });
-      await queryClient.invalidateQueries({ queryKey: ['branches'] });
-      showSuccess('Task added successfully');
-    },
-  });
-
-  const completeTaskMutation = useMutation({
-    mutationFn: ({ projectId, taskId, completed }: { projectId: string; taskId: string; completed: boolean }) =>
-      updateProjectTask({
-        projectId,
-        taskId,
-        completed,
-        actor: user?.name ?? 'Workspace user',
-        actorEmail: user?.email,
-      }),
-    onSuccess: async (_, { completed }) => {
-      await queryClient.invalidateQueries({ queryKey: ['projects'] });
-      await queryClient.invalidateQueries({ queryKey: ['branches'] });
-      showSuccess(completed ? 'Task marked as complete' : 'Task marked as open');
-    },
-  });
-
-  const updateTaskStatusMutation = useMutation({
-    mutationFn: ({ projectId, taskId, status }: { projectId: string; taskId: string; status: string }) =>
-      updateProjectTask({
-        projectId,
-        taskId,
-        status: status as any,
-        actor: user?.name ?? 'Workspace user',
-        actorEmail: user?.email,
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['projects'] });
-      await queryClient.invalidateQueries({ queryKey: ['branches'] });
-      showSuccess('Task status updated');
-    },
-  });
-
-
-  const removeTaskMutation = useMutation({
-    mutationFn: ({ projectId, taskId }: { projectId: string; taskId: string }) =>
-      deleteProjectTask({
-        projectId,
-        taskId,
-        actor: user?.name ?? 'Workspace user',
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['projects'] });
-      await queryClient.invalidateQueries({ queryKey: ['branches'] });
-      showSuccess('Task removed');
-    },
-  });
-
   useEffect(() => {
     branchFiles.forEach((file) => {
       const key = file.path ?? file.name;
@@ -303,68 +209,6 @@ export function BranchDetailPage() {
       });
     });
   }, [branchFiles, thumbnails]);
-
-  useEffect(() => {
-    // Track task IDs and preserve collapsed state when tasks change
-    const currentTaskIds = new Set<string>();
-    branchProjects.forEach((project) => {
-      project.tasks.forEach((task) => {
-        currentTaskIds.add(`${project.id}-${task.id}`);
-      });
-    });
-
-    // Only update if tasks actually changed
-    if (previousTaskIdsRef.current.size === 0) {
-      // First mount: initialize with all tasks collapsed
-      previousTaskIdsRef.current = currentTaskIds;
-      return;
-    }
-
-    const previousIds = previousTaskIdsRef.current;
-    const hasTaskChanges = currentTaskIds.size !== previousIds.size || 
-      [...currentTaskIds].some(id => !previousIds.has(id));
-
-    if (!hasTaskChanges) {
-      return; // No changes, skip state update
-    }
-
-    // Add new tasks as collapsed, preserve user's expansion choices
-    setCollapsedTasks((prev) => {
-      const next = new Set<string>();
-      
-      // Keep all previously collapsed tasks that still exist
-      prev.forEach((taskId) => {
-        if (currentTaskIds.has(taskId)) {
-          next.add(taskId);
-        }
-      });
-      
-      // Add any truly new tasks as collapsed
-      currentTaskIds.forEach((taskId) => {
-        if (!previousIds.has(taskId)) {
-          next.add(taskId);
-        }
-      });
-      
-      return next;
-    });
-
-    previousTaskIdsRef.current = currentTaskIds;
-  }, [branchProjects]);
-
-  // Memoized callback for toggling accordion
-  const toggleTaskAccordion = useCallback((taskId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent event bubbling
-    setCollapsedTasks((prev) => {
-      const next = new Set(prev);
-      if (next.has(taskId)) {
-        next.delete(taskId);
-      } else {
-        next.add(taskId);
-      }
-      return next;
-    });
-  }, []);
 
   if (isLoadingBranches || isLoadingProjects) {
     return <div className="rounded-[2rem] border border-white/10 bg-white/6 p-6 text-sm text-slate-300 shadow-soft">Loading branch workspace...</div>;
@@ -388,33 +232,33 @@ export function BranchDetailPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
-        <div className="grid gap-6">
+        <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
           <div className="space-y-6">
             <div>
               <div className="mb-3">
                 <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">← Back to branches</Link>
               </div>
-              <h2 className="mt-2 text-3xl font-semibold text-slate-900">{branch.name}</h2>
+              <h2 className="mt-2 text-3xl font-semibold text-white">{branch.name}</h2>
               <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
               <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
             </div>
 
             {branchParticipants.length > 0 && (
-              <div className="rounded-2xl border border-white/10 bg-blue-950/60 p-4">
-                <p className="text-xs uppercase tracking-[0.12em] text-white">Contact persons</p>
+              <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Contact persons</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {branchParticipants.slice(0, 4).map((p, i) => (
-                    <div key={`${p.email ?? p.name}-${i}`} className="rounded-2xl border border-white/10 bg-blue-900/50 p-4">
-                      <p className="font-semibold text-cyan-400">{p.name}</p>
-                      {p.designation ? <p className="mt-1 text-xs text-cyan-400">{p.designation}</p> : null}
+                    <div key={`${p.email ?? p.name}-${i}`} className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
+                      <p className="font-semibold text-white">{p.name}</p>
+                      {p.designation ? <p className="mt-1 text-xs text-slate-400">{p.designation}</p> : null}
                       {p.phone ? (
-                        <p className="mt-2 text-xs text-cyan-400">
-                          <a href={formatPhoneHref(p.phone)} className="hover:text-sky-300">{p.phone}</a>
+                        <p className="mt-2 text-xs text-slate-400">
+                          <a href={formatPhoneHref(p.phone)} className="hover:text-white">{p.phone}</a>
                         </p>
                       ) : null}
                       {p.email ? (
-                        <p className="mt-1 text-xs text-cyan-400">
-                          <a href={`mailto:${p.email}`} className="hover:text-sky-300">{p.email}</a>
+                        <p className="mt-1 text-xs text-slate-400">
+                          <a href={`mailto:${p.email}`} className="hover:text-white">{p.email}</a>
                         </p>
                       ) : null}
                     </div>
@@ -422,6 +266,12 @@ export function BranchDetailPage() {
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="grid gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-sm text-slate-200">
+            <p>Rebrand records: <span className="text-white">{branchProjects.length}</span></p>
+            <p>Outstanding tasks: <span className="text-white">{outstandingTasks}</span></p>
+            <p>Files: <span className="text-white">{totalFiles}</span></p>
           </div>
         </div>
       </section>
@@ -440,8 +290,8 @@ export function BranchDetailPage() {
 
         {branchLatestUpdates.length > 0 ? (
           <div className="mt-6 grid gap-3 md:grid-cols-2">
-            {branchLatestUpdates.map(({ project, comment }, index) => (
-              <div key={`${project.id}-update-${index}-${comment.taskId ?? 'general'}`} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+            {branchLatestUpdates.map(({ project, comment }) => (
+              <div key={`${project.id}-${comment.date}-${comment.author}`} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{project.branch}</p>
                 <p className="mt-2 text-sm font-semibold text-white">{comment.author}</p>
                 <p className="mt-1 text-sm text-slate-300 line-clamp-3">{comment.message}</p>
@@ -450,8 +300,8 @@ export function BranchDetailPage() {
             ))}
           </div>
         ) : (
-          <div className="mt-6 rounded-2xl border border-dashed border-white/15 bg-slate-900/60 p-4 text-sm text-slate-300">
-            No recent branch updates yet. Use the quick update form below to add updates.
+          <div className="mt-6 rounded-2xl border border-dashed border-white/15 bg-slate-900/60 p-4 text-sm text-slate-400">
+            No recent branch updates yet. Use the quick update form below to capture progress instantly.
           </div>
         )}
 
@@ -465,84 +315,98 @@ export function BranchDetailPage() {
 
             return (
               <article key={project.id} className="rounded-2xl border border-white/10 bg-slate-950/90 p-5 shadow-soft">
-                {(() => {
-                  const isSpecialBranch = project.branch === 'PSG Jan Kemp Dorp Wealth';
-                  const isAdmin = user && (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email));
-                  const shouldShow = !isSpecialBranch || isAdmin;
+                <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-base font-semibold text-white">{project.branch}</p>
+                    <p className="mt-1 text-sm text-slate-300">{project.currentStage} · {project.status.replace('_', ' ')}</p>
+                    <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button type="button" onClick={() => navigate(`/projects/${project.id}`)} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
+                  </div>
+                </div>
 
-                  return shouldShow ? (
-                    <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        {/* Project info display removed */}
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        {(() => {
-                          const policy = getRolePolicy(user);
-                          const canEditProject = Boolean(user && (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email))) || Boolean(policy && (
-                            policy.projectAccess.canCreateProjects ||
-                            policy.projectAccess.canArchiveProjects ||
-                            policy.projectAccess.canDeleteProjects ||
-                            policy.projectAccess.canDuplicateProject ||
-                            policy.workflow.canChangeStage ||
-                            policy.workflow.canChangeStatus ||
-                            policy.workflow.canChangeProgress ||
-                            policy.workflow.canChangeTargetDates ||
-                            policy.communication.canCreateComments ||
-                            policy.tasks.canCreateTasks
-                          ));
-                          
-                          return canEditProject ? (
-                            <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
-                          ) : null;
-                        })()}
-                      </div>
+                <div className="mt-4 border-t border-white/10 pt-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">Quick update</p>
+                      <p className="text-xs text-slate-400">Leave a short task update for this project.</p>
                     </div>
-                  ) : null;
-                })()}
-
-                {(() => {
-                  const policy = getRolePolicy(user);
-                  const canQuickUpdate = policy && (policy.communication.canCreateComments || policy.tasks.canCreateTasks);
-                  
-                  return canQuickUpdate ? (
-                    <div className="mt-4 border-t border-white/10 pt-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-white">Quick update</p>
-                          <p className="text-xs text-white">Leave a short task update for this project.</p>
-                        </div>
-                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white">Fast entry</span>
-                      </div>
-                      <QuickUpdate
-                        project={project}
-                        canSave={!quickUpdateMutation.isPending}
-                        onSave={(taskId, message) => quickUpdateMutation.mutate({ projectId: project.id, taskId: taskId ?? '', message })}
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">Fast entry</span>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-[1.4fr_1fr]">
+                    <label className="grid gap-2 text-sm text-slate-200">
+                      Related task
+                      <select
+                        value={quickUpdateDrafts[project.id]?.taskId ?? ''}
+                        onChange={(event) => setQuickUpdateDrafts((current) => ({
+                          ...current,
+                          [project.id]: {
+                            taskId: event.target.value,
+                            message: current[project.id]?.message ?? '',
+                          },
+                        }))}
+                        className="rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50"
+                      >
+                        <option value="">General project update</option>
+                        {project.tasks.map((task) => (
+                          <option key={task.id} value={task.id}>{task.text}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-2 text-sm text-slate-200">
+                      Update message
+                      <textarea
+                        value={quickUpdateDrafts[project.id]?.message ?? ''}
+                        onChange={(event) => setQuickUpdateDrafts((current) => ({
+                          ...current,
+                          [project.id]: {
+                            taskId: current[project.id]?.taskId ?? '',
+                            message: event.target.value,
+                          },
+                        }))}
+                        rows={3}
+                        placeholder="Describe progress, issues, or next steps"
+                        className="rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
                       />
-                    </div>
-                  ) : null;
-                })()}
+                    </label>
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={!quickUpdateDrafts[project.id]?.message?.trim() || quickUpdateMutation.isPending}
+                      onClick={() => quickUpdateMutation.mutate({
+                        projectId: project.id,
+                        taskId: quickUpdateDrafts[project.id]?.taskId ?? '',
+                        message: quickUpdateDrafts[project.id]?.message ?? '',
+                      })}
+                      className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {quickUpdateMutation.isPending ? 'Saving update...' : 'Save quick update'}
+                    </button>
+                    <p className="text-xs text-slate-400">This update is added to the project journal and linked to the selected task.</p>
+                  </div>
+                </div>
 
-                {project.branch !== 'PSG Jan Kemp Dorp Wealth' ? (
-                  <div className="mt-6 grid gap-3 md:grid-cols-2">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Assigned participants</p>
-                      <div className="mt-3 space-y-2 text-sm text-slate-200">
-                        {participants.length > 0 ? participants.map((participant, index) => (
-                          <p key={`${project.id}-${participant.email ?? participant.name ?? index}`}>{participant.name} · {participant.designation}</p>
-                        )) : <p className="text-slate-400">No participants assigned yet.</p>}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Pending tasks</p>
-                      <div className="mt-3 space-y-2 text-sm text-slate-200">
-                        {pendingTasks.length > 0 ? pendingTasks.slice(0, 5).map((task) => (
-                          <p key={`${project.id}-${task.id}`}>{task.text}</p>
-                        )) : <p className="text-slate-400">No pending tasks.</p>}
-                      </div>
+                <div className="mt-6 grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Assigned participants</p>
+                    <div className="mt-3 space-y-2 text-sm text-slate-200">
+                      {participants.length > 0 ? participants.map((participant) => (
+                        <p key={`${project.id}-${participant.email}`}>{participant.name} · {participant.designation}</p>
+                      )) : <p className="text-slate-400">No participants assigned yet.</p>}
                     </div>
                   </div>
-                ) : null}
+
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Pending tasks</p>
+                    <div className="mt-3 space-y-2 text-sm text-slate-200">
+                      {pendingTasks.length > 0 ? pendingTasks.slice(0, 5).map((task) => (
+                        <p key={`${project.id}-${task.id}`}>{task.text}</p>
+                      )) : <p className="text-slate-400">No pending tasks.</p>}
+                    </div>
+                  </div>
+                </div>
 
                 <div className="mt-6 border-t border-white/10 pt-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-500">All tasks</p>
@@ -551,110 +415,16 @@ export function BranchDetailPage() {
                       const taskFiles = project.files.filter((file) => file.taskId === task.id);
                       const taskKey = `${project.id}-${task.id}`;
                       const taskComments = (project.comments ?? []).filter((c) => c.taskId === task.id).sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
-                      const taskId = `${project.id}-${task.id}`;
-                      const isExpanded = !collapsedTasks.has(taskId);
                       return (
-                        <div key={taskId} className="rounded-2xl border border-white/10 bg-slate-950/50 overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={(e) => toggleTaskAccordion(taskId, e)}
-                            className="w-full px-4 py-3 text-sm text-slate-200 hover:bg-slate-900/40 transition text-left focus:outline-none focus:ring-2 focus:ring-sky-400/50 rounded-2xl"
-                            aria-label={isExpanded ? 'Collapse task' : 'Expand task'}
-                            aria-expanded={isExpanded}
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <span className="shrink-0 text-slate-400">{isExpanded ? '▼' : '▶'}</span>
-                                <span className={`truncate ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200 font-medium'}`}>{task.text}</span>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0 text-xs text-slate-500">
-                                <span className="rounded-full bg-white/5 px-2 py-1">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
-                                <span>·</span>
-                                <span>{taskComments.length} comment{taskComments.length === 1 ? '' : 's'}</span>
-                                <span>·</span>
-                                <span>{taskFiles.length} file{taskFiles.length === 1 ? '' : 's'}</span>
-                              </div>
-                            </div>
-                          </button>
-                          {isExpanded && (
-                            <div className="border-t border-white/10 px-4 py-3 text-sm text-slate-200 space-y-3">
-                              <div className="flex flex-wrap gap-2 items-end">
-                                <div className="flex flex-wrap gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); completeTaskMutation.mutate({ projectId: project.id, taskId: task.id, completed: !task.completed }); }}
-                                    disabled={completeTaskMutation.isPending}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 disabled:opacity-50"
-                                  >
-                                    {task.completed ? (
-                                      <>
-                                        ◯ Reopen task
-                                      </>
-                                    ) : (
-                                      <>
-                                        <CheckCircle2 className="h-3.5 w-3.5" />
-                                        Mark complete
-                                      </>
-                                    )}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); removeTaskMutation.mutate({ projectId: project.id, taskId: task.id }); }}
-                                    disabled={removeTaskMutation.isPending}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
-                                  >
-                                    <X className="h-3.5 w-3.5" />
-                                    Remove task
-                                  </button>
-                                </div>
-                                {!task.completed && (
-                                  <label className="grid gap-1 text-xs text-slate-300">
-                                    Status
-                                    <select
-                                      value={taskStatusDrafts[taskKey] ?? task.status ?? 'open'}
-                                      onChange={(e) => {
-                                        e.stopPropagation();
-                                        setTaskStatusDrafts((current) => ({ ...current, [taskKey]: e.target.value }));
-                                        updateTaskStatusMutation.mutate({ projectId: project.id, taskId: task.id, status: e.target.value });
-                                      }}
-                                      disabled={updateTaskStatusMutation.isPending}
-                                      className="rounded-lg border border-white/10 bg-slate-900/80 px-2 py-1.5 text-white outline-none focus:border-sky-400/50 disabled:opacity-50"
-                                    >
-                                      <option value="pending">Pending</option>
-                                      <option value="open">Open</option>
-                                      <option value="busy">Busy</option>
-                                      <option value="done">Done</option>
-                                    </select>
-                                  </label>
-                                )}
-                              </div>
-                              {isPlatformOwnerEmail(user?.email) ? (
-                                <div className="flex flex-wrap items-center gap-3">
-                                  <span className="text-xs text-slate-500">
-                                    {taskFiles.length} file{taskFiles.length === 1 ? '' : 's'} attached to this task
-                                  </span>
-                                  <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-white/10 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
-                                    {uploadMutation.isPending ? 'Uploading...' : 'Upload file'}
-                                    <input
-                                      type="file"
-                                      disabled={uploadMutation.isPending}
-                                      accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
-                                      className="sr-only"
-                                      onChange={(event) => {
-                                        const file = event.target.files?.[0];
-                                        event.target.value = '';
-                                        if (file) {
-                                          uploadMutation.mutate({ file, taskId: task.id, projectId: project.id });
-                                        }
-                                      }}
-                                    />
-                                  </label>
-                                </div>
-                              ) : null}
-                              {taskFiles.length > 0 ? (
-                                <div className="space-y-3">
-                                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
-                                  <div className="grid gap-3 sm:grid-cols-2">
+                        <div key={`${project.id}-${task.id}`} className="border-b border-white/10 py-3 last:border-0">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className={task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}>{task.text}</p>
+                            <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-300">{task.completed ? 'Done' : (task.status ?? 'Open')}</span>
+                          </div>
+                          {taskFiles.length > 0 ? (
+                            <div className="mt-3 space-y-3 rounded-2xl bg-slate-950/70 p-3">
+                              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
+                              <div className="grid gap-3 sm:grid-cols-2">
                                 {taskFiles.map((file) => {
                                   const key = file.path ?? file.name;
                                   const thumbnailUrl = thumbnails[key];
@@ -676,16 +446,19 @@ export function BranchDetailPage() {
                                       <p className="truncate font-medium text-white">{file.name}</p>
                                       <div className="mt-2 flex flex-wrap items-center gap-2">
                                         {isPreviewable ? (
-                                          <button type="button" onClick={(e) => { e.stopPropagation(); previewMutation.mutate(file); }} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
+                                          <button type="button" onClick={() => previewMutation.mutate(file)} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
                                             <Eye className="mr-1 inline h-3.5 w-3.5" /> Preview
                                           </button>
                                         ) : null}
-                                        <button type="button" onClick={(e) => { e.stopPropagation(); downloadMutation.mutate(file); }} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
+                                        <button type="button" onClick={() => downloadMutation.mutate(file)} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
                                           <Download className="mr-1 inline h-3.5 w-3.5" /> Download
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={(e) => { e.stopPropagation(); setRenamingFileKey(key); setRenameDraft(file.name); }}
+                                          onClick={() => {
+                                            setRenamingFileKey(key);
+                                            setRenameDraft(file.name);
+                                          }}
                                           className="text-xs font-semibold text-sky-200 transition hover:text-sky-100"
                                         >
                                           Rename
@@ -702,14 +475,17 @@ export function BranchDetailPage() {
                                             <button
                                               type="button"
                                               disabled={!renameDraft.trim()}
-                                              onClick={(e) => { e.stopPropagation(); renameFileMutation.mutate({ file, nextName: renameDraft }); setRenamingFileKey(null); }}
+                                              onClick={() => {
+                                                renameFileMutation.mutate({ file, nextName: renameDraft });
+                                                setRenamingFileKey(null);
+                                              }}
                                               className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                               Save
                                             </button>
                                             <button
                                               type="button"
-                                              onClick={(e) => { e.stopPropagation(); setRenamingFileKey(null); }}
+                                              onClick={() => setRenamingFileKey(null)}
                                               className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
                                             >
                                               Cancel
@@ -721,36 +497,36 @@ export function BranchDetailPage() {
                                   );
                                 })}
                               </div>
+                            </div>
+                          ) : null}
+                          {/* Task comments */}
+                          <div className="mt-3">
+                            <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
+                            <div className="mt-2 space-y-2">
+                              {taskComments.length > 0 ? taskComments.map((c, i) => (
+                                <div key={`${taskKey}-c-${i}`} className="rounded-2xl bg-slate-950/80 p-3">
+                                  <p className="text-xs text-slate-400">{c.date}</p>
+                                  <p className="mt-1 font-medium text-white">{c.author}</p>
+                                  <p className="mt-1 text-slate-300">{c.message}</p>
                                 </div>
-                              ) : null}
-                              {normalizeRole(user?.role) !== 'psg_user' ? (
-                                <div>
-                                  <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
-                                  <div className="mt-2 space-y-2">
-                                    {taskComments.length > 0 ? taskComments.map((c, i) => (
-                                      <div key={`${taskKey}-comment-${i}-${c.taskId ?? 'general'}`} className="rounded-2xl bg-slate-950/80 p-3">
-                                        <p className="text-xs text-slate-400">{c.date}</p>
-                                        <p className="mt-1 font-medium text-white">{c.author}</p>
-                                        <p className="mt-1 text-slate-300">{c.message}</p>
-                                      </div>
-                                    )) : <p className="text-slate-400">No comments yet.</p>}
-                                  </div>
+                              )) : <p className="text-slate-400">No comments yet.</p>}
+                            </div>
 
-                                  {/* Add comment */}
-                                  {canAddTaskComments(user) ? (
-                                  <div className="mt-3 grid gap-2">
+                            {/* Add comment */}
+                            {can(user, 'add_comments') ? (
+                              <div className="mt-3 grid gap-2">
                                 <textarea
                                   value={taskCommentDrafts[taskKey] ?? ''}
                                   onChange={(e) => setTaskCommentDrafts((cur) => ({ ...cur, [taskKey]: e.target.value }))}
                                   rows={2}
                                   placeholder="Leave a comment for this task"
-                                  className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50"
+                                  className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
                                 />
                                 <div className="flex gap-2">
                                   <button
                                     type="button"
                                     disabled={!taskCommentDrafts[taskKey]?.trim() || taskCommentMutation.isPending}
-                                    onClick={(e) => { e.stopPropagation(); taskCommentMutation.mutate({ projectId: project.id, taskId: task.id, message: taskCommentDrafts[taskKey] ?? '' }); }}
+                                    onClick={() => taskCommentMutation.mutate({ projectId: project.id, taskId: task.id, message: taskCommentDrafts[taskKey] ?? '' })}
                                     className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     {taskCommentMutation.isPending ? 'Posting...' : 'Add comment'}
@@ -758,86 +534,13 @@ export function BranchDetailPage() {
                                   <p className="text-xs text-slate-400">Comments appear in the project journal and under the task.</p>
                                 </div>
                               </div>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </div>
-                          )}
+                            ) : null}
+                          </div>
                         </div>
                       );
                     }) : <p className="text-slate-400">No tasks added yet.</p>}
                   </div>
                 </div>
-
-                {/* Available Tasks to Add */}
-                {(() => {
-                  const policy = getRolePolicy(user);
-                  const canAddTasks = Boolean(policy && policy.tasks.canCreateTasks) || Boolean(user && (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email)));
-                  
-                  if (!canAddTasks) {
-                    return null;
-                  }
-
-                  const availableTemplates = getApplicableTaskTemplates(project.projectType);
-                  const existingTaskTexts = new Set(project.tasks.map((t) => t.text.toLowerCase()));
-                  const unusedTemplates = availableTemplates.filter((template) => !existingTaskTexts.has(template.name.toLowerCase()));
-
-                  if (unusedTemplates.length === 0) {
-                    return null;
-                  }
-
-                  const isExpanded = expandedTaskPoolProjects.has(project.id);
-
-                  return (
-                    <div className="mt-6 border-t border-white/10 pt-4">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setExpandedTaskPoolProjects((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(project.id)) {
-                              next.delete(project.id);
-                            } else {
-                              next.add(project.id);
-                            }
-                            return next;
-                          });
-                        }}
-                        className="flex w-full items-center gap-2 rounded-2xl p-3 text-left transition hover:bg-slate-900/40"
-                      >
-                        <span className="text-slate-400">{isExpanded ? '▼' : '▶'}</span>
-                        <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Available tasks to add ({unusedTemplates.length})</p>
-                      </button>
-
-                      {isExpanded && (
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                          {unusedTemplates.map((template) => (
-                            <div key={template.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
-                              <p className="font-medium text-white">{template.name}</p>
-                              <p className="mt-1 text-xs text-slate-400">{template.description}</p>
-                              <p className="mt-2 text-xs text-slate-500 capitalize">{template.category}</p>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addTaskFromPoolMutation.mutate({
-                                    projectId: project.id,
-                                    templateName: template.name,
-                                  });
-                                }}
-                                disabled={addTaskFromPoolMutation.isPending}
-                                className="mt-3 inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-50"
-                              >
-                                + Add task
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
 
                 <div className="mt-6 grid gap-3 md:grid-cols-2">
                   <div className="rounded-2xl bg-slate-950/70 p-4">
