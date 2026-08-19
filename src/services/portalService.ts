@@ -150,30 +150,6 @@ const allowedVoiceUpdateTypes = new Set([
   'video/mp4',
 ]);
 
-function warnRelationalFallback(workspaceId: string, dataType: 'tasks' | 'files') {
-  console.warn('[Phase 4A Telemetry] Relational miss - fallback triggered for workspace:', workspaceId, dataType);
-}
-
-function normalizeProjectFiles(files: unknown[] | null): ProjectFile[] {
-  if (!Array.isArray(files)) {
-    return [];
-  }
-
-  return files
-    .map((file) => {
-      if (typeof file === 'string') {
-        return { name: file };
-      }
-
-      if (file && typeof file === 'object' && 'name' in file && typeof file.name === 'string') {
-        return file as ProjectFile;
-      }
-
-      return null;
-    })
-    .filter((file): file is ProjectFile => Boolean(file));
-}
-
 type RelationalProjectFileRow = {
   id: string;
   workspace_id: string;
@@ -266,10 +242,7 @@ async function hydrateProjectFiles(projects: Project[]): Promise<Project[]> {
     if (!workspace?.id) return project;
 
     const files = await getWorkspaceFiles(workspace.id);
-    if (files.length === 0 && project.files.length > 0) {
-      warnRelationalFallback(workspace.id, 'files');
-    }
-    return files.length > 0 ? { ...project, workspaceId: workspace.id, files } : project;
+    return { ...project, workspaceId: workspace.id, files };
   }));
 }
 
@@ -279,74 +252,6 @@ function createTaskId() {
 
 function createQuestionId() {
   return globalThis.crypto?.randomUUID?.() ?? `question-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function taskSlug(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'task';
-}
-
-function isTimelineStage(value: unknown): value is Project['currentStage'] {
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
-function normalizeTaskAssignees(candidate: Partial<TaskItem>): TaskAssignee[] | undefined {
-  if (Array.isArray(candidate.assignees)) {
-    const cleaned = candidate.assignees
-      .filter((assignee): assignee is TaskAssignee => Boolean(assignee?.email && assignee?.name))
-      .map((assignee) => ({
-        name: assignee.name,
-        email: assignee.email,
-        designation: assignee.designation || 'Participant',
-      }));
-
-    return cleaned.length > 0 ? cleaned : undefined;
-  }
-
-  if (candidate.assigneeEmail && candidate.assigneeName) {
-    return [{ name: candidate.assigneeName, email: candidate.assigneeEmail, designation: 'Participant' }];
-  }
-
-  return undefined;
-}
-
-function normalizeProjectTasks(tasks: unknown[] | null): TaskItem[] {
-  if (!Array.isArray(tasks)) {
-    return [];
-  }
-
-  return tasks
-    .map((task, index): TaskItem | null => {
-      if (typeof task === 'string') {
-        return {
-          id: `legacy-${index}-${taskSlug(task)}`,
-          text: task,
-          completed: false,
-        };
-      }
-
-      if (task && typeof task === 'object' && 'text' in task && typeof task.text === 'string') {
-        const candidate = task as Partial<TaskItem>;
-        const candidateText = candidate.text ?? '';
-        return {
-          id: typeof candidate.id === 'string' ? candidate.id : `legacy-${index}-${taskSlug(candidateText)}`,
-          text: candidateText,
-          completed: Boolean(candidate.completed),
-          stage: isTimelineStage(candidate.stage) ? candidate.stage : undefined,
-          assigneeName: typeof candidate.assigneeName === 'string' ? candidate.assigneeName : undefined,
-          assigneeEmail: typeof candidate.assigneeEmail === 'string' ? candidate.assigneeEmail : undefined,
-          assignees: normalizeTaskAssignees(candidate),
-          installationRequest: typeof candidate.installationRequest === 'string' ? candidate.installationRequest : undefined,
-          status: typeof candidate.status === 'string' ? candidate.status as TaskItem['status'] : undefined,
-          createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : undefined,
-          completedAt: typeof candidate.completedAt === 'string' ? candidate.completedAt : undefined,
-          completedByName: typeof candidate.completedByName === 'string' ? candidate.completedByName : undefined,
-          completedByEmail: typeof candidate.completedByEmail === 'string' ? candidate.completedByEmail : undefined,
-        };
-      }
-
-      return null;
-    })
-    .filter((task): task is TaskItem => Boolean(task));
 }
 
 function sanitizeFileName(fileName: string) {
@@ -945,8 +850,8 @@ function mapProjectRow(row: ProjectRow): Project {
     progress: typeof row.progress === 'number' ? row.progress : 0,
     branchManagerViewOnly: Boolean(row.branch_manager_view_only),
     notes: row.notes ?? '',
-    files: normalizeProjectFiles(row.files),
-    tasks: normalizeProjectTasks(row.tasks),
+    files: [],
+    tasks: [],
     comments: Array.isArray(row.comments) ? row.comments : [],
     activity: Array.isArray(row.activity) ? row.activity : [],
   };
@@ -965,7 +870,7 @@ export async function getPortalSummary(): Promise<PortalSummary> {
 
   await hydrateAuthSession();
 
-  const { data, error } = await client.from('projects').select('status, tasks, activity, branch_id');
+  const { data, error } = await client.from('projects').select('status, activity, branch_id');
 
   if (error || !data) {
     return {
@@ -1018,19 +923,8 @@ export async function getPortalSummary(): Promise<PortalSummary> {
         }
       }
     }
-  } catch (err) {
-    // Fall back to legacy JSONB if relational query fails
-    warnRelationalFallback('portal-summary', 'tasks');
-    todayTasks = [...new Set(data.flatMap((row) => normalizeProjectTasks(row.tasks ?? []).filter((task) => !task.completed).map((task) => task.text)))].slice(0, 3);
-  }
-
-  // If no relational tasks found, fall back to legacy JSONB
-  if (todayTasks.length === 0) {
-    const legacyTasks = [...new Set(data.flatMap((row) => normalizeProjectTasks(row.tasks ?? []).filter((task) => !task.completed).map((task) => task.text)))].slice(0, 3);
-    if (legacyTasks.length > 0) {
-      warnRelationalFallback('portal-summary', 'tasks');
-      todayTasks = legacyTasks;
-    }
+  } catch (error) {
+    console.error('Failed to fetch relational tasks for today.', error);
   }
 
   return {
@@ -1095,53 +989,30 @@ export async function getProjects(): Promise<Project[]> {
             .is('deleted_at', null)
             .order('sort_order', { ascending: true });
 
-          projects.forEach((project) => {
-            const workspace = workspaces.find((candidate) => candidate.branch_id === project.branchId);
-            if (project.tasks.length > 0 && (!workspace || !allTasks?.some((task) => task.workspace_id === workspace.id))) {
-              warnRelationalFallback(workspace?.id ?? `branch:${project.branchId}`, 'tasks');
-            }
+          // Group tasks by workspace and map them back to their branch IDs.
+          const tasksByWorkspace = new Map<string, TaskItem[]>();
+          (allTasks ?? []).forEach((taskRow) => {
+            const wsId = (taskRow as ProjectTaskRow).workspace_id;
+            const tasks = tasksByWorkspace.get(wsId) ?? [];
+            tasks.push(convertRelationalTaskToTaskItem(taskRow as ProjectTaskRow));
+            tasksByWorkspace.set(wsId, tasks);
           });
 
-          if (allTasks && allTasks.length > 0) {
-            // Group tasks by workspace_id
-            const tasksByWorkspace = new Map<string, TaskItem[]>();
-            allTasks.forEach((taskRow) => {
-              const wsId = (taskRow as ProjectTaskRow).workspace_id;
-              if (!tasksByWorkspace.has(wsId)) {
-                tasksByWorkspace.set(wsId, []);
-              }
-              tasksByWorkspace.get(wsId)!.push(convertRelationalTaskToTaskItem(taskRow as ProjectTaskRow));
-            });
+          const tasksByBranch = new Map<string, TaskItem[]>();
+          workspaces.forEach((ws) => tasksByBranch.set(ws.branch_id, tasksByWorkspace.get(ws.id) ?? []));
 
-            // Map workspaces back to branch IDs
-            const tasksByBranch = new Map<string, TaskItem[]>();
-            workspaces.forEach((ws) => {
-              const tasks = tasksByWorkspace.get(ws.id);
-              if (tasks) {
-                tasksByBranch.set(ws.branch_id, tasks);
-              }
-            });
-
-            // Update project tasks
-            return hydrateProjectFiles(projects.map((project) => {
-              const branchTasks = tasksByBranch.get(project.branchId);
-              if (branchTasks && branchTasks.length > 0) {
-                return { ...project, tasks: branchTasks };
-              }
-              return project;
-            }));
-          }
+          return hydrateProjectFiles(projects.map((project) => ({
+            ...project,
+            tasks: tasksByBranch.get(project.branchId) ?? [],
+          })));
         }
       }
     } catch (err) {
-      // Keep legacy JSONB tasks available while relational coverage is observed.
-      if (projects.some((project) => project.tasks.length > 0)) {
-        warnRelationalFallback('project-list', 'tasks');
-      }
+      console.error('Failed to fetch relational tasks.', err);
     }
   }
 
-  return hydrateProjectFiles(projects);
+  return hydrateProjectFiles(projects.map((project) => ({ ...project, tasks: [] })));
 }
 
 export async function getProjectById(projectId: string): Promise<Project | undefined> {
@@ -1176,23 +1047,11 @@ export async function getProjectById(projectId: string): Promise<Project | undef
     if (workspaceData?.id) {
       project = { ...project, workspaceId: workspaceData.id };
       const relationalTasks = await getWorkspaceTasks(workspaceData.id);
-      if (relationalTasks.length > 0) {
-        project = { ...project, tasks: relationalTasks };
-      } else if (project.tasks.length > 0) {
-        warnRelationalFallback(workspaceData.id, 'tasks');
-      }
+      project = { ...project, tasks: relationalTasks };
 
       const relationalFiles = await getWorkspaceFiles(workspaceData.id);
-      if (relationalFiles.length > 0) {
-        project = { ...project, files: relationalFiles };
-      } else if (project.files.length > 0) {
-        warnRelationalFallback(workspaceData.id, 'files');
-      }
+      project = { ...project, files: relationalFiles };
     }
-  }
-
-  if (project.tasks.length > 0 || project.files.length > 0) {
-    warnRelationalFallback(`branch:${projectRow.branch_id ?? 'unknown'}`, project.tasks.length > 0 ? 'tasks' : 'files');
   }
 
   return project;
