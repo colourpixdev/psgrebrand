@@ -150,6 +150,10 @@ const allowedVoiceUpdateTypes = new Set([
   'video/mp4',
 ]);
 
+function warnRelationalFallback(workspaceId: string, dataType: 'tasks' | 'files') {
+  console.warn('[Phase 4A Telemetry] Relational miss - fallback triggered for workspace:', workspaceId, dataType);
+}
+
 function normalizeProjectFiles(files: unknown[] | null): ProjectFile[] {
   if (!Array.isArray(files)) {
     return [];
@@ -262,6 +266,9 @@ async function hydrateProjectFiles(projects: Project[]): Promise<Project[]> {
     if (!workspace?.id) return project;
 
     const files = await getWorkspaceFiles(workspace.id);
+    if (files.length === 0 && project.files.length > 0) {
+      warnRelationalFallback(workspace.id, 'files');
+    }
     return files.length > 0 ? { ...project, workspaceId: workspace.id, files } : project;
   }));
 }
@@ -1013,13 +1020,17 @@ export async function getPortalSummary(): Promise<PortalSummary> {
     }
   } catch (err) {
     // Fall back to legacy JSONB if relational query fails
-    console.warn('Failed to fetch relational tasks for today; using legacy JSONB', err);
+    warnRelationalFallback('portal-summary', 'tasks');
     todayTasks = [...new Set(data.flatMap((row) => normalizeProjectTasks(row.tasks ?? []).filter((task) => !task.completed).map((task) => task.text)))].slice(0, 3);
   }
 
   // If no relational tasks found, fall back to legacy JSONB
   if (todayTasks.length === 0) {
-    todayTasks = [...new Set(data.flatMap((row) => normalizeProjectTasks(row.tasks ?? []).filter((task) => !task.completed).map((task) => task.text)))].slice(0, 3);
+    const legacyTasks = [...new Set(data.flatMap((row) => normalizeProjectTasks(row.tasks ?? []).filter((task) => !task.completed).map((task) => task.text)))].slice(0, 3);
+    if (legacyTasks.length > 0) {
+      warnRelationalFallback('portal-summary', 'tasks');
+      todayTasks = legacyTasks;
+    }
   }
 
   return {
@@ -1084,6 +1095,13 @@ export async function getProjects(): Promise<Project[]> {
             .is('deleted_at', null)
             .order('sort_order', { ascending: true });
 
+          projects.forEach((project) => {
+            const workspace = workspaces.find((candidate) => candidate.branch_id === project.branchId);
+            if (project.tasks.length > 0 && (!workspace || !allTasks?.some((task) => task.workspace_id === workspace.id))) {
+              warnRelationalFallback(workspace?.id ?? `branch:${project.branchId}`, 'tasks');
+            }
+          });
+
           if (allTasks && allTasks.length > 0) {
             // Group tasks by workspace_id
             const tasksByWorkspace = new Map<string, TaskItem[]>();
@@ -1116,8 +1134,10 @@ export async function getProjects(): Promise<Project[]> {
         }
       }
     } catch (err) {
-      // Silently fall back to legacy JSONB tasks on error
-      console.warn('Failed to fetch relational tasks; using legacy JSONB', err);
+      // Keep legacy JSONB tasks available while relational coverage is observed.
+      if (projects.some((project) => project.tasks.length > 0)) {
+        warnRelationalFallback('project-list', 'tasks');
+      }
     }
   }
 
@@ -1157,15 +1177,22 @@ export async function getProjectById(projectId: string): Promise<Project | undef
       project = { ...project, workspaceId: workspaceData.id };
       const relationalTasks = await getWorkspaceTasks(workspaceData.id);
       if (relationalTasks.length > 0) {
-        // Use relational tasks, falling back to legacy tasks if none found
         project = { ...project, tasks: relationalTasks };
+      } else if (project.tasks.length > 0) {
+        warnRelationalFallback(workspaceData.id, 'tasks');
       }
 
       const relationalFiles = await getWorkspaceFiles(workspaceData.id);
       if (relationalFiles.length > 0) {
         project = { ...project, files: relationalFiles };
+      } else if (project.files.length > 0) {
+        warnRelationalFallback(workspaceData.id, 'files');
       }
     }
+  }
+
+  if (project.tasks.length > 0 || project.files.length > 0) {
+    warnRelationalFallback(`branch:${projectRow.branch_id ?? 'unknown'}`, project.tasks.length > 0 ? 'tasks' : 'files');
   }
 
   return project;
