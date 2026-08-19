@@ -481,13 +481,6 @@ export function ProjectDetailPage() {
     return true;
   }
 
-  function nextTaskStatus(status: TaskItem['status'] | undefined): TaskItem['status'] {
-    if (status === 'pending') return 'open';
-    if (status === 'open') return 'busy';
-    if (status === 'busy') return 'done';
-    return 'pending';
-  }
-
   function startAnswer(question: CommentItem) {
     setAnsweringQuestionId(question.id ?? null);
     setAnswerMessage(question.answer ?? '');
@@ -721,7 +714,7 @@ export function ProjectDetailPage() {
               Add
             </button>
           </div>
-          <p className="mt-2 text-xs text-slate-500">Every open task needs at least one assignee. Designations come from each user profile title or role label. Click the status button to move a task from Open to Busy to Done.</p>
+          <p className="mt-2 text-xs text-slate-500">Every open task needs at least one assignee. Designations come from each user profile title or role label. Select a task status to update it directly.</p>
           <div className="mt-4 space-y-2">
             {mergedTasks.length > 0 ? mergedTasks.map((task, index) => {
               const taskStatus = getTaskStatus(task);
@@ -784,14 +777,17 @@ export function ProjectDetailPage() {
                 ) : (
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 flex-1 items-start gap-3">
-                      <button
-                        type="button"
+                      <select
+                        value={taskStatus}
                         disabled={!canCurrentUserCompleteTask(task) || updateTaskMutation.isPending}
-                        onClick={() => updateTaskMutation.mutate({ task, status: nextTaskStatus(taskStatus) })}
-                        className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${statusStyles[taskStatus]}`}
+                        onChange={(event) => updateTaskMutation.mutate({ task, status: event.target.value as TaskItem['status'] })}
+                        aria-label={`Status for ${task.text}`}
+                        className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${statusStyles[taskStatus]}`}
                       >
-                        {statusLabels[taskStatus]}
-                      </button>
+                        {(['pending', 'open', 'busy', 'done'] as const).map((status) => (
+                          <option key={status} value={status}>{statusLabels[status]}</option>
+                        ))}
+                      </select>
                       <span className="min-w-0">
                         <span className={taskStatus === 'done' ? 'block text-slate-500 line-through' : 'block text-slate-200'}>{task.text}</span>
                         <span className="mt-1 block text-xs text-slate-500">
