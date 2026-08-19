@@ -103,6 +103,7 @@ export interface Project {
 }
 
 export interface ProjectFile {
+  id?: string;
   name: string;
   path?: string;
   size?: number;

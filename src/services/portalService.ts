@@ -170,6 +170,102 @@ function normalizeProjectFiles(files: unknown[] | null): ProjectFile[] {
     .filter((file): file is ProjectFile => Boolean(file));
 }
 
+type RelationalProjectFileRow = {
+  id: string;
+  workspace_id: string;
+  task_id?: string | null;
+  display_name: string;
+  current_version_id?: string | null;
+  created_at: string;
+  file_version?: {
+    id: string;
+    storage_path: string;
+    mime_type?: string | null;
+    size_bytes?: number | null;
+    uploaded_at: string;
+  } | null;
+};
+
+function convertRelationalFileToProjectFile(fileRow: RelationalProjectFileRow, version?: RelationalProjectFileRow['file_version']): ProjectFile {
+  return {
+    id: fileRow.id,
+    name: fileRow.display_name,
+    path: version?.storage_path,
+    size: typeof version?.size_bytes === 'number' ? version.size_bytes : undefined,
+    type: version?.mime_type ?? undefined,
+    uploadedAt: version?.uploaded_at ?? fileRow.created_at,
+    taskId: fileRow.task_id ?? undefined,
+  };
+}
+
+async function getCurrentProfileId() {
+  const client = supabase;
+  if (!client) return null;
+
+  const { data: userData } = await client.auth.getUser();
+  const userId = userData.user?.id;
+  if (!userId) return null;
+
+  const { data: profile } = await client.from('profiles').select('id').eq('user_id', userId).maybeSingle();
+  return profile?.id ?? null;
+}
+
+async function recordProjectFileActivity(workspaceId: string, eventType: string, fileId: string, actor: string, metadata: Record<string, unknown> = {}) {
+  const client = supabase;
+  if (!client) return;
+
+  await client.from('project_activity').insert({
+    workspace_id: workspaceId,
+    event_type: eventType,
+    entity_type: 'project_file',
+    entity_id: fileId,
+    source: 'user',
+    metadata: { ...metadata, actor },
+  });
+}
+
+async function getWorkspaceFiles(workspaceId: string): Promise<ProjectFile[]> {
+  const client = supabase;
+  if (!client) return [];
+
+  const { data, error } = await client
+    .from('project_files')
+    .select('id, workspace_id, task_id, display_name, current_version_id, created_at')
+    .eq('workspace_id', workspaceId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true });
+
+  if (error || !data || data.length === 0) return [];
+
+  const versionIds = data.map((file) => file.current_version_id).filter((id): id is string => Boolean(id));
+  const { data: versions } = versionIds.length > 0
+    ? await client.from('file_versions').select('id, storage_path, mime_type, size_bytes, uploaded_at').in('id', versionIds)
+    : { data: [] };
+  const versionsById = new Map((versions ?? []).map((version) => [version.id, version]));
+
+  return (data as RelationalProjectFileRow[]).map((file) => convertRelationalFileToProjectFile(file, file.current_version_id ? versionsById.get(file.current_version_id) : undefined));
+}
+
+async function hydrateProjectFiles(projects: Project[]): Promise<Project[]> {
+  const client = supabase;
+  if (!client || projects.length === 0) return projects;
+
+  return Promise.all(projects.map(async (project) => {
+    if (!project.branchId || project.branchId === 'unassigned') return project;
+
+    const { data: workspace } = await client
+      .from('rebrand_workspaces')
+      .select('id')
+      .eq('branch_id', project.branchId)
+      .eq('is_primary', true)
+      .maybeSingle();
+    if (!workspace?.id) return project;
+
+    const files = await getWorkspaceFiles(workspace.id);
+    return files.length > 0 ? { ...project, workspaceId: workspace.id, files } : project;
+  }));
+}
+
 function createTaskId() {
   return globalThis.crypto?.randomUUID?.() ?? `task-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -1009,13 +1105,13 @@ export async function getProjects(): Promise<Project[]> {
             });
 
             // Update project tasks
-            return projects.map((project) => {
+            return hydrateProjectFiles(projects.map((project) => {
               const branchTasks = tasksByBranch.get(project.branchId);
               if (branchTasks && branchTasks.length > 0) {
                 return { ...project, tasks: branchTasks };
               }
               return project;
-            });
+            }));
           }
         }
       }
@@ -1025,7 +1121,7 @@ export async function getProjects(): Promise<Project[]> {
     }
   }
 
-  return projects;
+  return hydrateProjectFiles(projects);
 }
 
 export async function getProjectById(projectId: string): Promise<Project | undefined> {
@@ -1058,10 +1154,16 @@ export async function getProjectById(projectId: string): Promise<Project | undef
       .maybeSingle();
 
     if (workspaceData?.id) {
+      project = { ...project, workspaceId: workspaceData.id };
       const relationalTasks = await getWorkspaceTasks(workspaceData.id);
       if (relationalTasks.length > 0) {
         // Use relational tasks, falling back to legacy tasks if none found
         project = { ...project, tasks: relationalTasks };
+      }
+
+      const relationalFiles = await getWorkspaceFiles(workspaceData.id);
+      if (relationalFiles.length > 0) {
+        project = { ...project, files: relationalFiles };
       }
     }
   }
@@ -1301,41 +1403,66 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     throw uploadError;
   }
 
-  const { data: latestProject, error: latestProjectError } = await client
+  const { data: projectRow, error: projectError } = await client
     .from('projects')
-    .select('files')
+    .select('branch_id')
     .eq('id', projectId)
     .single();
 
-  if (latestProjectError) {
+  if (projectError || !projectRow?.branch_id) {
     await client.storage.from(projectFilesBucket).remove([path]);
-    throw latestProjectError;
+    throw projectError ?? new Error('Project branch is missing.');
   }
 
-  const latestFiles = Array.isArray(latestProject.files) ? latestProject.files as ProjectFile[] : currentFiles;
-  const nextFiles = [
-    ...latestFiles,
-    {
-      name: file.name,
-      path,
-      size: file.size,
-      type: file.type || undefined,
-      uploadedAt: new Date().toISOString(),
-      taskId,
-    },
-  ];
-
-  const { error: updateError } = await client
-    .from('projects')
-    .update({ files: nextFiles, updated_at: new Date().toISOString() })
-    .eq('id', projectId);
-
-  if (updateError) {
+  const { data: workspace, error: workspaceError } = await client
+    .from('rebrand_workspaces')
+    .select('id')
+    .eq('branch_id', projectRow.branch_id)
+    .eq('is_primary', true)
+    .maybeSingle();
+  const uploadedBy = await getCurrentProfileId();
+  if (workspaceError || !workspace?.id || !uploadedBy) {
     await client.storage.from(projectFilesBucket).remove([path]);
-    throw updateError;
+    throw workspaceError ?? new Error('Workspace or authenticated profile not found.');
   }
 
-  return nextFiles;
+  const { data: category } = await client.from('file_categories').select('id').eq('category_key', 'other').maybeSingle();
+  if (!category?.id) {
+    await client.storage.from(projectFilesBucket).remove([path]);
+    throw new Error('Default file category is missing.');
+  }
+
+  const { data: projectFile, error: fileError } = await client
+    .from('project_files')
+    .insert({ workspace_id: workspace.id, task_id: taskId ?? null, category_id: category.id, display_name: file.name, uploaded_by: uploadedBy })
+    .select('id')
+    .single();
+  if (fileError || !projectFile) {
+    await client.storage.from(projectFilesBucket).remove([path]);
+    throw fileError ?? new Error('Unable to create relational project file.');
+  }
+
+  const { data: version, error: versionError } = await client
+    .from('file_versions')
+    .insert({ file_id: projectFile.id, version_number: 1, storage_bucket: projectFilesBucket, storage_path: path, mime_type: file.type || null, size_bytes: file.size, uploaded_by: uploadedBy })
+    .select('id')
+    .single();
+  if (versionError || !version) {
+    await client.from('project_files').delete().eq('id', projectFile.id);
+    await client.storage.from(projectFilesBucket).remove([path]);
+    throw versionError ?? new Error('Unable to create file version.');
+  }
+
+  const { error: currentVersionError } = await client.from('project_files').update({ current_version_id: version.id, updated_at: new Date().toISOString() }).eq('id', projectFile.id);
+  if (currentVersionError) {
+    await client.from('project_files').delete().eq('id', projectFile.id);
+    await client.storage.from(projectFilesBucket).remove([path]);
+    throw currentVersionError;
+  }
+
+  await recordProjectFileActivity(workspace.id, 'file_uploaded', projectFile.id, 'upload', { display_name: file.name });
+  const updatedProject = await getProjectById(projectId);
+  return updatedProject?.files ?? [...currentFiles, { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId }];
 }
 
 export async function getProjectFileUrl(file: ProjectFile, options: { download?: boolean } = {}) {
@@ -2124,23 +2251,20 @@ export async function renameProjectFile(input: RenameProjectFileInput): Promise<
     throw new Error('Project not found.');
   }
 
-  const files = existingProject.files.map((file) => {
-    const matches = input.filePath ? file.path === input.filePath : file.name === input.currentName;
-    return matches ? { ...file, name: nextName } : file;
-  });
-  const activity = [createActivity('File renamed', `${input.actor} renamed ${input.currentName} to ${nextName}.`), ...existingProject.activity];
-
-  const { data, error } = await client
-    .from('projects')
-    .update({ files, activity, updated_at: new Date().toISOString() })
-    .eq('id', input.projectId)
-    .select('*')
-    .single();
-
-  if (error || !data) {
-    throw error ?? new Error('Unable to rename project file.');
+  const relationalFile = existingProject.files.find((file) => input.filePath ? file.path === input.filePath : file.name === input.currentName);
+  if (relationalFile?.id && existingProject.workspaceId) {
+    const { error } = await client.from('project_files').update({ display_name: nextName, updated_at: new Date().toISOString() }).eq('id', relationalFile.id).is('deleted_at', null);
+    if (error) throw error;
+    await recordProjectFileActivity(existingProject.workspaceId, 'file_renamed', relationalFile.id, input.actor, { from: input.currentName, to: nextName });
+    return getProjectById(input.projectId) as Promise<Project>;
   }
 
+  const files = existingProject.files.map((file) => input.filePath
+    ? (file.path === input.filePath ? { ...file, name: nextName } : file)
+    : (file.name === input.currentName ? { ...file, name: nextName } : file));
+  const activity = [createActivity('File renamed', `${input.actor} renamed ${input.currentName} to ${nextName}.`), ...existingProject.activity];
+  const { data, error } = await client.from('projects').update({ files, activity, updated_at: new Date().toISOString() }).eq('id', input.projectId).select('*').single();
+  if (error || !data) throw error ?? new Error('Unable to rename project file.');
   return mapProjectRow(data as ProjectRow);
 }
 
@@ -2158,27 +2282,20 @@ export async function deleteProjectFile(input: DeleteProjectFileInput): Promise<
     throw new Error('Project not found.');
   }
 
-  const files = existingProject.files.filter((file) => {
-    const matches = input.filePath ? file.path === input.filePath : file.name === input.fileName;
-    return !matches;
-  });
+  const relationalFile = existingProject.files.find((file) => input.filePath ? file.path === input.filePath : file.name === input.fileName);
+  if (relationalFile?.id && existingProject.workspaceId) {
+    const deletedBy = await getCurrentProfileId();
+    const { error } = await client.from('project_files').update({ deleted_at: new Date().toISOString(), deleted_by: deletedBy, updated_at: new Date().toISOString() }).eq('id', relationalFile.id).is('deleted_at', null);
+    if (error) throw error;
+    await recordProjectFileActivity(existingProject.workspaceId, 'file_deleted', relationalFile.id, input.actor, { display_name: input.fileName });
+    return getProjectById(input.projectId) as Promise<Project>;
+  }
+
+  const files = existingProject.files.filter((file) => input.filePath ? file.path !== input.filePath : file.name !== input.fileName);
   const activity = [createActivity('File deleted', `${input.actor} deleted ${input.fileName}.`), ...existingProject.activity];
-
-  const { data, error } = await client
-    .from('projects')
-    .update({ files, activity, updated_at: new Date().toISOString() })
-    .eq('id', input.projectId)
-    .select('*')
-    .single();
-
-  if (error || !data) {
-    throw error ?? new Error('Unable to delete project file.');
-  }
-
-  if (input.filePath) {
-    await client.storage.from(projectFilesBucket).remove([input.filePath]);
-  }
-
+  const { data, error } = await client.from('projects').update({ files, activity, updated_at: new Date().toISOString() }).eq('id', input.projectId).select('*').single();
+  if (error || !data) throw error ?? new Error('Unable to delete project file.');
+  if (input.filePath) await client.storage.from(projectFilesBucket).remove([input.filePath]);
   return mapProjectRow(data as ProjectRow);
 }
 
