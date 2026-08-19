@@ -50,6 +50,73 @@ async function hydrateAuthSession() {
   await supabase?.auth.getSession();
 }
 
+type ProjectTaskRow = {
+  id: string;
+  workspace_id: string;
+  stage_id?: string | null;
+  title: string;
+  description?: string | null;
+  status: 'not_started' | 'in_progress' | 'complete' | 'waiting' | 'blocked';
+  priority: 'normal' | 'important' | 'urgent';
+  sort_order: number;
+  due_date?: string | null;
+  responsible_group_id?: string | null;
+  responsible_person_id?: string | null;
+  required_action: string;
+  waiting_reason?: string | null;
+  blocker_reason?: string | null;
+  is_current: boolean;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+};
+
+function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
+  const status = taskRow.status;
+  const completed = status === 'complete';
+  const isWaiting = status === 'waiting';
+  const isBlocked = status === 'blocked';
+
+  return {
+    id: taskRow.id,
+    text: taskRow.title || '<Untitled Task>',
+    completed,
+    status: status === 'not_started' ? 'open' : status === 'in_progress' ? 'busy' : status === 'complete' ? 'done' : 'open',
+    stage: undefined,
+    assigneeName: undefined,
+    assigneeEmail: undefined,
+    assignees: undefined,
+    installationRequest: isWaiting ? (taskRow.waiting_reason || 'Waiting for details') : isBlocked ? (taskRow.blocker_reason || 'Blocked') : undefined,
+    createdAt: taskRow.created_at,
+    completedAt: status === 'complete' ? taskRow.updated_at : undefined,
+    completedByName: status === 'complete' ? 'System' : undefined,
+    completedByEmail: status === 'complete' ? undefined : undefined,
+  };
+}
+
+async function getWorkspaceTasks(workspaceId: string): Promise<TaskItem[]> {
+  const client = supabase;
+
+  if (!client) {
+    return [];
+  }
+
+  await hydrateAuthSession();
+
+  const { data, error } = await client
+    .from('project_tasks')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .is('deleted_at', null)
+    .order('sort_order', { ascending: true });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return (data as ProjectTaskRow[]).map(convertRelationalTaskToTaskItem);
+}
+
 const projectFilesBucket = 'project-files';
 const voiceUpdatesBucket = 'voice-updates';
 const projectsStorageKey = 'psg-rebrand:projects';
@@ -795,7 +862,7 @@ export async function getPortalSummary(): Promise<PortalSummary> {
 
   await hydrateAuthSession();
 
-  const { data, error } = await client.from('projects').select('status, tasks, activity');
+  const { data, error } = await client.from('projects').select('status, tasks, activity, branch_id');
 
   if (error || !data) {
     return {
@@ -810,7 +877,54 @@ export async function getPortalSummary(): Promise<PortalSummary> {
   const inProgress = data.filter((row) => ['busy', 'in_progress', 'awaiting_approval'].includes(row.status)).length;
   const delayed = data.filter((row) => row.status === 'delayed').length;
   const recentActivity = data.flatMap((row) => row.activity ?? []).slice(0, 4);
-  const todayTasks = [...new Set(data.flatMap((row) => normalizeProjectTasks(row.tasks ?? []).filter((task) => !task.completed).map((task) => task.text)))].slice(0, 3);
+
+  // Fetch relational tasks for today's task calculation
+  let todayTasks: string[] = [];
+  try {
+    const branchIds = [...new Set(
+      data
+        .filter((p) => p.branch_id && typeof p.branch_id === 'string')
+        .map((p) => p.branch_id)
+    )];
+
+    if (branchIds.length > 0) {
+      // Fetch workspaces for these branches
+      const { data: workspaces } = await client
+        .from('rebrand_workspaces')
+        .select('id')
+        .in('branch_id', branchIds)
+        .eq('is_primary', true);
+
+      if (workspaces && workspaces.length > 0) {
+        const workspaceIds = workspaces.map((w) => w.id);
+        
+        // Fetch incomplete tasks (today's tasks)
+        const { data: allTasks } = await client
+          .from('project_tasks')
+          .select('title')
+          .in('workspace_id', workspaceIds)
+          .in('status', ['not_started', 'in_progress', 'waiting'])
+          .is('deleted_at', null);
+
+        if (allTasks && allTasks.length > 0) {
+          todayTasks = [...new Set(
+            allTasks
+              .map((t) => (t as any).title || '<Untitled Task>')
+              .filter((t) => t.trim().length > 0)
+          )].slice(0, 3);
+        }
+      }
+    }
+  } catch (err) {
+    // Fall back to legacy JSONB if relational query fails
+    console.warn('Failed to fetch relational tasks for today; using legacy JSONB', err);
+    todayTasks = [...new Set(data.flatMap((row) => normalizeProjectTasks(row.tasks ?? []).filter((task) => !task.completed).map((task) => task.text)))].slice(0, 3);
+  }
+
+  // If no relational tasks found, fall back to legacy JSONB
+  if (todayTasks.length === 0) {
+    todayTasks = [...new Set(data.flatMap((row) => normalizeProjectTasks(row.tasks ?? []).filter((task) => !task.completed).map((task) => task.text)))].slice(0, 3);
+  }
 
   return {
     metrics: [
@@ -844,7 +958,74 @@ export async function getProjects(): Promise<Project[]> {
       .map(mapProjectRow);
   }
 
-  return (data as ProjectRow[]).map(mapProjectRow);
+  // Fetch relational tasks for all projects in parallel
+  const projects = (data as ProjectRow[]).map(mapProjectRow);
+  
+  if (client && projects.length > 0) {
+    try {
+      // Collect all branch IDs
+      const branchIds = [...new Set(
+        projects
+          .filter((p) => p.branchId && p.branchId !== 'unassigned')
+          .map((p) => p.branchId)
+      )];
+
+      if (branchIds.length > 0) {
+        // Fetch all workspaces for these branches in one query
+        const { data: workspaces } = await client
+          .from('rebrand_workspaces')
+          .select('id, branch_id')
+          .in('branch_id', branchIds)
+          .eq('is_primary', true);
+
+        if (workspaces && workspaces.length > 0) {
+          // Fetch all tasks for these workspaces in one query
+          const workspaceIds = workspaces.map((w) => w.id);
+          const { data: allTasks } = await client
+            .from('project_tasks')
+            .select('*')
+            .in('workspace_id', workspaceIds)
+            .is('deleted_at', null)
+            .order('sort_order', { ascending: true });
+
+          if (allTasks && allTasks.length > 0) {
+            // Group tasks by workspace_id
+            const tasksByWorkspace = new Map<string, TaskItem[]>();
+            allTasks.forEach((taskRow) => {
+              const wsId = (taskRow as ProjectTaskRow).workspace_id;
+              if (!tasksByWorkspace.has(wsId)) {
+                tasksByWorkspace.set(wsId, []);
+              }
+              tasksByWorkspace.get(wsId)!.push(convertRelationalTaskToTaskItem(taskRow as ProjectTaskRow));
+            });
+
+            // Map workspaces back to branch IDs
+            const tasksByBranch = new Map<string, TaskItem[]>();
+            workspaces.forEach((ws) => {
+              const tasks = tasksByWorkspace.get(ws.id);
+              if (tasks) {
+                tasksByBranch.set(ws.branch_id, tasks);
+              }
+            });
+
+            // Update project tasks
+            return projects.map((project) => {
+              const branchTasks = tasksByBranch.get(project.branchId);
+              if (branchTasks && branchTasks.length > 0) {
+                return { ...project, tasks: branchTasks };
+              }
+              return project;
+            });
+          }
+        }
+      }
+    } catch (err) {
+      // Silently fall back to legacy JSONB tasks on error
+      console.warn('Failed to fetch relational tasks; using legacy JSONB', err);
+    }
+  }
+
+  return projects;
 }
 
 export async function getProjectById(projectId: string): Promise<Project | undefined> {
@@ -864,7 +1045,28 @@ export async function getProjectById(projectId: string): Promise<Project | undef
     return project ? mapProjectRow(project) : undefined;
   }
 
-  return mapProjectRow(data as ProjectRow);
+  const projectRow = data as ProjectRow;
+  let project = mapProjectRow(projectRow);
+
+  // Attempt to fetch relational tasks from workspace
+  if (projectRow.branch_id) {
+    const { data: workspaceData } = await client
+      .from('rebrand_workspaces')
+      .select('id')
+      .eq('branch_id', projectRow.branch_id)
+      .eq('is_primary', true)
+      .maybeSingle();
+
+    if (workspaceData?.id) {
+      const relationalTasks = await getWorkspaceTasks(workspaceData.id);
+      if (relationalTasks.length > 0) {
+        // Use relational tasks, falling back to legacy tasks if none found
+        project = { ...project, tasks: relationalTasks };
+      }
+    }
+  }
+
+  return project;
 }
 
 export async function deleteProject(projectId: string): Promise<void> {
@@ -1528,32 +1730,89 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
   if (!assignees?.length) {
     throw new Error('Assign every open task to at least one person.');
   }
-  const primaryAssignee = assignees?.[assignees.length - 1];
-  const tasks: TaskItem[] = [{
-    id: createTaskId(),
-    text: task,
-    completed: false,
-    status: 'pending',
-    stage: input.stage,
-    assigneeName: primaryAssignee?.name,
-    assigneeEmail: primaryAssignee?.email,
-    assignees,
-    createdAt: new Date().toISOString(),
-  }, ...existingProject.tasks];
-  const activity = [createActivity('Task added', `${input.actor} added task: ${task} (${summarizeAssignees(assignees)}).`), ...existingProject.activity];
 
-  const { data, error } = await client
-    .from('projects')
-    .update({ tasks, activity, updated_at: new Date().toISOString() })
-    .eq('id', input.projectId)
+  // Get or create workspace
+  let workspaceId = existingProject.workspaceId;
+  if (!workspaceId || workspaceId === defaultWorkspace.id) {
+    // Create workspace if it doesn't exist
+    const branchId = existingProject.branchId || existingProject.branch;
+    const { data: workspaceData } = await client
+      .from('rebrand_workspaces')
+      .select('id')
+      .eq('branch_id', branchId)
+      .eq('is_primary', true)
+      .maybeSingle();
+
+    if (workspaceData?.id) {
+      workspaceId = workspaceData.id;
+    } else {
+      // Create new workspace if none exists
+      const { data: newWorkspace, error: wsError } = await client
+        .from('rebrand_workspaces')
+        .insert({
+          branch_id: branchId,
+          workspace_reference: `WS-${existingProject.id}`,
+          workspace_type: 'rebrand',
+          is_primary: true,
+          lifecycle_state: 'active',
+        })
+        .select('id')
+        .single();
+
+      if (wsError || !newWorkspace) {
+        throw new Error('Failed to create workspace for task.');
+      }
+      workspaceId = newWorkspace.id;
+    }
+  }
+
+  // Get next sort_order
+  const { data: lastTask } = await client
+    .from('project_tasks')
+    .select('sort_order')
+    .eq('workspace_id', workspaceId)
+    .is('deleted_at', null)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const nextSortOrder = (lastTask?.sort_order ?? -1) + 1;
+
+  // Insert new task into relational table
+  const { data: newTask, error: taskError } = await client
+    .from('project_tasks')
+    .insert({
+      workspace_id: workspaceId,
+      title: task,
+      description: '',
+      status: 'not_started',
+      priority: 'normal',
+      sort_order: nextSortOrder,
+      required_action: '',
+      is_current: false,
+      created_by: (await client.auth.getUser())?.data?.user?.id,
+    })
     .select('*')
     .single();
 
-  if (error || !data) {
-    throw error ?? new Error('Unable to add project task.');
+  if (taskError || !newTask) {
+    throw new Error('Failed to add project task.');
   }
 
-  return mapProjectRow(data as ProjectRow);
+  // Record activity
+  const activity = [
+    createActivity('Task added', `${input.actor} added task: ${task} (${summarizeAssignees(assignees)}).`),
+    ...existingProject.activity,
+  ];
+
+  // Update project activity log
+  await client
+    .from('projects')
+    .update({ activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId);
+
+  // Return updated project
+  return getProjectById(input.projectId) as Promise<Project>;
 }
 
 export async function reorderProjectTask(input: ReorderProjectTaskInput): Promise<Project> {
@@ -1570,40 +1829,77 @@ export async function reorderProjectTask(input: ReorderProjectTaskInput): Promis
     throw new Error('Project not found.');
   }
 
-  const taskIndex = existingProject.tasks.findIndex((task) => task.id === input.taskId);
-  if (taskIndex === -1) {
+  const taskToMove = existingProject.tasks.find((task) => task.id === input.taskId);
+  if (!taskToMove) {
     throw new Error('Task not found.');
   }
 
-  const nextIndex = input.direction === 'up' ? taskIndex - 1 : taskIndex + 1;
-  if (nextIndex < 0 || nextIndex >= existingProject.tasks.length) {
+  // Get workspace
+  const branchId = existingProject.branchId || existingProject.branch;
+  const { data: workspaceData } = await client
+    .from('rebrand_workspaces')
+    .select('id')
+    .eq('branch_id', branchId)
+    .eq('is_primary', true)
+    .maybeSingle();
+
+  if (!workspaceData?.id) {
+    throw new Error('Workspace not found for project.');
+  }
+
+  // Get all tasks in order
+  const { data: tasksInOrder } = await client
+    .from('project_tasks')
+    .select('id, sort_order')
+    .eq('workspace_id', workspaceData.id)
+    .is('deleted_at', null)
+    .order('sort_order', { ascending: true });
+
+  if (!tasksInOrder) {
+    throw new Error('Unable to fetch tasks for reordering.');
+  }
+
+  const currentIndex = tasksInOrder.findIndex((t) => t.id === input.taskId);
+  if (currentIndex === -1) {
+    throw new Error('Task not found in workspace.');
+  }
+
+  const nextIndex = input.direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+  if (nextIndex < 0 || nextIndex >= tasksInOrder.length) {
     return existingProject;
   }
 
-  const tasks = [...existingProject.tasks];
-  [tasks[taskIndex], tasks[nextIndex]] = [tasks[nextIndex], tasks[taskIndex]];
+  // Swap sort orders
+  const currentTask = tasksInOrder[currentIndex];
+  const nextTask = tasksInOrder[nextIndex];
+  const tempSortOrder = currentTask.sort_order;
 
+  await client
+    .from('project_tasks')
+    .update({ sort_order: nextTask.sort_order })
+    .eq('id', currentTask.id);
+
+  await client
+    .from('project_tasks')
+    .update({ sort_order: tempSortOrder })
+    .eq('id', nextTask.id);
+
+  // Record activity
   const activity = [
     createActivity(
       'Task reordered',
-      `${input.actor} moved task ${input.direction === 'up' ? 'up' : 'down'}: ${existingProject.tasks[taskIndex].text}`,
+      `${input.actor} moved task ${input.direction === 'up' ? 'up' : 'down'}: ${taskToMove.text}`,
       'info',
     ),
     ...existingProject.activity,
   ];
 
-  const { data, error } = await client
+  await client
     .from('projects')
-    .update({ tasks, activity, updated_at: new Date().toISOString() })
-    .eq('id', input.projectId)
-    .select('*')
-    .single();
+    .update({ activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId);
 
-  if (error || !data) {
-    throw error ?? new Error('Unable to reorder project task.');
-  }
-
-  return mapProjectRow(data as ProjectRow);
+  return getProjectById(input.projectId) as Promise<Project>;
 }
 
 export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<Project> {
@@ -1630,70 +1926,59 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     throw new Error('Task cannot be empty.');
   }
 
-  const tasks = existingProject.tasks.map((task) => {
-    if (task.id !== input.taskId) {
-      return task;
-    }
+  // Get workspace
+  const branchId = existingProject.branchId || existingProject.branch;
+  const { data: workspaceData } = await client
+    .from('rebrand_workspaces')
+    .select('id')
+    .eq('branch_id', branchId)
+    .eq('is_primary', true)
+    .maybeSingle();
 
-    const status = input.status ?? (input.completed !== undefined ? (input.completed ? 'done' : 'open') : task.status ?? (task.completed ? 'done' : 'open'));
-    const completed = status === 'done';
-    const installationRequest = input.installationRequest !== undefined
-      ? input.installationRequest.trim()
-      : (input.text?.trim() && input.text.trim().toLowerCase().includes('schedule installation')
-        ? (task.installationRequest ?? '')
-        : task.installationRequest);
-    const assignees = input.assignees !== undefined
-      ? (input.assignees.length > 0 ? input.assignees : undefined)
-      : task.assignees;
-    const fallbackAssignee = input.assigneeEmail !== undefined
-      ? (input.assigneeEmail && input.assigneeName ? [{ name: input.assigneeName, email: input.assigneeEmail, designation: 'Participant' }] : undefined)
-      : undefined;
-    const resolvedAssignees = assignees ?? fallbackAssignee ?? normalizeTaskAssignees(task);
-    const primaryAssignee = resolvedAssignees?.[resolvedAssignees.length - 1];
+  if (!workspaceData?.id) {
+    throw new Error('Workspace not found for project.');
+  }
 
-    if (!completed && !resolvedAssignees?.length) {
-      throw new Error('Assign every open task to at least one person.');
-    }
-
-    return {
-      ...task,
-      text: text ?? task.text,
-      completed,
-      status,
-      stage: input.stage ?? task.stage,
-      assigneeName: primaryAssignee?.name ?? (input.assigneeName !== undefined ? input.assigneeName || undefined : task.assigneeName),
-      assigneeEmail: primaryAssignee?.email ?? (input.assigneeEmail !== undefined ? input.assigneeEmail || undefined : task.assigneeEmail),
-      assignees: resolvedAssignees,
-      installationRequest,
-      completedAt: completed ? task.completedAt ?? new Date().toISOString() : undefined,
-      completedByName: completed ? input.actor : undefined,
-      completedByEmail: completed ? input.actorEmail : undefined,
-    };
-  });
+  // Map status from frontend format to relational format
   const nextStatus = input.status ?? (input.completed !== undefined ? (input.completed ? 'done' : 'open') : undefined);
-  const activityTitle = nextStatus === 'done' ? 'Task completed' : nextStatus === 'busy' ? 'Task in progress' : nextStatus === 'open' ? 'Task reopened' : 'Task updated';
-  const activityVerb = nextStatus === 'done' ? 'completed' : nextStatus === 'busy' ? 'marked in progress on' : nextStatus === 'open' ? 'reopened' : 'updated';
+  const relationalStatus = nextStatus === 'done' ? 'complete' : nextStatus === 'busy' ? 'in_progress' : nextStatus === 'pending' ? 'not_started' : nextStatus === 'open' ? 'not_started' : 'not_started';
+  const relationalPriority = 'normal'; // Default priority for updates
+
+  // Update task in relational table
+  const { error: updateError } = await client
+    .from('project_tasks')
+    .update({
+      title: text ?? existingTask.text,
+      status: relationalStatus,
+      priority: relationalPriority,
+      updated_at: new Date().toISOString(),
+      completed_at: relationalStatus === 'complete' ? new Date().toISOString() : null,
+    })
+    .eq('id', input.taskId)
+    .eq('workspace_id', workspaceData.id);
+
+  if (updateError) {
+    throw new Error('Unable to update project task.');
+  }
+
+  // Record activity
+  const activityTitle = relationalStatus === 'complete' ? 'Task completed' : relationalStatus === 'in_progress' ? 'Task in progress' : relationalStatus === 'not_started' ? 'Task reopened' : 'Task updated';
+  const activityVerb = relationalStatus === 'complete' ? 'completed' : relationalStatus === 'in_progress' ? 'marked in progress on' : relationalStatus === 'not_started' ? 'reopened' : 'updated';
   const activity = [
     createActivity(
       activityTitle,
       `${input.actor} ${activityVerb} task: ${text ?? existingTask.text}`,
-      nextStatus === 'done' ? 'success' : 'info',
+      relationalStatus === 'complete' ? 'success' : 'info',
     ),
     ...existingProject.activity,
   ];
 
-  const { data, error } = await client
+  await client
     .from('projects')
-    .update({ tasks, activity, updated_at: new Date().toISOString() })
-    .eq('id', input.projectId)
-    .select('*')
-    .single();
+    .update({ activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId);
 
-  if (error || !data) {
-    throw error ?? new Error('Unable to update project task.');
-  }
-
-  return mapProjectRow(data as ProjectRow);
+  return getProjectById(input.projectId) as Promise<Project>;
 }
 
 export async function upsertProjectStageTask(input: UpsertProjectStageTaskInput): Promise<Project> {
@@ -1782,21 +2067,42 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
     throw new Error('Task not found.');
   }
 
-  const tasks = existingProject.tasks.filter((task) => task.id !== input.taskId);
-  const activity = [createActivity('Task deleted', `${input.actor} deleted task: ${existingTask.text}`, 'warning'), ...existingProject.activity];
+  // Get workspace
+  const branchId = existingProject.branchId || existingProject.branch;
+  const { data: workspaceData } = await client
+    .from('rebrand_workspaces')
+    .select('id')
+    .eq('branch_id', branchId)
+    .eq('is_primary', true)
+    .maybeSingle();
 
-  const { data, error } = await client
-    .from('projects')
-    .update({ tasks, activity, updated_at: new Date().toISOString() })
-    .eq('id', input.projectId)
-    .select('*')
-    .single();
-
-  if (error || !data) {
-    throw error ?? new Error('Unable to delete project task.');
+  if (!workspaceData?.id) {
+    throw new Error('Workspace not found for project.');
   }
 
-  return mapProjectRow(data as ProjectRow);
+  // Soft-delete task in relational table
+  const { error: deleteError } = await client
+    .from('project_tasks')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', input.taskId)
+    .eq('workspace_id', workspaceData.id);
+
+  if (deleteError) {
+    throw new Error('Unable to delete project task.');
+  }
+
+  // Record activity
+  const activity = [
+    createActivity('Task deleted', `${input.actor} deleted task: ${existingTask.text}`, 'warning'),
+    ...existingProject.activity,
+  ];
+
+  await client
+    .from('projects')
+    .update({ activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId);
+
+  return getProjectById(input.projectId) as Promise<Project>;
 }
 
 export async function renameProjectFile(input: RenameProjectFileInput): Promise<Project> {
