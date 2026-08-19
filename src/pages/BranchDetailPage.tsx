@@ -3,10 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileText, Download, Eye } from 'lucide-react';
 import { getAllBranches } from '../services/branchService';
-import { addProjectComment, getProjectFileUrl, getProjects, renameProjectFile, uploadProjectFile } from '../services/portalService';
+import { addProjectComment, deleteProjectFile, getProjectFileUrl, getProjects, renameProjectFile, uploadProjectFile } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
-import { can, filterProjectsForUser } from '../utils/permissions';
+import { can, filterProjectsForUser, getRolePolicy } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { isTaskOutstanding } from '../utils/taskStatus';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
@@ -81,6 +81,8 @@ export function BranchDetailPage() {
     || branches.find((item) => typeof item.name === 'string' && item.name.toLowerCase() === decodedParam.toLowerCase());
   const canCreateProjects = can(user, 'create_project');
   const scopedProjects = filterProjectsForUser(projects, user);
+  const rolePolicy = getRolePolicy(user);
+  const canDeleteFiles = Boolean(user?.isPlatformOwner) && Boolean(rolePolicy?.files.canDeleteFiles);
   const branchProjects = useMemo(() => {
     if (!branch) {
       return [];
@@ -199,6 +201,20 @@ export function BranchDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['branches'] });
       showSuccess('File uploaded.');
+    },
+  });
+
+  const deleteFileMutation = useMutation({
+    mutationFn: ({ projectId, file }: { projectId: string; file: ProjectFile }) => deleteProjectFile({
+      projectId,
+      filePath: file.path,
+      fileName: file.name,
+      actor: user?.name ?? 'Workspace user',
+    }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['branches'] });
+      showSuccess('File deleted.');
     },
   });
 
@@ -503,6 +519,20 @@ export function BranchDetailPage() {
                                         >
                                           Rename
                                         </button>
+                                        {canDeleteFiles ? (
+                                          <button
+                                            type="button"
+                                            disabled={deleteFileMutation.isPending}
+                                            onClick={() => {
+                                              if (window.confirm(`Delete ${file.name}?`)) {
+                                                deleteFileMutation.mutate({ projectId: project.id, file });
+                                              }
+                                            }}
+                                            className="text-xs font-semibold text-red-300 transition hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                            Delete
+                                          </button>
+                                        ) : null}
                                       </div>
                                       {renamingFileKey === key ? (
                                         <div className="mt-3 grid gap-2">
