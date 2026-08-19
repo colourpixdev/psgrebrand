@@ -439,7 +439,7 @@ export function BranchDetailPage() {
                             </span>
                             {can(user, 'upload_files') ? (
                               <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-white/10 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
-                                {uploadMutation.isPending ? 'Uploading...' : 'Upload file'}
+                                {uploadMutation.isPending && uploadMutation.variables?.taskId === task.id ? 'Uploading...' : 'Upload file'}
                                 <input
                                   type="file"
                                   disabled={uploadMutation.isPending}
@@ -454,6 +454,11 @@ export function BranchDetailPage() {
                                   }}
                                 />
                               </label>
+                            ) : null}
+                            {uploadMutation.isError && uploadMutation.variables?.taskId === task.id ? (
+                              <span className="text-xs text-red-300">
+                                {uploadMutation.error instanceof Error ? uploadMutation.error.message : 'Upload failed. Try again.'}
+                              </span>
                             ) : null}
                           </div>
                           {taskFiles.length > 0 ? (

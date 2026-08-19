@@ -1099,8 +1099,20 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     throw uploadError;
   }
 
+  const { data: latestProject, error: latestProjectError } = await client
+    .from('projects')
+    .select('files')
+    .eq('id', projectId)
+    .single();
+
+  if (latestProjectError) {
+    await client.storage.from(projectFilesBucket).remove([path]);
+    throw latestProjectError;
+  }
+
+  const latestFiles = Array.isArray(latestProject.files) ? latestProject.files as ProjectFile[] : currentFiles;
   const nextFiles = [
-    ...currentFiles,
+    ...latestFiles,
     {
       name: file.name,
       path,
