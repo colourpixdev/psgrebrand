@@ -30,10 +30,39 @@ const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
 type ProjectSectionId = 'taskUpdates' | 'files' | 'notes';
 
 const projectSections: Array<{ id: ProjectSectionId; number: string; label: string }> = [
-  { id: 'taskUpdates', number: '01', label: 'Task Updates' },
+  { id: 'taskUpdates', number: '01', label: 'Updates' },
   { id: 'files', number: '02', label: 'Files' },
-  { id: 'notes', number: '03', label: 'Last note:' },
+  { id: 'notes', number: '03', label: 'Internal notes' },
 ];
+
+const statusLabels: Record<ProjectStatus, string> = {
+  completed: 'Completed',
+  busy: 'In progress',
+  in_progress: 'In progress',
+  awaiting_approval: 'Awaiting approval',
+  delayed: 'Delayed',
+  on_hold: 'On hold',
+  cancelled: 'Cancelled',
+};
+
+const statusTones: Record<ProjectStatus, string> = {
+  completed: 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100',
+  busy: 'border-sky-300/40 bg-sky-400/15 text-sky-100',
+  in_progress: 'border-sky-300/40 bg-sky-400/15 text-sky-100',
+  awaiting_approval: 'border-amber-300/40 bg-amber-400/15 text-amber-100',
+  delayed: 'border-red-300/40 bg-red-400/15 text-red-100',
+  on_hold: 'border-slate-300/30 bg-slate-400/15 text-slate-100',
+  cancelled: 'border-stone-300/30 bg-stone-400/15 text-stone-100',
+};
+
+function formatWorkspaceDate(value: string) {
+  if (!value) {
+    return 'Not set';
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 function getStagePlan(project: Project): ProjectStage[] {
   const mergedStages = project.tasks
@@ -78,6 +107,8 @@ export function ProjectDetailPage() {
   const [journalTaskId, setJournalTaskId] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
   const [currentStageDraft, setCurrentStageDraft] = useState<ProjectStage>('New Project');
+  const [statusDraft, setStatusDraft] = useState<ProjectStatus>('in_progress');
+  const [progressDraft, setProgressDraft] = useState(0);
   const [targetDateDraft, setTargetDateDraft] = useState('');
   const [briefRequestedDateDraft, setBriefRequestedDateDraft] = useState('');
   const [installationDateDraft, setInstallationDateDraft] = useState('');
@@ -133,6 +164,8 @@ export function ProjectDetailPage() {
     if (project) {
       setNotesDraft(project.notes);
       setCurrentStageDraft(project.currentStage);
+      setStatusDraft(project.status);
+      setProgressDraft(project.progress);
       setTargetDateDraft(project.targetDate);
       setBriefRequestedDateDraft(project.briefRequestedDate);
       setInstallationDateDraft(project.installationDate);
@@ -192,6 +225,8 @@ export function ProjectDetailPage() {
       projectId: projectId ?? '',
       actor: user?.name ?? 'Workspace user',
       currentStage: currentStageDraft,
+      status: statusDraft,
+      progress: progressDraft,
       targetDate: targetDateDraft,
       briefRequestedDate: briefRequestedDateDraft,
       installationDate: installationDateDraft,
@@ -510,13 +545,20 @@ export function ProjectDetailPage() {
   const mergedTasks = selectedProject.tasks;
   const stagePlan = getStagePlan(selectedProject);
   const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
-  const canEditNotes = canViewProject(user, selectedProject);
+  const canEditNotes = canAdministerProjectDetails;
   const hasNotesChange = notesDraft.trim() !== selectedProject.notes.trim();
   const hasSummaryChange = currentStageDraft.trim() !== selectedProject.currentStage.trim()
+    || statusDraft !== selectedProject.status
+    || progressDraft !== selectedProject.progress
     || targetDateDraft.trim() !== selectedProject.targetDate.trim()
     || briefRequestedDateDraft.trim() !== selectedProject.briefRequestedDate.trim()
     || installationDateDraft.trim() !== selectedProject.installationDate.trim()
     || completionDateDraft.trim() !== selectedProject.completionDate.trim();
+  const isInternalUser = canAdministerProjectDetails;
+  const currentStageIndex = Math.max(0, stagePlan.findIndex((stage) => stage === selectedProject.currentStage));
+  const nextStage = stagePlan[currentStageIndex + 1] ?? (selectedProject.status === 'completed' ? 'Completed' : 'Final sign-off');
+  const latestUpdate = [...projectComments].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))[0];
+  const completedStageCount = stagePlan.filter((stage) => selectedProject.tasks.some((task) => (task.stage ?? task.text).trim() === stage && task.completed)).length;
   const branchParticipants = branch?.contacts?.length
     ? branch.contacts
     : branch?.contactName
@@ -526,7 +568,54 @@ export function ProjectDetailPage() {
   return (
     <div className="relative space-y-6">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 rounded-[2.5rem] bg-[radial-gradient(circle_at_20%_15%,rgba(34,211,238,0.25),transparent_55%),radial-gradient(circle_at_85%_20%,rgba(56,189,248,0.22),transparent_50%)]" />
-      <section className="rounded-[2rem] border border-slate-700/50 bg-slate-900/80 p-6 shadow-soft backdrop-blur-sm">
+      <Link to="/branches" className="inline-flex items-center text-sm font-semibold text-sky-200 transition hover:text-white">← Back to branches</Link>
+      <section className="rounded-[2rem] border border-cyan-300/25 bg-[#0b1f3a] p-6 shadow-soft">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/75">Branch rebrand workspace</p>
+            <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">{selectedProject.branch}</h1>
+            <p className="mt-2 text-base text-slate-300">{selectedProject.town}, {selectedProject.province}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${statusTones[selectedProject.status]}`}>{statusLabels[selectedProject.status]}</span>
+            <span className="text-3xl font-semibold text-white">{selectedProject.progress}%</span>
+          </div>
+        </div>
+
+        <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-900/80" aria-label={`${selectedProject.progress}% complete`}>
+          <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-sky-400" style={{ width: `${selectedProject.progress}%` }} />
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</p><p className="mt-1 text-lg font-semibold text-white">{selectedProject.currentStage}</p></div>
+          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Target completion</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.targetDate)}</p></div>
+          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Installation</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.installationDate)}</p></div>
+        </div>
+
+        <div className="mt-6 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[1fr_1fr]">
+          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">What's next?</p>
+            <p className="mt-2 text-xl font-semibold text-white">{nextStage}</p>
+            <p className="mt-1 text-sm text-slate-300">{selectedProject.status === 'completed' ? 'This branch rebrand is complete.' : `${selectedProject.currentStage} is the current stage. The next step is ${nextStage}.`}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+            <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Project progress</p><span className="text-xs text-slate-400">{completedStageCount} of {stagePlan.length} stages</span></div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {stagePlan.map((stage, index) => {
+                const completed = selectedProject.tasks.some((task) => (task.stage ?? task.text).trim() === stage && task.completed);
+                const current = stage === selectedProject.currentStage;
+                return <span key={`${stage}-${index}`} className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${completed ? 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100' : current ? 'border-cyan-300/50 bg-cyan-400/20 text-cyan-100' : 'border-white/10 bg-white/5 text-slate-400'}`}>{completed ? '✓ ' : current ? '● ' : '○ '}{stage}</span>;
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Latest update</p>
+          {latestUpdate ? <><p className="mt-2 text-xs text-slate-400">{formatWorkspaceDate(latestUpdate.date)} · {latestUpdate.author}</p><p className="mt-1 text-sm leading-6 text-slate-200">{latestUpdate.message}</p></> : <p className="mt-2 text-sm text-slate-400">No updates recorded yet.</p>}
+        </div>
+      </section>
+      <section className={isInternalUser ? 'rounded-[2rem] border border-slate-700/50 bg-slate-900/80 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Branch reference</p>
         <h2 className="mt-2 text-3xl font-semibold text-white">{selectedProject.branch}</h2>
         <p className="mt-2 text-sm text-slate-400">
@@ -535,7 +624,7 @@ export function ProjectDetailPage() {
         <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-2 text-sm text-slate-300">
           {canEditNotes ? (
             <label className="grid gap-2">
-              <span className="text-slate-100">Current Status</span>
+              <span className="text-slate-100">Current Stage</span>
               <select value={currentStageDraft} onChange={(event) => setCurrentStageDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50">
                 {summaryStageOptions.map((stageName) => <option key={stageName} value={stageName}>{stageName}</option>)}
               </select>
@@ -577,6 +666,22 @@ export function ProjectDetailPage() {
               placeholder="Select completion date"
             />
           ) : <div className="text-slate-200">Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>}
+
+          {canEditNotes ? (
+            <label className="grid gap-2">
+              <span className="text-slate-100">Status</span>
+              <select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50">
+                {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+          ) : null}
+
+          {canEditNotes ? (
+            <label className="grid gap-2">
+              <span className="text-slate-100">Progress (%)</span>
+              <input type="number" min={0} max={100} value={progressDraft} onChange={(event) => setProgressDraft(Number(event.target.value))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50" />
+            </label>
+          ) : null}
 
           <div className="md:col-span-2 lg:col-span-2 text-slate-200">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
         </div>
@@ -660,9 +765,7 @@ export function ProjectDetailPage() {
         <nav className="mt-4 flex flex-wrap gap-2">
           {projectSections.filter((item) => {
             // PSG users cannot access task updates
-            if (item.id === 'taskUpdates' && normalizeRole(user?.role) === 'psg_user') {
-              return false;
-            }
+            if (item.id === 'notes' && !isInternalUser) return false;
             return true;
           }).map((item) => (
             <button
@@ -682,7 +785,7 @@ export function ProjectDetailPage() {
         </nav>
       </section>
 
-      <section className={activeProjectSection === 'taskUpdates' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
+      <section className={activeProjectSection === 'taskUpdates' && isInternalUser ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         <div className="mt-6 border-t border-white/10 pt-0">
           <div className="flex items-center justify-between gap-3 mb-4">
             <h3 className="text-lg font-semibold text-white">Tasks</h3>
@@ -1073,8 +1176,8 @@ export function ProjectDetailPage() {
       <section className={activeProjectSection === 'taskUpdates' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-white">Task conversations</h3>
-            <p className="mt-1 text-sm text-slate-300">Updates and requests are now merged into one task-linked stream.</p>
+            <h3 className="text-lg font-semibold text-white">Updates</h3>
+            <p className="mt-1 text-sm text-slate-300">Recent progress updates and important requests for this branch rebrand.</p>
           </div>
           {unreadAnswers.length > 0 ? <span className="rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100">{unreadAnswers.length} new answer{unreadAnswers.length === 1 ? '' : 's'}</span> : null}
         </div>

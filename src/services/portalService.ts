@@ -633,6 +633,8 @@ export type UpdateProjectSummaryInput = {
   projectId: string;
   actor: string;
   currentStage: Project['currentStage'];
+  status: Project['status'];
+  progress: number;
   targetDate: string;
   briefRequestedDate: string;
   installationDate: string;
@@ -1451,7 +1453,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
   const installationDate = input.installationDate.trim();
   const completionDate = input.completionDate.trim();
   const activity = [
-    createActivity('Project summary updated', `${input.actor} updated current status and schedule dates.`),
+    createActivity('Project summary updated', `${input.actor} updated stage, status, progress, and schedule dates.`),
     ...existingProject.activity,
   ];
 
@@ -1459,6 +1461,8 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     .from('projects')
     .update({
       current_stage: currentStage,
+      status: input.status,
+      progress: input.progress,
       target_date: targetDate,
       brief_requested_date: briefRequestedDate,
       installation_date: installationDate,
