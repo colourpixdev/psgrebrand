@@ -334,6 +334,40 @@ select.current-task-select::placeholder,
   color: #ffffff !important;
 }
 
+/* Final workspace contrast guard: darkened legacy panels must never inherit black text. */
+.content-main [class*="bg-white/"],
+.content-main [class*="bg-white/"] p,
+.content-main [class*="bg-white/"] h1,
+.content-main [class*="bg-white/"] h2,
+.content-main [class*="bg-white/"] h3,
+.content-main [class*="bg-white/"] h4,
+.content-main [class*="bg-white/"] span,
+.content-main [class*="bg-white/"] label,
+.content-main [class*="bg-white/"] td,
+.content-main [class*="bg-white/"] th,
+.content-main [class*="bg-white/"] a {
+  color: #e2e8f0 !important;
+}
+
+.content-main [class*="bg-white/"] .text-white,
+.content-main [class*="bg-white/"] .text-white * {
+  color: #ffffff !important;
+}
+
+.content-main [class*="bg-white/"] .text-cyan-100,
+.content-main [class*="bg-white/"] .text-cyan-200,
+.content-main [class*="bg-white/"] .text-sky-100,
+.content-main [class*="bg-white/"] .text-sky-200 {
+  color: #cffafe !important;
+}
+
+.content-main [class*="bg-white/"] button.bg-sky-500,
+.content-main [class*="bg-white/"] button.bg-cyan-500,
+.content-main [class*="bg-white/"] button.bg-emerald-500,
+.content-main [class*="bg-white/"] button.bg-teal-400 {
+  color: #082f49 !important;
+}
+
 .content-main [class*="bg-cyan-400/"] input,
 .content-main [class*="bg-cyan-400/"] select,
 .content-main [class*="bg-cyan-400/"] textarea,
