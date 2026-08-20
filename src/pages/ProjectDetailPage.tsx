@@ -512,6 +512,22 @@ export function ProjectDetailPage() {
       ? 'Information'
       : stagePlan[currentStageIndex + 1] ?? 'Final sign-off';
   const latestUpdate = [...projectComments].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))[0];
+  const projectHistory = [
+    ...projectComments.map((comment, index) => ({
+      id: `comment-${comment.id ?? index}`,
+      date: comment.date,
+      author: comment.author,
+      title: comment.taskId ? 'Stage update' : 'Project update',
+      detail: comment.message,
+    })),
+    ...filterActivityExcludingUser(selectedProject.activity, user?.name).map((item, index) => ({
+      id: `activity-${item.date}-${index}`,
+      date: item.date,
+      author: '',
+      title: item.title,
+      detail: item.detail,
+    })),
+  ].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')).slice(0, 12);
   const completedStageCount = stagePlan.filter((stage) => selectedProject.tasks.some((task) => (task.stage ?? task.text).trim() === stage && task.completed)).length;
   const branchParticipants = branch?.contacts?.length
     ? branch.contacts
@@ -1182,36 +1198,18 @@ export function ProjectDetailPage() {
         </div>
 
         <div className="mt-6 border-t border-white/10 pt-6">
-          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Follow-ups</h4>
+          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h4>
           <div className="mt-4 space-y-3">
-            {projectComments.length > 0 ? projectComments.map((comment) => (
-              <div key={`${comment.date}-${comment.author}-${comment.message}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <p className="font-medium text-white">{comment.author}</p>
-                  <p className="text-slate-500">{comment.date}</p>
-                </div>
-                {comment.taskId ? (() => {
-                  const linkedTask = selectedProject.tasks.find((task) => task.id === comment.taskId);
-                  return linkedTask ? <p className={`text-xs font-semibold ${linkedTask.completed ? 'text-emerald-200' : 'text-amber-200'}`}>Update on: {linkedTask.text}</p> : null;
-                })() : null}
-                <p className="mt-2 text-sm text-slate-300">{comment.message}</p>
-              </div>
-            )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No follow-ups recorded yet.</p>}
-          </div>
-        </div>
-
-        <div className="mt-6 border-t border-white/10 pt-6">
-          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Activity</h4>
-          <div className="mt-4 space-y-3">
-            {filterActivityExcludingUser(selectedProject.activity, user?.name).length > 0 ? filterActivityExcludingUser(selectedProject.activity, user?.name).map((item, index) => (
-              <div key={`${item.date}-${item.title}-${item.detail}-${index}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+            {projectHistory.length > 0 ? projectHistory.map((item) => (
+              <div key={item.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-sm font-medium text-white">{item.title}</p>
                   <p className="shrink-0 text-xs text-slate-500">{item.date}</p>
                 </div>
+                {item.author ? <p className="mt-1 text-xs text-cyan-200">{item.author}</p> : null}
                 <p className="mt-2 text-sm text-slate-300">{item.detail}</p>
               </div>
-            )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No activity recorded yet.</p>}
+            )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No project history recorded yet.</p>}
           </div>
         </div>
       </section>

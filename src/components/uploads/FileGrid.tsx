@@ -171,7 +171,7 @@ export function FileGrid({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-white">Files</h3>
-          <p className="mt-1 text-sm text-slate-400">Upload artwork, quotes, POs, measurements, and install photos. Files uploaded from a task are grouped into that task's folder below.</p>
+          <p className="mt-1 text-sm text-slate-400">Upload project files here, or upload directly into a rebrand stage below.</p>
         </div>
         {canUpload ? (
           <label className="inline-flex cursor-pointer items-center justify-center rounded-2xl bg-sky-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={isUploading}>
@@ -214,7 +214,7 @@ export function FileGrid({
       {folders.length > 0 ? (
         <div className="mt-4">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Task folders</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Stage files</p>
             <span className="text-xs text-slate-500">{folders.length} folder{folders.length === 1 ? '' : 's'}</span>
           </div>
           <div className="space-y-3">
@@ -223,15 +223,35 @@ export function FileGrid({
 
               return (
                 <div key={folder.id} className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
-                  <button
-                    type="button"
-                    onClick={() => setOpenFolderIds((current) => (isOpen ? current.filter((id) => id !== folder.id) : [...current, folder.id]))}
-                    className="flex w-full items-center gap-3 text-left"
-                  >
-                    <FileText className="h-4 w-4 shrink-0 text-amber-200" />
-                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{folder.label}</span>
-                    <span className="shrink-0 text-xs text-slate-400">{folder.files.length} file{folder.files.length === 1 ? '' : 's'}</span>
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setOpenFolderIds((current) => (isOpen ? current.filter((id) => id !== folder.id) : [...current, folder.id]))}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <FileText className="h-4 w-4 shrink-0 text-amber-200" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{folder.label}</span>
+                      <span className="shrink-0 text-xs text-slate-400">{folder.files.length} file{folder.files.length === 1 ? '' : 's'}</span>
+                    </button>
+                    {canUpload ? (
+                      <label className="inline-flex cursor-pointer items-center rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={isUploading}>
+                        {isUploading ? 'Uploading...' : 'Upload to stage'}
+                        <input
+                          type="file"
+                          disabled={isUploading}
+                          accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
+                          className="sr-only"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.target.value = '';
+                            if (file) {
+                              onUpload?.(file, folder.id);
+                            }
+                          }}
+                        />
+                      </label>
+                    ) : null}
+                  </div>
                   {isOpen ? (
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       {folder.files.map((file) => renderFileCard(file))}
