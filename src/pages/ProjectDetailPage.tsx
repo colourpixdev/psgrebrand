@@ -3,18 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { DatePickerInput } from '../components/DatePickerInput';
-import { roleLabels } from '../constants/portal';
 import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectNotes, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById } from '../services/branchService';
-import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { can, canViewProject, canAddTaskComments, getRolePolicy } from '../utils/permissions';
 import { getTaskStatus } from '../utils/taskStatus';
-import { getApplicableTaskTemplates } from '../constants/taskTemplates';
-import { isPlatformOwnerEmail } from '../constants/workspaces';
-import type { CommentItem, Project, ProjectFile, ProjectStatus, ProjectStage, TaskAssignee, TaskItem } from '../types/domain';
+import type { CommentItem, Project, ProjectFile, ProjectStatus, ProjectStage, TaskItem } from '../types/domain';
 import { normalizeRole } from '../types/domain';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
@@ -120,45 +116,23 @@ export function ProjectDetailPage() {
   const [answerTargetDate, setAnswerTargetDate] = useState('');
   const [answerInstallationDate, setAnswerInstallationDate] = useState('');
   const [taskText, setTaskText] = useState('');
-  const [taskAssigneeEmails, setTaskAssigneeEmails] = useState<string[]>([]);
   const [expandedAccordionTaskIds, setExpandedAccordionTaskIds] = useState<string[]>([]);
   const [taskInstallationDrafts, setTaskInstallationDrafts] = useState<Record<string, string>>({});
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskText, setEditingTaskText] = useState('');
-  const [editingTaskAssigneeEmails, setEditingTaskAssigneeEmails] = useState<string[]>([]);
   const [expandedTaskUpdateTaskIds, setExpandedTaskUpdateTaskIds] = useState<string[]>([]);
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
   const [deleteConfirmationArmed, setDeleteConfirmationArmed] = useState(false);
-  const [expandedTaskPoolProjects, setExpandedTaskPoolProjects] = useState<Set<string>>(new Set());
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => getProjectById(projectId ?? ''),
     enabled: Boolean(projectId),
-  });
-  const { data: users = [] } = useQuery({
-    queryKey: ['users'],
-    queryFn: getUsers,
   });
   const { data: branch } = useQuery({
     queryKey: ['branch', project?.branchId],
     queryFn: () => getBranchById(project?.branchId ?? ''),
     enabled: Boolean(project?.branchId),
   });
-
-  function getAssignee(email: string) {
-    return users.find((item) => item.email.toLowerCase() === email.toLowerCase());
-  }
-
-  function buildTaskAssignees(emails: string[]): TaskAssignee[] {
-    return emails
-      .map((email) => getAssignee(email) ?? (email.toLowerCase() === user?.email.toLowerCase() && user ? user : undefined))
-      .filter((assignee): assignee is NonNullable<typeof assignee> => Boolean(assignee))
-      .map((assignee) => ({
-        name: assignee.name,
-        email: assignee.email,
-        designation: assignee.profileTitle?.trim() || roleLabels[assignee.role],
-      }));
-  }
 
   useEffect(() => {
     if (project) {
@@ -294,39 +268,31 @@ export function ProjectDetailPage() {
     mutationFn: () => {
       const normalizedTaskText = taskText.trim();
       if (!normalizedTaskText) {
-        throw new Error('Task cannot be empty.');
+        throw new Error('Stage cannot be empty.');
       }
       const duplicateTask = selectedProject.tasks.some((existingTask) => {
         const existingKey = (existingTask.stage ?? existingTask.text).trim().toLowerCase();
         return existingKey === normalizedTaskText.toLowerCase();
       });
       if (duplicateTask) {
-        throw new Error('This task/stage already exists. Use a unique name.');
+        throw new Error('This stage already exists. Use a unique name.');
       }
 
-      const assignees = buildTaskAssignees(taskAssigneeEmails);
-      const primaryAssignee = assignees[assignees.length - 1];
       return addProjectTask({
         projectId: projectId ?? '',
         task: normalizedTaskText,
         stage: normalizedTaskText,
         actor: user?.name ?? 'Workspace user',
-        assigneeName: primaryAssignee?.name,
-        assigneeEmail: primaryAssignee?.email,
-        assignees,
       });
     },
     onSuccess: async (updatedProject) => {
       setTaskText('');
-      setTaskAssigneeEmails([]);
-      await syncProject(updatedProject, 'Task added.');
+      await syncProject(updatedProject, 'Stage added.');
     },
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ task, text, completed, status, assigneeEmails, installationRequest }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; assigneeEmails?: string[]; installationRequest?: string }) => {
-      const assignees = assigneeEmails !== undefined ? buildTaskAssignees(assigneeEmails) : undefined;
-      const primaryAssignee = assignees?.[assignees.length - 1];
+    mutationFn: ({ task, text, completed, status, installationRequest }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; installationRequest?: string }) => {
       const nextText = text?.trim();
       return updateProjectTask({
         projectId: projectId ?? '',
@@ -335,9 +301,6 @@ export function ProjectDetailPage() {
         completed,
         status,
         stage: nextText || undefined,
-        assigneeName: assigneeEmails !== undefined ? primaryAssignee?.name : undefined,
-        assigneeEmail: assigneeEmails !== undefined ? primaryAssignee?.email : undefined,
-        assignees,
         installationRequest,
         actor: user?.name ?? 'Workspace user',
         actorEmail: user?.email,
@@ -346,8 +309,7 @@ export function ProjectDetailPage() {
     onSuccess: async (updatedProject) => {
       setEditingTaskId(null);
       setEditingTaskText('');
-      setEditingTaskAssigneeEmails([]);
-      await syncProject(updatedProject, 'Task saved.');
+      await syncProject(updatedProject, 'Stage saved.');
     },
   });
 
@@ -389,21 +351,6 @@ export function ProjectDetailPage() {
       ]);
       showSuccess('Project deleted.');
       navigate('/projects', { replace: true });
-    },
-  });
-
-  const addTaskFromPoolMutation = useMutation({
-    mutationFn: ({ projectId: pid, templateName }: { projectId: string; templateName: string }) =>
-      addProjectTask({
-        projectId: pid,
-        task: templateName,
-        stage: templateName,
-        actor: user?.name ?? 'Workspace user',
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      await queryClient.invalidateQueries({ queryKey: ['projects'] });
-      showSuccess('Task added successfully');
     },
   });
 
@@ -484,7 +431,6 @@ export function ProjectDetailPage() {
   const canAnswerColourpixQuestions = canAdministerProjectDetails && Boolean(rolePolicy?.communication.canAnswerQuestions);
   const canAddTasks = Boolean(rolePolicy?.tasks.canCreateTasks);
   const canCompleteTasks = Boolean(rolePolicy?.tasks.canCompleteTasks);
-  const canAssignTasks = Boolean(rolePolicy?.tasks.canAssignTasks || rolePolicy?.tasks.canReassignTasks);
   const isBranchContact = Boolean(branch && user && (
     (branch.contactEmail && user.email && branch.contactEmail.toLowerCase() === user.email.toLowerCase()) ||
     (branch.contacts && branch.contacts.some((c) => c.email && user.email && c.email.toLowerCase() === user.email.toLowerCase()))
@@ -494,7 +440,6 @@ export function ProjectDetailPage() {
   const canDeleteProject = Boolean(rolePolicy?.projectAccess.canDeleteProjects);
   const canCreateAssignedUpdate = canAddComments;
   const canUseConversationComposer = canCreateAssignedUpdate || canAskColourpix;
-  const assignableUsers = canAssignTasks ? users : users.filter((item) => item.email.toLowerCase() === user?.email.toLowerCase());
 
   function canCurrentUserCompleteTask(task: TaskItem) {
     if (!canCompleteTasks) {
@@ -772,7 +717,7 @@ export function ProjectDetailPage() {
         </div>
         <nav className="mt-4 flex flex-wrap gap-2">
           {projectSections.filter((item) => {
-            // PSG users cannot access task updates
+            // PSG users cannot access internal stage management
             if (item.id === 'notes' && !isInternalUser) return false;
             return true;
           }).map((item) => (
@@ -796,7 +741,7 @@ export function ProjectDetailPage() {
       <section className={activeProjectSection === 'taskUpdates' && isInternalUser ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         <div className="mt-6 border-t border-white/10 pt-0">
           <div className="flex items-center justify-between gap-3 mb-4">
-            <h3 className="text-lg font-semibold text-white">Tasks</h3>
+            <h3 className="text-lg font-semibold text-white">Stages</h3>
             {mergedTasks.length > 0 && (
               <div className="flex gap-2">
                 <button
@@ -816,16 +761,13 @@ export function ProjectDetailPage() {
               </div>
             )}
           </div>
-          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem_auto]">
-            <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder={canAddTasks ? 'Add next action...' : 'Task updates restricted'} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
-            <select multiple value={taskAssigneeEmails} disabled={!canAddTasks} aria-label="Optional task owners" onChange={(event) => setTaskAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
-              {assignableUsers.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
-            </select>
+          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+            <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder={canAddTasks ? 'Add next stage...' : 'Stage updates restricted'} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
             <button type="button" disabled={!canAddTasks || taskMutation.isPending || !taskText.trim()} onClick={() => taskMutation.mutate()} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
-              Add
+              Add stage
             </button>
           </div>
-          <p className="mt-2 text-xs text-slate-400">Add the next action first. Assign an owner only when it is useful; task status can be updated directly.</p>
+          <p className="mt-2 text-xs text-slate-400">Add stages in the order the rebrand should progress. Update each stage status directly.</p>
           <div className="mt-4 space-y-2">
             {mergedTasks.length > 0 ? mergedTasks.map((task, index) => {
               const taskStatus = getTaskStatus(task);
@@ -877,12 +819,9 @@ export function ProjectDetailPage() {
                 {editingTaskId === task.id ? (
                   <div className="grid gap-3">
                     <input value={editingTaskText} onChange={(event) => setEditingTaskText(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" />
-                    <select multiple value={editingTaskAssigneeEmails} onChange={(event) => setEditingTaskAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50">
-                      {users.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
-                    </select>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" disabled={updateTaskMutation.isPending || !editingTaskText.trim()} onClick={() => updateTaskMutation.mutate({ task, text: editingTaskText, assigneeEmails: editingTaskAssigneeEmails })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">Save</button>
-                      <button type="button" onClick={() => { setEditingTaskId(null); setEditingTaskText(''); setEditingTaskAssigneeEmails([]); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
+                      <button type="button" disabled={updateTaskMutation.isPending || !editingTaskText.trim()} onClick={() => updateTaskMutation.mutate({ task, text: editingTaskText })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">Save</button>
+                      <button type="button" onClick={() => { setEditingTaskId(null); setEditingTaskText(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
                     </div>
                   </div>
                 ) : (
@@ -902,11 +841,7 @@ export function ProjectDetailPage() {
                       <span className="min-w-0">
                         <span className={taskStatus === 'done' ? 'block text-slate-500 line-through' : 'block text-slate-200'}>{task.text}</span>
                         <span className="mt-1 block text-xs text-slate-500">
-                          {task.assignees && task.assignees.length > 0
-                            ? `Assigned to ${task.assignees.map((assignee) => `${assignee.name} (${assignee.designation})`).join(', ')}`
-                            : task.assigneeName
-                              ? `Assigned to ${task.assigneeName}`
-                              : 'Unassigned'}
+                          Stage in the branch rebrand workflow
                         </span>
                       </span>
                     </div>
@@ -927,7 +862,7 @@ export function ProjectDetailPage() {
                       >
                         Move down
                       </button>
-                      {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); setEditingTaskAssigneeEmails(task.assignees?.map((assignee) => assignee.email) ?? (task.assigneeEmail ? [task.assigneeEmail] : [])); }} className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600">Edit</button> : null}
+                      {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); }} className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600">Edit stage</button> : null}
                       {canDeleteTasks ? <button type="button" disabled={deleteTaskMutation.isPending} onClick={() => deleteTaskMutation.mutate(task)} className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
                       <button
                         type="button"
@@ -1084,7 +1019,7 @@ export function ProjectDetailPage() {
                 ) : null}
                 {editingTaskId !== task.id && isTaskUpdatesOpen ? (
                   <div className="mt-3 border-t border-white/10 pt-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100">Task updates</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100">Stage updates</p>
                     {taskUpdates.length > 0 ? (
                       <div className="mt-2 space-y-2">
                         {taskUpdates.map((update, index) => (
@@ -1106,78 +1041,9 @@ export function ProjectDetailPage() {
                 )}
               </div>
               );
-            }) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No tasks yet. Add a task to create the first timeline stage.</p>}
+            }) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No stages yet. Add the first stage to start the workflow.</p>}
           </div>
 
-          {/* Available Tasks to Add */}
-          {(() => {
-            const policy = getRolePolicy(user);
-            const canAddTasksFromPool = Boolean(policy && policy.tasks.canCreateTasks) || Boolean(user && (user.role === 'colourpix_admin' || isPlatformOwnerEmail(user.email)));
-            
-            if (!canAddTasksFromPool) {
-              return null;
-            }
-
-            const availableTemplates = getApplicableTaskTemplates(selectedProject.projectType);
-            const existingTaskTexts = new Set(selectedProject.tasks.map((t) => t.text.toLowerCase()));
-            const unusedTemplates = availableTemplates.filter((template) => !existingTaskTexts.has(template.name.toLowerCase()));
-
-            if (unusedTemplates.length === 0) {
-              return null;
-            }
-
-            const isExpanded = expandedTaskPoolProjects.has(selectedProject.id);
-
-            return (
-              <div className="mt-6 border-t border-white/10 pt-4">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpandedTaskPoolProjects((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(selectedProject.id)) {
-                        next.delete(selectedProject.id);
-                      } else {
-                        next.add(selectedProject.id);
-                      }
-                      return next;
-                    });
-                  }}
-                  className="flex w-full items-center gap-2 rounded-2xl p-3 text-left transition hover:bg-slate-900/40"
-                >
-                  <span className="text-slate-400">{isExpanded ? '▼' : '▶'}</span>
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Available tasks to add ({unusedTemplates.length})</p>
-                </button>
-
-                {isExpanded && (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {unusedTemplates.map((template) => (
-                      <div key={template.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
-                        <p className="font-medium text-white">{template.name}</p>
-                        <p className="mt-1 text-xs text-slate-400">{template.description}</p>
-                        <p className="mt-2 text-xs text-slate-500 capitalize">{template.category}</p>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addTaskFromPoolMutation.mutate({
-                              projectId: selectedProject.id,
-                              templateName: template.name,
-                            });
-                          }}
-                          disabled={addTaskFromPoolMutation.isPending}
-                          className="mt-3 inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-50"
-                        >
-                          + Add task
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
         </div>
       </section>
 
