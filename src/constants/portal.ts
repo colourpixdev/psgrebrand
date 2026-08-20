@@ -22,4 +22,29 @@ export const timelineStages: readonly ProjectStage[] = [
   'Completed',
 ];
 
+export const suggestedStageOptions: readonly ProjectStage[] = [
+  'Site Survey',
+  'Measurements Received',
+  'Design Brief Confirmed',
+  'Artwork In Progress',
+  'Artwork Sent',
+  'Quotation Received',
+  'PO Issued',
+  'Supplier Assigned',
+  'Materials Ordered',
+  'Delivery Scheduled',
+  'Production',
+  'Installation Scheduled',
+  'Installation In Progress',
+  'Installation Issue',
+  'Rework Required',
+  'Installed',
+  'Final Inspection',
+  'Photos Uploaded',
+  'Client Signoff',
+  'Handover Complete',
+  'Completed',
+  'Cancelled',
+];
+
 export const kanbanColumns = ['Awaiting Survey', 'Artwork', 'Approval', 'Production', 'Installation', 'Completed'] as const;

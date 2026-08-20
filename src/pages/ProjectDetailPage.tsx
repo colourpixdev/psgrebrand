@@ -5,6 +5,7 @@ import { FileGrid } from '../components/uploads/FileGrid';
 import { DatePickerInput } from '../components/DatePickerInput';
 import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById, updateBranch } from '../services/branchService';
+import { suggestedStageOptions } from '../constants/portal';
 import { useAuth } from '../contexts/AuthContext';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
@@ -110,6 +111,7 @@ export function ProjectDetailPage() {
   const [answerTargetDate, setAnswerTargetDate] = useState('');
   const [answerInstallationDate, setAnswerInstallationDate] = useState('');
   const [taskText, setTaskText] = useState('');
+  const [stageOption, setStageOption] = useState('');
   const [expandedAccordionTaskIds, setExpandedAccordionTaskIds] = useState<string[]>([]);
   const [taskInstallationDrafts, setTaskInstallationDrafts] = useState<Record<string, string>>({});
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -318,6 +320,7 @@ export function ProjectDetailPage() {
     },
     onSuccess: async (updatedProject) => {
       setTaskText('');
+      setStageOption('');
       await syncProject(updatedProject, 'Stage added.');
     },
   });
@@ -563,6 +566,7 @@ export function ProjectDetailPage() {
     : branch?.contactName
       ? [{ name: branch.contactName, email: branch.contactEmail, phone: branch.contactPhone, designation: 'Contact Person' }]
       : [];
+  const availableStageOptions = suggestedStageOptions.filter((stage) => !mergedTasks.some((task) => (task.stage ?? task.text).trim().toLowerCase() === stage.toLowerCase()));
 
   return (
     <div className="relative space-y-6">
@@ -782,8 +786,13 @@ export function ProjectDetailPage() {
           </div>
           {isInternalUser ? (
             <>
-              <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
-                <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder={canAddTasks ? 'Add next stage...' : 'Stage updates restricted'} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
+              <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+                <select value={stageOption} disabled={!canAddTasks} onChange={(event) => { const value = event.target.value; setStageOption(value); setTaskText(value === '__custom__' ? '' : value); }} className="min-w-0 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
+                  <option value="">Choose a suggested stage...</option>
+                  {availableStageOptions.map((stage) => <option key={stage} value={stage}>{stage}</option>)}
+                  <option value="__custom__">Custom stage...</option>
+                </select>
+                {stageOption === '__custom__' ? <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder="Enter a custom stage" className="min-w-0 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" /> : <div className="hidden lg:block" />}
                 <button type="button" disabled={!canAddTasks || taskMutation.isPending || !taskText.trim()} onClick={() => taskMutation.mutate()} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
                   Add stage
                 </button>
