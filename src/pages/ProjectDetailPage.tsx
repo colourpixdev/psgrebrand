@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { DatePickerInput } from '../components/DatePickerInput';
-import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectNotes, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
@@ -88,7 +88,6 @@ export function ProjectDetailPage() {
   const queryClient = useQueryClient();
   const [commentMessage, setCommentMessage] = useState('');
   const [journalTaskId, setJournalTaskId] = useState('');
-  const [notesDraft, setNotesDraft] = useState('');
   const [currentStageDraft, setCurrentStageDraft] = useState<ProjectStage>('New Project');
   const [statusDraft, setStatusDraft] = useState<ProjectStatus>('in_progress');
   const [targetDateDraft, setTargetDateDraft] = useState('');
@@ -122,7 +121,6 @@ export function ProjectDetailPage() {
 
   useEffect(() => {
     if (project) {
-      setNotesDraft(project.notes);
       setCurrentStageDraft(project.currentStage);
       setStatusDraft(project.status);
       setTargetDateDraft(project.targetDate);
@@ -168,15 +166,6 @@ export function ProjectDetailPage() {
       setJournalTaskId('');
       await syncProject(updatedProject, 'Update saved.');
     },
-  });
-
-  const notesMutation = useMutation({
-    mutationFn: () => updateProjectNotes({
-      projectId: projectId ?? '',
-      actor: user?.name ?? 'Workspace user',
-      notes: notesDraft,
-    }),
-    onSuccess: (updatedProject) => syncProject(updatedProject, 'Notes saved.'),
   });
 
   const projectSummaryMutation = useMutation({
@@ -400,7 +389,6 @@ export function ProjectDetailPage() {
 
   const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error ?? deleteFileMutation.error;
   const workflowError = taskUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
-  const notesError = notesMutation.error;
   const rolePolicy = getRolePolicy(user);
   const canAdministerProjectDetails = Boolean(user && (
     user.isPlatformOwner
@@ -480,7 +468,6 @@ export function ProjectDetailPage() {
   const stagePlan = getStagePlan(selectedProject);
   const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
   const canEditNotes = canAdministerProjectDetails;
-  const hasNotesChange = notesDraft.trim() !== selectedProject.notes.trim();
   const hasSummaryChange = currentStageDraft.trim() !== selectedProject.currentStage.trim()
     || statusDraft !== selectedProject.status
     || targetDateDraft.trim() !== selectedProject.targetDate.trim()
@@ -634,13 +621,6 @@ export function ProjectDetailPage() {
           </div>
         ) : null}
         {projectSummaryMutation.error instanceof Error ? <p className="mt-2 text-sm text-red-300">{projectSummaryMutation.error.message}</p> : null}
-
-        {selectedProject.notes.trim() ? (
-          <div className="mt-5 border-t border-white/10 pt-5">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Last note:</h3>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">{selectedProject.notes}</p>
-          </div>
-        ) : null}
 
         {branch ? (
           <div className="mt-5 border-t border-white/10 pt-5">
@@ -1175,19 +1155,6 @@ export function ProjectDetailPage() {
         />
       </section>
 
-      {isInternalUser ? <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-white">Summary</h3>
-            <p className="mt-1 text-sm text-slate-400">Edit the project summary here. Saved changes are written to the project activity log.</p>
-          </div>
-          <button type="button" disabled={!canEditNotes || notesMutation.isPending} onClick={() => notesMutation.mutate()} className="w-fit rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
-            {notesMutation.isPending ? 'Saving summary...' : 'Save summary'}
-          </button>
-        </div>
-        <textarea value={notesDraft} disabled={!canEditNotes || notesMutation.isPending} onChange={(event) => setNotesDraft(event.target.value)} rows={6} placeholder="Add project notes..." className="mt-5 w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm sm:leading-6" />
-        {notesError instanceof Error ? <p className="mt-3 text-sm text-red-300">{notesError.message}</p> : null}
-      </section> : null}
     </div>
   );
 }

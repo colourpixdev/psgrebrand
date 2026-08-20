@@ -34,7 +34,6 @@ const projectSchema = z.object({
   briefRequestedDate: optionalText,
   installationDate: optionalText,
   completionDate: optionalText,
-  notes: optionalText,
   selectedTaskIds: z.array(z.string()).default([]),
 });
 
@@ -139,7 +138,6 @@ export function ProjectCreateForm() {
       briefRequestedDate: '',
       installationDate: '',
       completionDate: '',
-      notes: '',
       selectedTaskIds: [],
     },
   });
@@ -170,7 +168,6 @@ export function ProjectCreateForm() {
         briefRequestedDate: '',
         installationDate: '',
         completionDate: '',
-        notes: '',
         selectedTaskIds: [],
       });
     },
@@ -369,11 +366,6 @@ export function ProjectCreateForm() {
             />
           )}
         />
-
-        <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">
-          Notes
-          <textarea {...register('notes')} rows={4} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none" />
-        </label>
 
         <fieldset className="md:col-span-2">
           <legend className="mb-3 text-sm font-semibold text-slate-300">Initial tasks (optional)</legend>

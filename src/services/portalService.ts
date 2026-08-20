@@ -648,12 +648,6 @@ export type AddProjectCommentInput = {
   taskId?: string;
 };
 
-export type UpdateProjectNotesInput = {
-  projectId: string;
-  actor: string;
-  notes: string;
-};
-
 export type AskProjectQuestionInput = {
   projectId: string;
   author: string;
@@ -1521,37 +1515,6 @@ export async function addProjectComment(input: AddProjectCommentInput): Promise<
   });
 
   return updatedProject;
-}
-
-export async function updateProjectNotes(input: UpdateProjectNotesInput): Promise<Project> {
-  const client = supabase;
-
-  if (!client) {
-    throw new Error('Supabase is not configured.');
-  }
-
-  await hydrateAuthSession();
-
-  const existingProject = await getProjectById(input.projectId);
-  if (!existingProject) {
-    throw new Error('Project not found.');
-  }
-
-  const notes = input.notes.trim();
-  const activity = [createActivity('Notes updated', `${input.actor} updated project notes.`), ...existingProject.activity];
-
-  const { data, error } = await client
-    .from('projects')
-    .update({ notes, activity, updated_at: new Date().toISOString() })
-    .eq('id', input.projectId)
-    .select('*')
-    .single();
-
-  if (error || !data) {
-    throw error ?? new Error('Unable to update project notes.');
-  }
-
-  return mapProjectRow(data as ProjectRow);
 }
 
 export async function askProjectQuestion(input: AskProjectQuestionInput): Promise<Project> {
