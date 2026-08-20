@@ -43,7 +43,7 @@ export function DashboardPage() {
     const completed = scopedProjects.filter((project) => project.status === 'completed').length;
     const inProgress = scopedProjects.filter((project) => project.status === 'in_progress' || project.status === 'busy').length;
     const atRisk = scopedProjects.filter((project) => project.status === 'delayed' || project.status === 'on_hold').length;
-    const notStarted = scopedProjects.filter((project) => project.progress === 0 && project.status !== 'completed').length;
+    const notStarted = scopedProjects.filter((project) => project.currentStage === 'New Project' && project.status !== 'completed').length;
     const awaitingApproval = scopedProjects.filter((project) => project.currentStage === 'Awaiting Approval').length;
     const installationsToday = scopedProjects.filter((project) => project.installationDate && project.installationDate.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
 
@@ -52,7 +52,7 @@ export function DashboardPage() {
 
   const attentionProjects = useMemo(() => {
     return scopedProjects
-      .filter((project) => project.status === 'delayed' || project.status === 'on_hold' || project.currentStage === 'Awaiting Approval' || project.progress < 25)
+      .filter((project) => project.status === 'delayed' || project.status === 'on_hold' || project.currentStage === 'Awaiting Approval')
       .sort((a, b) => (a.updatedAt || '').localeCompare(b.updatedAt || ''))
       .slice(0, 5);
   }, [scopedProjects]);
@@ -144,7 +144,7 @@ export function DashboardPage() {
                           {project.status === 'delayed' || project.status === 'on_hold' ? 'At risk' : 'Action needed'}
                         </span>
                       </div>
-                      <p className="mt-2 text-sm text-slate-600">Progress: {project.progress}% · Target: {project.targetDate || 'Not set'}</p>
+                      <p className="mt-2 text-sm text-slate-600">Target: {project.targetDate || 'Not set'}</p>
                     </Link>
                   )) : (
                     <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">No immediate follow-up items are flagged right now.</p>

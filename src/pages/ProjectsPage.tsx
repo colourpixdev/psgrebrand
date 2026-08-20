@@ -70,7 +70,7 @@ export function ProjectsPage() {
     <div className="space-y-6">
       <section className="border-b border-slate-200 pb-5">
         <h2 className="text-2xl font-semibold text-slate-900">Projects</h2>
-        <p className="mt-2 text-sm text-slate-600">Track each branch rebrand by stage, progress, status and target date.</p>
+        <p className="mt-2 text-sm text-slate-600">Track each branch rebrand by stage, status and target date.</p>
       </section>
 
       {can(user, 'create_project') ? <ProjectCreateForm /> : null}
@@ -122,14 +122,13 @@ export function ProjectsPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-[0.12em] text-slate-500">
-              <tr><th className="px-4 py-3 font-semibold">Branch</th><th className="px-4 py-3 font-semibold">Stage</th><th className="px-4 py-3 font-semibold">Progress</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3 font-semibold">Target date</th><th className="px-4 py-3"><span className="sr-only">Open</span></th></tr>
+              <tr><th className="px-4 py-3 font-semibold">Branch</th><th className="px-4 py-3 font-semibold">Stage</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3 font-semibold">Target date</th><th className="px-4 py-3"><span className="sr-only">Open</span></th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredProjects.map((project) => (
                 <tr key={project.id} className="transition hover:bg-sky-50/50">
                   <td className="px-4 py-4"><Link to={`/projects/${project.id}`} className="font-semibold text-slate-900 hover:text-sky-700">{project.branch}</Link><span className="mt-1 block text-xs text-slate-500">{project.town} · {project.province}</span></td>
                   <td className="px-4 py-4 text-slate-700">{project.currentStage}</td>
-                  <td className="px-4 py-4"><div className="flex min-w-28 items-center gap-2"><div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-sky-500" style={{ width: `${project.progress}%` }} /></div><span className="w-10 text-right font-medium text-slate-700">{project.progress}%</span></div></td>
                   <td className="px-4 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusTone[project.status]}`}>{statusLabels[project.status]}</span></td>
                   <td className="px-4 py-4 text-slate-700">{formatTargetDate(project.targetDate)}</td>
                   <td className="px-4 py-4 text-right"><Link to={`/projects/${project.id}`} className="font-medium text-sky-700 hover:text-sky-800">Open</Link></td>

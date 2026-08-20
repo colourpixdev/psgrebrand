@@ -77,11 +77,7 @@ function deriveWorkflowFromStagePlan(project: Project, stagePlan: readonly Proje
       ? 'awaiting_approval'
       : 'busy';
 
-  return {
-    currentStage,
-    status,
-    progress: stagePlan.length > 0 ? Math.round((completedCount / stagePlan.length) * 100) : project.progress,
-  };
+  return { currentStage, status };
 }
 
 export function ProjectDetailPage() {
@@ -95,7 +91,6 @@ export function ProjectDetailPage() {
   const [notesDraft, setNotesDraft] = useState('');
   const [currentStageDraft, setCurrentStageDraft] = useState<ProjectStage>('New Project');
   const [statusDraft, setStatusDraft] = useState<ProjectStatus>('in_progress');
-  const [progressDraft, setProgressDraft] = useState(0);
   const [targetDateDraft, setTargetDateDraft] = useState('');
   const [briefRequestedDateDraft, setBriefRequestedDateDraft] = useState('');
   const [installationDateDraft, setInstallationDateDraft] = useState('');
@@ -130,7 +125,6 @@ export function ProjectDetailPage() {
       setNotesDraft(project.notes);
       setCurrentStageDraft(project.currentStage);
       setStatusDraft(project.status);
-      setProgressDraft(project.progress);
       setTargetDateDraft(project.targetDate);
       setBriefRequestedDateDraft(project.briefRequestedDate);
       setInstallationDateDraft(project.installationDate);
@@ -191,7 +185,6 @@ export function ProjectDetailPage() {
       actor: user?.name ?? 'Workspace user',
       currentStage: currentStageDraft,
       status: statusDraft,
-      progress: progressDraft,
       targetDate: targetDateDraft,
       briefRequestedDate: briefRequestedDateDraft,
       installationDate: installationDateDraft,
@@ -490,7 +483,6 @@ export function ProjectDetailPage() {
   const hasNotesChange = notesDraft.trim() !== selectedProject.notes.trim();
   const hasSummaryChange = currentStageDraft.trim() !== selectedProject.currentStage.trim()
     || statusDraft !== selectedProject.status
-    || progressDraft !== selectedProject.progress
     || targetDateDraft.trim() !== selectedProject.targetDate.trim()
     || briefRequestedDateDraft.trim() !== selectedProject.briefRequestedDate.trim()
     || installationDateDraft.trim() !== selectedProject.installationDate.trim()
@@ -539,12 +531,7 @@ export function ProjectDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             <span className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${statusTones[selectedProject.status]}`}>{statusLabels[selectedProject.status]}</span>
-            <span className="text-3xl font-semibold text-white">{selectedProject.progress}%</span>
           </div>
-        </div>
-
-        <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-900/80" aria-label={`${selectedProject.progress}% complete`}>
-          <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-sky-400" style={{ width: `${selectedProject.progress}%` }} />
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -560,7 +547,7 @@ export function ProjectDetailPage() {
             <p className="mt-1 text-sm text-slate-300">{selectedProject.status === 'completed' ? 'This branch rebrand is complete.' : `${selectedProject.currentStage} is the current stage. The next step is ${nextStage}.`}</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
-            <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Project progress</p><span className="text-xs text-slate-400">{completedStageCount} of {stagePlan.length} stages</span></div>
+            <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Stage checklist</p><span className="text-xs text-slate-400">{completedStageCount} of {stagePlan.length} stages</span></div>
             <div className="mt-3 flex flex-wrap gap-2">
               {stagePlan.map((stage, index) => {
                 const completed = selectedProject.tasks.some((task) => (task.stage ?? task.text).trim() === stage && task.completed);
@@ -634,13 +621,6 @@ export function ProjectDetailPage() {
               <select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50">
                 {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
-            </label>
-          ) : null}
-
-          {canEditNotes ? (
-            <label className="grid gap-2">
-              <span className="text-slate-100">Progress (%)</span>
-              <input type="number" min={0} max={100} value={progressDraft} onChange={(event) => setProgressDraft(Number(event.target.value))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50" />
             </label>
           ) : null}
 

@@ -40,10 +40,6 @@ export function ProjectCard({ project, user }: { project: Project; user?: UserRe
           <span className="font-medium text-slate-800">{project.currentStage}</span>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <span className="text-slate-500">Progress</span>
-          <span className="font-medium text-slate-800">{project.progress}%</span>
-        </div>
-        <div className="flex items-center justify-between gap-3">
           <span className="text-slate-500">Target</span>
           <span className="font-medium text-slate-800">{project.targetDate || 'Not set'}</span>
         </div>
@@ -56,10 +52,6 @@ export function ProjectCard({ project, user }: { project: Project; user?: UserRe
           {unreadAnswers > 0 ? <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-emerald-700">{unreadAnswers} answered</span> : null}
         </div>
       ) : null}
-
-      <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500" style={{ width: `${project.progress}%` }} />
-      </div>
 
       <div className="mt-4 flex items-center justify-between gap-3">
         <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-700">

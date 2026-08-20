@@ -304,7 +304,7 @@ export type CreateProjectInput = {
   briefRequestedDate?: string;
   installationDate?: string;
   completionDate?: string;
-  progress: number;
+  progress?: number;
   notes?: string;
   selectedTaskIds?: string[];
 };
@@ -634,7 +634,7 @@ export type UpdateProjectSummaryInput = {
   actor: string;
   currentStage: Project['currentStage'];
   status: Project['status'];
-  progress: number;
+  progress?: number;
   targetDate: string;
   briefRequestedDate: string;
   installationDate: string;
@@ -1129,7 +1129,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     brief_requested_date: input.briefRequestedDate?.trim() ?? '',
     installation_date: input.installationDate?.trim() ?? '',
     completion_date: input.completionDate?.trim() ?? '',
-    progress: input.progress,
+    progress: input.progress ?? 0,
     branch_manager_view_only: false,
     notes: input.notes?.trim() ?? '',
     files: [],
@@ -1453,7 +1453,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
   const installationDate = input.installationDate.trim();
   const completionDate = input.completionDate.trim();
   const activity = [
-    createActivity('Project summary updated', `${input.actor} updated stage, status, progress, and schedule dates.`),
+    createActivity('Project summary updated', `${input.actor} updated stage, status, and schedule dates.`),
     ...existingProject.activity,
   ];
 
@@ -1462,7 +1462,6 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     .update({
       current_stage: currentStage,
       status: input.status,
-      progress: input.progress,
       target_date: targetDate,
       brief_requested_date: briefRequestedDate,
       installation_date: installationDate,

@@ -34,7 +34,6 @@ const projectSchema = z.object({
   briefRequestedDate: optionalText,
   installationDate: optionalText,
   completionDate: optionalText,
-  progress: z.coerce.number().min(0).max(100),
   notes: optionalText,
   selectedTaskIds: z.array(z.string()).default([]),
 });
@@ -140,7 +139,6 @@ export function ProjectCreateForm() {
       briefRequestedDate: '',
       installationDate: '',
       completionDate: '',
-      progress: 0,
       notes: '',
       selectedTaskIds: [],
     },
@@ -172,7 +170,6 @@ export function ProjectCreateForm() {
         briefRequestedDate: '',
         installationDate: '',
         completionDate: '',
-        progress: 0,
         notes: '',
         selectedTaskIds: [],
       });
@@ -372,11 +369,6 @@ export function ProjectCreateForm() {
             />
           )}
         />
-
-        <label className="grid gap-2 text-sm text-slate-300">
-          Progress
-          <input {...register('progress')} type="number" min={0} max={100} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" />
-        </label>
 
         <label className="grid gap-2 text-sm text-slate-300 md:col-span-2">
           Notes

@@ -21,7 +21,7 @@ const statusLabels: Record<ProjectStatus, string> = {
 };
 
 const reportTypes: Array<{ value: ReportType; label: string; description: string }> = [
-  { value: 'multi-branch-overview', label: 'PSG National Rebrand Rollout Report', description: 'A clear view of every permitted branch, its current stage, progress, status, and target date.' },
+  { value: 'multi-branch-overview', label: 'PSG National Rebrand Rollout Report', description: 'A clear view of every permitted branch, its current stage, status, and target date.' },
 ];
 
 function uniqueSorted(values: string[]) {
@@ -81,7 +81,6 @@ function projectCsvRows(projects: Project[]) {
       project.manager,
       project.currentStage,
       statusLabels[project.status],
-      `${project.progress}%`,
       project.targetDate,
       pendingTasks,
       project.files.length,
@@ -92,7 +91,7 @@ function projectCsvRows(projects: Project[]) {
 }
 
 function downloadExcel(projects: Project[], reportName: string) {
-  const headers = ['Branch reference', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Progress', 'Target', 'Pending tasks', 'Files', 'Participants', 'Updated'];
+  const headers = ['Branch reference', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Target', 'Pending tasks', 'Files', 'Participants', 'Updated'];
   const rows = projectCsvRows(projects);
   const csv = ['\uFEFF', headers.map(toCsvCell).join(','), ...rows.map((row) => row.map(toCsvCell).join(','))].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -122,7 +121,7 @@ function branchDetailHtml(projects: Project[], reportName: string, branchName: s
     return `
       <section class="card">
         <h2>${escapeHtml(project.id)} - ${escapeHtml(project.projectTypeName)}</h2>
-        <p><strong>Stage:</strong> ${escapeHtml(project.currentStage)} | <strong>Status:</strong> ${escapeHtml(statusLabels[project.status])} | <strong>Progress:</strong> ${escapeHtml(project.progress)}%</p>
+        <p><strong>Stage:</strong> ${escapeHtml(project.currentStage)} | <strong>Status:</strong> ${escapeHtml(statusLabels[project.status])}</p>
         <p><strong>Address:</strong> ${escapeHtml(project.physicalAddress || `${project.town}, ${project.province}`)}</p>
         <p><strong>Manager:</strong> ${escapeHtml(project.manager || 'Not assigned')}</p>
         <p><strong>Pending tasks:</strong> ${escapeHtml(pendingTasks.length)}</p>
@@ -181,7 +180,7 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
       <body>
         <p>${projects.length} project${projects.length === 1 ? '' : 's'} exported on ${new Date().toLocaleDateString()}</p>
         <table>
-          <thead><tr>${['Project ID', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Progress', 'Target'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+          <thead><tr>${['Project ID', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Target'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
           <tbody>${projects.map((project) => `<tr>${[
       project.id,
       project.branch,
@@ -191,7 +190,6 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
       project.manager,
       project.currentStage,
       statusLabels[project.status],
-      `${project.progress}%`,
       project.targetDate,
     ].map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
         </table>
@@ -291,15 +289,12 @@ export function ReportsPage() {
   const reportName = `${selectedReport.label} report`;
   const delayedCount = displayedProjects.filter((project) => project.status === 'delayed' || project.status === 'on_hold').length;
   const completedCount = displayedProjects.filter((project) => project.status === 'completed').length;
-  const averageProgress = displayedProjects.length
-    ? Math.round(displayedProjects.reduce((sum, project) => sum + project.progress, 0) / displayedProjects.length)
-    : 0;
 
   return (
     <div className="space-y-6">
       <section className="border-b border-slate-200 pb-5">
         <h2 className="text-2xl font-semibold text-slate-900">PSG National Rebrand Rollout Report</h2>
-        <p className="mt-2 text-sm text-slate-600">See progress, stage, status and dates across the national branch rollout.</p>
+        <p className="mt-2 text-sm text-slate-600">See stage, status and dates across the national branch rollout.</p>
       </section>
 
       <section className="grid gap-4">
@@ -315,12 +310,6 @@ export function ReportsPage() {
           <div>
             <p className="text-sm text-slate-400">At risk</p>
             <p className="mt-2 text-3xl font-semibold text-amber-200">{delayedCount}</p>
-          </div>
-          <div className="sm:col-span-3">
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10">
-              <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-400" style={{ width: `${averageProgress}%` }} />
-            </div>
-            <p className="mt-2 text-xs text-slate-400">Average progress: {averageProgress}%</p>
           </div>
         </div>
       </section>
@@ -418,7 +407,6 @@ export function ReportsPage() {
                 <th className="px-5 py-4 font-medium">Branch</th>
                 <th className="px-5 py-4 font-medium">Province</th>
                 <th className="px-5 py-4 font-medium">Stage</th>
-                <th className="px-5 py-4 font-medium">Progress</th>
                 <th className="px-5 py-4 font-medium">Status</th>
                 <th className="px-5 py-4 font-medium">Target date</th>
                 <th className="px-5 py-4 font-medium">Completion date</th>
@@ -433,7 +421,6 @@ export function ReportsPage() {
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.province}</td>
                   <td className="px-5 py-4">{project.currentStage}</td>
-                  <td className="px-5 py-4">{project.progress}%</td>
                   <td className="px-5 py-4">{statusLabels[project.status]}</td>
                   <td className="px-5 py-4">{project.targetDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.completionDate || 'Not completed'}</td>
