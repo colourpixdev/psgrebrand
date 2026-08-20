@@ -475,12 +475,12 @@ export function BranchesPage() {
   }, [branches.length, error, hasAutoRefreshed, loading, searchTerm, showForm]);
 
   return (
-    <div className="min-h-screen p-6 md:p-8">
+    <div className="branches-page min-h-screen rounded-[2rem] bg-slate-950 p-6 text-slate-100 md:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-2">PSG Branch Workspaces</h1>
-            <p className="text-slate-400">Manage each branch and its rebrand work from one operational workspace.</p>
+            <h1 className="mb-2 text-4xl font-bold text-white">PSG Branch Workspaces</h1>
+            <p className="text-slate-300">Manage each branch and its rebrand work from one operational workspace.</p>
           </div>
           {isAdmin && (
             <button
@@ -676,7 +676,7 @@ export function BranchesPage() {
           </div>
         ) : filteredBranches.length === 0 ? (
           <div className="rounded-3xl border border-white/10 bg-slate-950/50 py-12 text-center">
-            <p className="text-slate-400">No branches match your search.</p>
+            <p className="text-slate-300">No branches match your search.</p>
           </div>
         ) : (
           <div className="space-y-4">
