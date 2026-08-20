@@ -144,6 +144,7 @@ export function BranchDetailPage() {
       }));
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['branches'] });
+      showSuccess('Update saved.');
     },
   });
 
@@ -158,6 +159,7 @@ export function BranchDetailPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       setRenamingFileKey(null);
+      showSuccess('File renamed.');
     },
   });
 
@@ -201,6 +203,7 @@ export function BranchDetailPage() {
       setTaskCommentDrafts((current) => ({ ...current, [`${variables.projectId}-${variables.taskId}`]: '' }));
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await queryClient.invalidateQueries({ queryKey: ['branches'] });
+      showSuccess('Comment added.');
     },
   });
 
