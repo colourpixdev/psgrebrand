@@ -175,14 +175,15 @@ export function ProjectDetailPage() {
 
   const syncProject = async (updatedProject: Project, successMessage?: string) => {
     queryClient.setQueryData(['project', projectId], updatedProject);
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['projects'] }),
-      queryClient.invalidateQueries({ queryKey: ['portal-summary'] }),
-    ]);
 
     if (successMessage) {
       showSuccess(successMessage);
     }
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['projects'] }),
+      queryClient.invalidateQueries({ queryKey: ['portal-summary'] }),
+    ]);
   };
 
   const taskUpdateMutation = useMutation({
