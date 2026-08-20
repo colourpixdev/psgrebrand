@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useEffect, useState, type ErrorInfo, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
-import { LayoutDashboard, KanbanSquare, FileText, Shield, Users, MapPinned, Map } from 'lucide-react';
+import { LayoutDashboard, FileText, Shield, Users, MapPinned } from 'lucide-react';
 import { AppShell } from './layouts/AppShell';
 import { SaveFeedbackProvider } from './contexts/SaveFeedbackContext';
 import { LoginPage } from './pages/LoginPage';
@@ -26,13 +26,10 @@ const ProfilePage = lazyWithChunkReload('profile', () => import('./pages/Profile
 const AboutPage = lazyWithChunkReload('about', () => import('./pages/AboutPage').then((module) => ({ default: module.AboutPage })));
 const LegalPage = lazyWithChunkReload('legal', () => import('./pages/LegalPage').then((module) => ({ default: module.LegalPage })));
 const AccessControlsPage = lazyWithChunkReload('access-controls', () => import('./pages/AccessControlsPage').then((module) => ({ default: module.AccessControlsPage })));
-// Branches UI is being consolidated into Projects. Keep the page file for now
-// but do not lazy-load it here — we will redirect branch routes to projects.
 const AuthCallbackPage = lazyWithChunkReload('auth-callback', () => import('./pages/AuthCallbackPage').then((module) => ({ default: module.AuthCallbackPage })));
 
 const navigation = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/projects', label: 'Projects', icon: KanbanSquare },
   { to: '/branches', label: 'Branches', icon: MapPinned },
   { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/users', label: 'Users', icon: Users },

@@ -3,7 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { createProject, getProjects, type CreateProjectInput } from '../../services/portalService';
 import { getAllBranches } from '../../services/branchService';
 import { timelineStages } from '../../constants/portal';
@@ -118,6 +118,8 @@ export function ProjectCreateForm() {
     queryKey: ['projects'],
     queryFn: getProjects,
   });
+  const preselectedBranch = branches.find((branch) => branch.id === preselectedBranchId);
+  const existingBranchProject = projects.find((project) => project.branchId === preselectedBranchId && project.status !== 'cancelled');
 
   const { register, handleSubmit, reset, setValue, watch, control, formState: { errors } } = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
@@ -247,16 +249,23 @@ export function ProjectCreateForm() {
     <section className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-6 shadow-soft">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-white">Add project</h3>
-          <p className="mt-1 text-sm text-slate-400">Start with the branch, then add only the details you have today. The branch name is the project reference for this workspace.</p>
+          <h3 className="text-lg font-semibold text-white">{preselectedBranch ? `Create ${preselectedBranch.name} rebrand workspace` : 'Create rebrand workspace'}</h3>
+          <p className="mt-1 text-sm text-slate-400">A branch has one active rebrand workspace. Start with the branch, then add only the details you have today.</p>
         </div>
-        <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">Single workspace: {defaultWorkspace.name}</p>
+        <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">{preselectedBranch ? 'Branch selected' : `Workspace: ${defaultWorkspace.name}`}</p>
       </div>
+
+      {existingBranchProject ? (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200/20 bg-amber-400/10 p-4 text-sm text-amber-100">
+          <span>This branch already has an active rebrand workspace.</span>
+          <Link to={`/projects/${existingBranchProject.id}`} className="font-semibold text-amber-50 underline underline-offset-2">Open workspace</Link>
+        </div>
+      ) : null}
 
       <form onSubmit={onSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
         <label className="grid gap-2 text-sm text-slate-300">
           Branch
-          <select {...register('branchId')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" disabled={isLoadingBranches}>
+          <select {...register('branchId')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none" disabled={isLoadingBranches || Boolean(preselectedBranchId)}>
             <option value="">Select branch</option>
             {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
           </select>
@@ -404,8 +413,8 @@ export function ProjectCreateForm() {
         {successMessage ? <p className="md:col-span-2 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{successMessage}</p> : null}
 
         <div className="md:col-span-2 flex justify-end">
-          <button type="submit" disabled={mutation.isPending} className="rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50">
-            {mutation.isPending ? 'Saving project...' : 'Create project'}
+          <button type="submit" disabled={mutation.isPending || Boolean(existingBranchProject)} className="rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+            {mutation.isPending ? 'Saving workspace...' : 'Create rebrand workspace'}
           </button>
         </div>
       </form>

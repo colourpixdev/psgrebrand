@@ -479,8 +479,8 @@ export function BranchesPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-2">Branch Rebrand Projects</h1>
-            <p className="text-slate-400">List of PSG branches in South Africa and Namibia. Each branch is managed as a rebrand project.</p>
+            <h1 className="text-4xl font-bold text-slate-900 mb-2">PSG Branch Workspaces</h1>
+            <p className="text-slate-400">Manage each branch and its rebrand work from one operational workspace.</p>
           </div>
           {isAdmin && (
             <button
@@ -817,7 +817,7 @@ export function BranchesPage() {
                   <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_1fr_auto] lg:items-start">
                     <div>
                       <p className="mt-1 text-lg font-semibold text-white">{branch.name}</p>
-                      <Link to={`/branches/${branch.id}`} className="mt-3 inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Open branch record</Link>
+                      <Link to={getOpenProjectsForBranch(branch)[0] ? `/projects/${getOpenProjectsForBranch(branch)[0].id}` : `/branches/${branch.id}`} className="mt-3 inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Open workspace</Link>
                       <p className="mt-1 text-sm text-slate-400">{branch.town}, {branch.province}</p>
                       <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
                     </div>
@@ -840,9 +840,13 @@ export function BranchesPage() {
                     <div>
                       {getOpenProjectsForBranch(branch).length > 0 ? (
                         <span className="inline-flex rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-200 ring-1 ring-white/10">
-                          {getOpenProjectsForBranch(branch).length} active project{getOpenProjectsForBranch(branch).length === 1 ? '' : 's'}
+                          {getOpenProjectsForBranch(branch).length === 1 ? 'Rebrand workspace active' : `${getOpenProjectsForBranch(branch).length} rebrand workspaces active`}
                         </span>
-                      ) : null}
+                      ) : isAdmin && canCreateProjects ? (
+                        <Link to={`/projects?branchId=${encodeURIComponent(branch.id)}`} className="inline-flex rounded-full bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-950 transition hover:bg-emerald-400">
+                          Create rebrand workspace
+                        </Link>
+                      ) : <span className="text-xs text-slate-500">No active workspace</span>}
                     </div>
 
                     {isAdmin ? (
