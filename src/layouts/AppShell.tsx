@@ -111,7 +111,7 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
           </button>
         </aside>
 
-        <main className="content-main min-w-0 flex-1 rounded-[2rem] bg-slate-200/95 px-4 pb-28 pt-5 text-slate-900 shadow-soft sm:px-6 lg:px-8 lg:py-6 xl:px-10">
+        <main className="content-main min-w-0 flex-1 rounded-[2rem] bg-[#07152f] px-4 pb-28 pt-5 text-slate-100 shadow-soft sm:px-6 lg:px-8 lg:py-6 xl:px-10">
           {statusBanner}
           {children}
           <AppFooter />

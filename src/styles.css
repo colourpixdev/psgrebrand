@@ -221,6 +221,91 @@ select.current-task-select::placeholder,
   color: #64748b !important;
 }
 
+/* Navy workspace theme: keep every operational surface dark and text readable. */
+:root {
+  color-scheme: dark;
+  background: #020617;
+  color: #e2e8f0;
+}
+
+.content-main {
+  background: #07152f !important;
+  color: #e2e8f0 !important;
+}
+
+.content-main [class*="bg-white"],
+.content-main [class*="bg-slate-50"],
+.content-main [class*="bg-slate-100"],
+.content-main [class*="bg-slate-200"],
+.content-main [class*="bg-slate-300"] {
+  background-color: #0b1f3a !important;
+  border-color: #1e3a5f !important;
+  color: #e2e8f0 !important;
+}
+
+.content-main [class*="bg-white"] *,
+.content-main [class*="bg-slate-50"] *,
+.content-main [class*="bg-slate-100"] *,
+.content-main [class*="bg-slate-200"] *,
+.content-main [class*="bg-slate-300"] * {
+  color: #e2e8f0 !important;
+}
+
+.content-main [class*="bg-white"] input,
+.content-main [class*="bg-white"] select,
+.content-main [class*="bg-white"] textarea,
+.content-main [class*="bg-slate-50"] input,
+.content-main [class*="bg-slate-50"] select,
+.content-main [class*="bg-slate-50"] textarea,
+.content-main [class*="bg-slate-100"] input,
+.content-main [class*="bg-slate-100"] select,
+.content-main [class*="bg-slate-100"] textarea {
+  background-color: #06152d !important;
+  border-color: #31547d !important;
+  color: #f8fafc !important;
+}
+
+.content-main [class*="bg-white"] input::placeholder,
+.content-main [class*="bg-white"] textarea::placeholder,
+.content-main [class*="bg-slate-50"] input::placeholder,
+.content-main [class*="bg-slate-50"] textarea::placeholder,
+.content-main [class*="bg-slate-100"] input::placeholder,
+.content-main [class*="bg-slate-100"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.content-main .text-slate-900,
+.content-main .text-slate-800,
+.content-main .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+.content-main .text-slate-600,
+.content-main .text-slate-500,
+.content-main .text-slate-400 {
+  color: #a9bdd5 !important;
+}
+
+.content-main .border-slate-200,
+.content-main .border-slate-300,
+.content-main .border-slate-100 {
+  border-color: #1e3a5f !important;
+}
+
+.content-main .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.content-main .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1e3a5f !important;
+}
+
+.content-main .hover\:bg-slate-50:hover,
+.content-main .hover\:bg-sky-50:hover {
+  background-color: #102b4d !important;
+}
+
+.content-main .branches-page {
+  background: #06152d !important;
+}
+
 html,
 body,
 #root {
