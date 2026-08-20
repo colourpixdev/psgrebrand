@@ -165,36 +165,22 @@ export function DashboardPage() {
               )}
             </section>
 
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+            {!isInternalManagement ? <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-2">
-                <h3 className="text-lg font-semibold text-slate-900">{isInternalManagement ? 'Recent activity' : 'Relevant branches'}</h3>
+                <h3 className="text-lg font-semibold text-slate-900">Relevant branches</h3>
               </div>
 
-              {isInternalManagement ? (
-                <div className="space-y-3">
-                  {recentActivity.length > 0 ? recentActivity.map((project) => (
-                    <div key={project.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                      <p className="font-medium text-slate-900">{project.branch}</p>
-                      <p className="mt-1 text-sm text-slate-600">{project.currentStage}</p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.12em] text-slate-500">{project.updatedAt || 'recent'}</p>
-                    </div>
-                  )) : (
-                    <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">No activity yet.</p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {branchList.length > 0 ? branchList.map((branch) => (
-                    <div key={branch} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                      <p className="font-medium text-slate-900">{branch}</p>
-                      <p className="mt-1 text-sm text-slate-600">Visible to your role</p>
-                    </div>
-                  )) : (
-                    <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">No branches are currently visible.</p>
-                  )}
-                </div>
-              )}
-            </section>
+              <div className="space-y-3">
+                {branchList.length > 0 ? branchList.map((branch) => (
+                  <div key={branch} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="font-medium text-slate-900">{branch}</p>
+                    <p className="mt-1 text-sm text-slate-600">Visible to your role</p>
+                  </div>
+                )) : (
+                  <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">No branches are currently visible.</p>
+                )}
+              </div>
+            </section> : null}
           </div>
         </>
       )}

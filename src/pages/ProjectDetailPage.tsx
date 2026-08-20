@@ -688,14 +688,11 @@ export function ProjectDetailPage() {
       <section className={isInternalUser ? 'rounded-[2rem] border border-slate-700/50 bg-slate-900/80 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Branch reference</p>
-            <h2 className="mt-2 text-3xl font-semibold text-white">{selectedProject.branch}</h2>
+            <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Project details</p>
           </div>
           {canEditProjectSummary && !isEditingProjectSummary ? <button type="button" onClick={() => setIsEditingProjectSummary(true)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">Edit project details</button> : null}
         </div>
-        <p className="mt-2 text-sm text-slate-400">
-          {selectedProject.town}, {selectedProject.province} · Manager {selectedProject.manager}
-        </p>
+        <p className="mt-2 text-sm text-slate-400">Project manager: {selectedProject.manager || 'Not assigned'}</p>
         <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-2 text-sm text-slate-300">
           {isEditingProjectSummary && canEditProjectSummary ? (
             <label className="grid gap-2">
@@ -751,7 +748,6 @@ export function ProjectDetailPage() {
             </label>
           ) : <div className="text-slate-200">Status: <span className="text-white">{statusLabels[selectedProject.status]}</span></div>}
 
-          <div className="md:col-span-2 lg:col-span-2 text-slate-200">Physical Address: <span className="text-white">{branch?.physicalAddress || selectedProject.physicalAddress || 'Not captured'}</span></div>
         </div>
         {isEditingProjectSummary && canEditProjectSummary ? (
           <div className="mt-3 flex flex-wrap gap-2">
