@@ -121,6 +121,12 @@ export function BranchDetailPage() {
   const isFirstMountRef = useRef(true);
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    if (!isLoadingBranches && !isLoadingProjects && branchProject) {
+      navigate(`/projects/${branchProject.id}`, { replace: true });
+    }
+  }, [branchProject, isLoadingBranches, isLoadingProjects, navigate]);
+
   const quickUpdateMutation = useMutation({
     mutationFn: ({ projectId, taskId, message }: { projectId: string; taskId: string; message: string }) => addProjectComment({
       projectId,
@@ -244,6 +250,10 @@ export function BranchDetailPage() {
 
   if (isLoadingBranches || isLoadingProjects) {
     return <div className="rounded-[2rem] border border-white/10 bg-white/6 p-6 text-sm text-slate-300 shadow-soft">Loading branch workspace...</div>;
+  }
+
+  if (branchProject) {
+    return <div className="rounded-[2rem] border border-cyan-300/20 bg-slate-950/80 p-6 text-sm text-slate-300 shadow-soft">Opening branch rebrand workspace...</div>;
   }
 
   if (!branch) {

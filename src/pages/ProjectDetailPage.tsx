@@ -810,14 +810,14 @@ export function ProjectDetailPage() {
           </div>
           <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem_auto]">
             <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder={canAddTasks ? 'Add next action...' : 'Task updates restricted'} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
-            <select multiple value={taskAssigneeEmails} disabled={!canAddTasks} onChange={(event) => setTaskAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
+            <select multiple value={taskAssigneeEmails} disabled={!canAddTasks} aria-label="Optional task owners" onChange={(event) => setTaskAssigneeEmails(Array.from(event.target.selectedOptions, (option) => option.value))} className="min-h-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
               {assignableUsers.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
             </select>
-            <button type="button" disabled={!canAddTasks || taskMutation.isPending || !taskText.trim() || taskAssigneeEmails.length === 0} onClick={() => taskMutation.mutate()} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!canAddTasks || taskMutation.isPending || !taskText.trim()} onClick={() => taskMutation.mutate()} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
               Add
             </button>
           </div>
-          <p className="mt-2 text-xs text-slate-500">Every open task needs at least one assignee. Designations come from each user profile title or role label. Select a task status to update it directly.</p>
+          <p className="mt-2 text-xs text-slate-400">Add the next action first. Assign an owner only when it is useful; task status can be updated directly.</p>
           <div className="mt-4 space-y-2">
             {mergedTasks.length > 0 ? mergedTasks.map((task, index) => {
               const taskStatus = getTaskStatus(task);
@@ -873,7 +873,7 @@ export function ProjectDetailPage() {
                       {users.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.profileTitle?.trim() || roleLabels[item.role]}</option>)}
                     </select>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" disabled={updateTaskMutation.isPending || !editingTaskText.trim() || (taskStatus !== 'done' && editingTaskAssigneeEmails.length === 0)} onClick={() => updateTaskMutation.mutate({ task, text: editingTaskText, assigneeEmails: editingTaskAssigneeEmails })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">Save</button>
+                      <button type="button" disabled={updateTaskMutation.isPending || !editingTaskText.trim()} onClick={() => updateTaskMutation.mutate({ task, text: editingTaskText, assigneeEmails: editingTaskAssigneeEmails })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">Save</button>
                       <button type="button" onClick={() => { setEditingTaskId(null); setEditingTaskText(''); setEditingTaskAssigneeEmails([]); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
                     </div>
                   </div>
