@@ -645,10 +645,12 @@ export function ProjectDetailPage() {
           </div>
         ) : null}
 
-        {!isEditingDetails ? <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {!isEditingDetails ? <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</p><p className="mt-1 text-lg font-semibold text-white">{selectedProject.currentStage}</p></div>
+          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 text-lg font-semibold text-white">{statusLabels[selectedProject.status]}</p></div>
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Target completion</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.targetDate)}</p></div>
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Installation</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.installationDate)}</p></div>
+          {selectedProject.completionDate ? <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Completed</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.completionDate)}</p></div> : null}
         </div> : null}
 
         <div className="mt-6 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[1fr_1fr]">
@@ -667,8 +669,7 @@ export function ProjectDetailPage() {
                 return (
                   <div key={`${stage}-${index}`} className={`flex flex-wrap items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold ${taskStatus === 'done' ? 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100' : current ? 'border-cyan-300/50 bg-cyan-400/20 text-cyan-100' : 'border-white/10 bg-white/5 text-slate-300'}`}>
                     <span>{taskStatus === 'done' ? '✓ ' : current ? '● ' : '○ '}{stage}</span>
-                    {stageTask ? <select value={taskStatus} disabled={!canCurrentUserCompleteTask(stageTask) || updateTaskMutation.isPending} onChange={(event) => updateTaskMutation.mutate({ task: stageTask, status: event.target.value as TaskItem['status'] })} aria-label={`Status for ${stage}`} className="rounded-lg border border-white/15 bg-slate-950/60 px-1.5 py-1 text-[11px] text-white outline-none"><option value="pending">Pending</option><option value="open">Started</option><option value="busy">Busy</option><option value="done">Completed</option></select> : null}
-                    {stageTask && canAddTasks ? <><button type="button" disabled={reorderTaskMutation.isPending || index === 0} onClick={() => reorderTaskMutation.mutate({ task: stageTask, direction: 'up' })} aria-label={`Move ${stage} earlier`} className="rounded-md border border-white/15 px-1.5 py-1 text-[11px] text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">↑</button><button type="button" disabled={reorderTaskMutation.isPending || index === stagePlan.length - 1} onClick={() => reorderTaskMutation.mutate({ task: stageTask, direction: 'down' })} aria-label={`Move ${stage} later`} className="rounded-md border border-white/15 px-1.5 py-1 text-[11px] text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">↓</button></> : null}
+                    <span className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px]">{taskStatus === 'pending' ? 'Pending' : taskStatus === 'open' ? 'Started' : taskStatus === 'busy' ? 'Busy' : 'Completed'}</span>
                   </div>
                 );
               })}
@@ -681,7 +682,7 @@ export function ProjectDetailPage() {
           {latestUpdate ? <><p className="mt-2 text-xs text-slate-400">{formatWorkspaceDate(latestUpdate.date)} · {latestUpdate.author}</p><p className="mt-1 text-sm leading-6 text-slate-200">{latestUpdate.message}</p></> : <p className="mt-2 text-sm text-slate-400">No updates recorded yet.</p>}
         </div>
 
-        <div className="mt-4 border-t border-white/10 pt-4">
+        {isInternalUser ? <div className="mt-4 border-t border-white/10 pt-4">
           <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h4>
           <div className="mt-4 space-y-3">
             {projectHistory.length > 0 ? projectHistory.map((item) => (
@@ -695,9 +696,9 @@ export function ProjectDetailPage() {
               </div>
             )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No project history recorded yet.</p>}
           </div>
-        </div>
+        </div> : null}
       </section>
-      <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
+      <section className={isInternalUser ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         <div className="mt-6 border-t border-white/10 pt-0">
           <div className="flex items-center justify-between gap-3 mb-4">
             <h3 className="text-lg font-semibold text-white">Stages</h3>
@@ -1022,8 +1023,8 @@ export function ProjectDetailPage() {
       <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-white">Progress updates</h3>
-            <p className="mt-1 text-sm text-slate-300">Recent progress updates and important requests for this branch rebrand.</p>
+            <h3 className="text-lg font-semibold text-white">Updates</h3>
+            <p className="mt-1 text-sm text-slate-300">Recent updates and requests for this branch rebrand.</p>
           </div>
           {unreadAnswers.length > 0 ? <span className="rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100">{unreadAnswers.length} new answer{unreadAnswers.length === 1 ? '' : 's'}</span> : null}
         </div>
