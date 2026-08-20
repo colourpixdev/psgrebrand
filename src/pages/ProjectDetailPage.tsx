@@ -10,7 +10,7 @@ import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
-import { canViewProject, canAddTaskComments, getRolePolicy } from '../utils/permissions';
+import { can, canViewProject, canAddTaskComments, getRolePolicy } from '../utils/permissions';
 import { getTaskStatus } from '../utils/taskStatus';
 import { getApplicableTaskTemplates } from '../constants/taskTemplates';
 import { isPlatformOwnerEmail } from '../constants/workspaces';
@@ -471,7 +471,12 @@ export function ProjectDetailPage() {
   const workflowError = taskUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
   const notesError = notesMutation.error;
   const rolePolicy = getRolePolicy(user);
-  const canAdministerProjectDetails = Boolean(user?.isPlatformOwner);
+  const canAdministerProjectDetails = Boolean(user && (
+    user.isPlatformOwner
+    || user.role === 'colourpix_admin'
+    || user.role === 'psg_head_office'
+    || can(user, 'manage_workflow')
+  ));
   const canUploadFiles = canAdministerProjectDetails && Boolean(rolePolicy?.files.canUploadFiles);
   const canDeleteFiles = canAdministerProjectDetails && Boolean(rolePolicy?.files.canDeleteFiles);
   const canAddComments = canAddTaskComments(user);
@@ -556,7 +561,11 @@ export function ProjectDetailPage() {
     || completionDateDraft.trim() !== selectedProject.completionDate.trim();
   const isInternalUser = canAdministerProjectDetails;
   const currentStageIndex = Math.max(0, stagePlan.findIndex((stage) => stage === selectedProject.currentStage));
-  const nextStage = stagePlan[currentStageIndex + 1] ?? (selectedProject.status === 'completed' ? 'Completed' : 'Final sign-off');
+  const nextStage = selectedProject.status === 'completed'
+    ? 'Completed'
+    : selectedProject.currentStage === 'New Project'
+      ? 'Information'
+      : stagePlan[currentStageIndex + 1] ?? 'Final sign-off';
   const latestUpdate = [...projectComments].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))[0];
   const completedStageCount = stagePlan.filter((stage) => selectedProject.tasks.some((task) => (task.stage ?? task.text).trim() === stage && task.completed)).length;
   const branchParticipants = branch?.contacts?.length
@@ -574,7 +583,7 @@ export function ProjectDetailPage() {
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-cyan-200/75">Branch rebrand workspace</p>
             <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">{selectedProject.branch}</h1>
-            <p className="mt-2 text-base text-slate-300">{selectedProject.town}, {selectedProject.province}</p>
+            <p className="mt-2 text-base text-slate-300">{branch?.town ?? selectedProject.town}, {branch?.province ?? selectedProject.province}</p>
           </div>
           <div className="flex items-center gap-3">
             <span className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${statusTones[selectedProject.status]}`}>{statusLabels[selectedProject.status]}</span>
@@ -683,7 +692,7 @@ export function ProjectDetailPage() {
             </label>
           ) : null}
 
-          <div className="md:col-span-2 lg:col-span-2 text-slate-200">Physical Address: <span className="text-white">{selectedProject.physicalAddress || 'Not captured'}</span></div>
+          <div className="md:col-span-2 lg:col-span-2 text-slate-200">Physical Address: <span className="text-white">{branch?.physicalAddress || selectedProject.physicalAddress || 'Not captured'}</span></div>
         </div>
         {canEditNotes ? (
           <div className="mt-3 flex">
@@ -705,7 +714,6 @@ export function ProjectDetailPage() {
           <div className="mt-5 border-t border-white/10 pt-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-white">Branch and contact persons</h3>
-              <Link to={`/branches/${branch.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-400/50 bg-slate-800/60 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-slate-700/60">View branch details</Link>
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-4 text-sm text-white">
               <div>Branch: <span className="text-white">{branch.name}</span></div>

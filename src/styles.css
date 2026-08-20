@@ -306,6 +306,45 @@ select.current-task-select::placeholder,
   background: #06152d !important;
 }
 
+/* Accent panels sit on navy surfaces, so their text must remain light. */
+.content-main [class*="bg-cyan-400/"],
+.content-main [class*="bg-cyan-500/"],
+.content-main [class*="bg-sky-500/"],
+.content-main [class*="bg-emerald-500/"],
+.content-main [class*="bg-amber-500/"],
+.content-main [class*="bg-red-500/"] {
+  color: #e2e8f0 !important;
+}
+
+.content-main [class*="bg-cyan-400/"] *,
+.content-main [class*="bg-cyan-500/"] *,
+.content-main [class*="bg-sky-500/"] *,
+.content-main [class*="bg-emerald-500/"] *,
+.content-main [class*="bg-amber-500/"] *,
+.content-main [class*="bg-red-500/"] * {
+  color: #e2e8f0 !important;
+}
+
+.content-main [class*="bg-cyan-400/"] .text-white,
+.content-main [class*="bg-cyan-500/"] .text-white,
+.content-main [class*="bg-sky-500/"] .text-white,
+.content-main [class*="bg-emerald-500/"] .text-white,
+.content-main [class*="bg-amber-500/"] .text-white,
+.content-main [class*="bg-red-500/"] .text-white {
+  color: #ffffff !important;
+}
+
+.content-main [class*="bg-cyan-400/"] input,
+.content-main [class*="bg-cyan-400/"] select,
+.content-main [class*="bg-cyan-400/"] textarea,
+.content-main [class*="bg-cyan-500/"] input,
+.content-main [class*="bg-cyan-500/"] select,
+.content-main [class*="bg-cyan-500/"] textarea {
+  background-color: #06152d !important;
+  border-color: #31547d !important;
+  color: #f8fafc !important;
+}
+
 html,
 body,
 #root {
