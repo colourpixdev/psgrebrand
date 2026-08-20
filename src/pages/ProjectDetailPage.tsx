@@ -623,7 +623,11 @@ export function ProjectDetailPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" disabled={detailsMutation.isPending} onClick={() => detailsMutation.mutate()} className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">{detailsMutation.isPending ? 'Saving...' : 'Save details'}</button>
-                  <button type="button" disabled={detailsMutation.isPending} onClick={() => setIsEditingDetails(false)} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
+                  <button type="button" disabled={detailsMutation.isPending || deleteProjectMutation.isPending} onClick={() => { setDeleteConfirmationArmed(false); setIsEditingDetails(false); }} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
+                  {canDeleteProject ? <button type="button" onClick={() => { if (deleteConfirmationArmed) { deleteProjectMutation.mutate(); return; } setDeleteConfirmationArmed(true); }} disabled={detailsMutation.isPending || deleteProjectMutation.isPending} className="rounded-xl border border-red-400/35 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">
+                    {deleteProjectMutation.isPending ? 'Deleting...' : deleteConfirmationArmed ? 'Confirm delete' : 'Delete project'}
+                  </button> : null}
+                  {deleteConfirmationArmed ? <button type="button" onClick={() => setDeleteConfirmationArmed(false)} disabled={deleteProjectMutation.isPending} className="px-2 py-2 text-xs font-semibold text-slate-300 hover:text-white">Cancel delete</button> : null}
                 </div>
                 {detailsMutation.error instanceof Error ? <p className="text-sm text-red-300">{detailsMutation.error.message}</p> : null}
               </div>
@@ -692,14 +696,6 @@ export function ProjectDetailPage() {
             )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No project history recorded yet.</p>}
           </div>
         </div>
-        {canDeleteProject ? (
-          <div className="mt-5 border-t border-red-400/15 pt-5">
-            <button type="button" onClick={() => { if (deleteConfirmationArmed) { deleteProjectMutation.mutate(); return; } setDeleteConfirmationArmed(true); }} disabled={deleteProjectMutation.isPending} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-red-400/35 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">
-              {deleteProjectMutation.isPending ? 'Deleting project...' : deleteConfirmationArmed ? 'Confirm delete project' : 'Delete project'}
-            </button>
-            {deleteConfirmationArmed ? <button type="button" onClick={() => setDeleteConfirmationArmed(false)} disabled={deleteProjectMutation.isPending} className="ml-3 min-h-11 text-sm font-semibold text-slate-300 transition hover:text-white">Cancel</button> : null}
-          </div>
-        ) : null}
       </section>
       <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
         <div className="mt-6 border-t border-white/10 pt-0">
