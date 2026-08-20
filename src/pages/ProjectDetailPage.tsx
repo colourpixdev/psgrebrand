@@ -23,14 +23,6 @@ const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-type ProjectSectionId = 'taskUpdates' | 'files' | 'notes';
-
-const projectSections: Array<{ id: ProjectSectionId; number: string; label: string }> = [
-  { id: 'taskUpdates', number: '01', label: 'Updates' },
-  { id: 'files', number: '02', label: 'Files' },
-  { id: 'notes', number: '03', label: 'Internal notes' },
-];
-
 const statusLabels: Record<ProjectStatus, string> = {
   completed: 'Completed',
   busy: 'In progress',
@@ -98,7 +90,6 @@ export function ProjectDetailPage() {
   const { user } = useAuth();
   const { showSuccess } = useSaveFeedback();
   const queryClient = useQueryClient();
-  const [activeProjectSection, setActiveProjectSection] = useState<ProjectSectionId>('taskUpdates');
   const [commentMessage, setCommentMessage] = useState('');
   const [journalTaskId, setJournalTaskId] = useState('');
   const [notesDraft, setNotesDraft] = useState('');
@@ -723,38 +714,7 @@ export function ProjectDetailPage() {
         ) : null}
       </section>
 
-      <section className="rounded-[2rem] border border-cyan-300/20 bg-slate-950/80 p-4 shadow-soft">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-teal-200/80">Project menu</p>
-            <h3 className="mt-1 text-lg font-semibold text-white">Choose a workspace block</h3>
-          </div>
-          <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">Back to branches</Link>
-        </div>
-        <nav className="mt-4 flex flex-wrap gap-2">
-          {projectSections.filter((item) => {
-            // PSG users cannot access internal stage management
-            if (item.id === 'notes' && !isInternalUser) return false;
-            return true;
-          }).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveProjectSection(item.id)}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-3 py-2 text-left text-sm font-semibold transition sm:px-4 ${
-                activeProjectSection === item.id
-                  ? 'border-cyan-300/50 bg-cyan-400/20 text-cyan-100'
-                  : 'border-white/10 bg-white/5 text-slate-300 hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-white'
-              }`}
-            >
-              <span className="text-xs text-cyan-200">#{item.number}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-      </section>
-
-      <section className={activeProjectSection === 'taskUpdates' && isInternalUser ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
+      <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
         <div className="mt-6 border-t border-white/10 pt-0">
           <div className="flex items-center justify-between gap-3 mb-4">
             <h3 className="text-lg font-semibold text-white">Stages</h3>
@@ -777,13 +737,17 @@ export function ProjectDetailPage() {
               </div>
             )}
           </div>
-          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
-            <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder={canAddTasks ? 'Add next stage...' : 'Stage updates restricted'} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
-            <button type="button" disabled={!canAddTasks || taskMutation.isPending || !taskText.trim()} onClick={() => taskMutation.mutate()} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
-              Add stage
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-slate-400">Add stages in the order the rebrand should progress. Update each stage status directly.</p>
+          {isInternalUser ? (
+            <>
+              <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+                <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder={canAddTasks ? 'Add next stage...' : 'Stage updates restricted'} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
+                <button type="button" disabled={!canAddTasks || taskMutation.isPending || !taskText.trim()} onClick={() => taskMutation.mutate()} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+                  Add stage
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">Add stages in the order the rebrand should progress. Update each stage status directly.</p>
+            </>
+          ) : <p className="mt-2 text-sm text-slate-400">The stages below show the current rebrand progress.</p>}
           <div className="mt-4 space-y-2">
             {mergedTasks.length > 0 ? mergedTasks.map((task, index) => {
               const taskStatus = getTaskStatus(task);
@@ -1067,10 +1031,10 @@ export function ProjectDetailPage() {
         </div>
       </section>
 
-      <section className={activeProjectSection === 'taskUpdates' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
+      <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-white">Updates</h3>
+            <h3 className="text-lg font-semibold text-white">Progress updates</h3>
             <p className="mt-1 text-sm text-slate-300">Recent progress updates and important requests for this branch rebrand.</p>
           </div>
           {unreadAnswers.length > 0 ? <span className="rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100">{unreadAnswers.length} new answer{unreadAnswers.length === 1 ? '' : 's'}</span> : null}
@@ -1079,15 +1043,15 @@ export function ProjectDetailPage() {
         {canUseConversationComposer ? (
           <div className="mt-5 grid gap-3 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4">
             <label className="grid gap-2 text-sm text-slate-200">
-              Related task
+              Related stage
               <select value={journalTaskId} onChange={(event) => setJournalTaskId(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/50">
-                <option value="">General update (not tied to a task)</option>
-                {selectedProject.tasks.map((item) => <option key={item.id} value={item.id}>{item.text}{item.stage ? ' · stage' : ''}</option>)}
+                <option value="">General project update</option>
+                {selectedProject.tasks.map((item) => <option key={item.id} value={item.id}>{item.text}</option>)}
               </select>
             </label>
             <label className="grid gap-2 text-sm text-slate-200">
               Message
-              <textarea value={commentMessage} onChange={(event) => setCommentMessage(event.target.value)} rows={3} placeholder="Share an update or ask for action on this task." className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50 sm:text-sm sm:leading-6" />
+              <textarea value={commentMessage} onChange={(event) => setCommentMessage(event.target.value)} rows={3} placeholder="Share a progress update or request." className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-300 focus:border-cyan-300/50 sm:text-sm sm:leading-6" />
             </label>
             <div className="flex flex-wrap gap-2">
               {canCreateAssignedUpdate ? (
@@ -1214,7 +1178,7 @@ export function ProjectDetailPage() {
         </div>
       </section>
 
-      <section className={activeProjectSection === 'files' ? '' : 'hidden'}>
+      <section>
         <FileGrid
           files={selectedProject.files}
           taskFolders={selectedProject.tasks.map((task) => ({ id: task.id, label: task.text }))}
@@ -1231,7 +1195,7 @@ export function ProjectDetailPage() {
         />
       </section>
 
-      <section className={activeProjectSection === 'notes' ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
+      {isInternalUser ? <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-white">Summary</h3>
@@ -1243,7 +1207,7 @@ export function ProjectDetailPage() {
         </div>
         <textarea value={notesDraft} disabled={!canEditNotes || notesMutation.isPending} onChange={(event) => setNotesDraft(event.target.value)} rows={6} placeholder="Add project notes..." className="mt-5 w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-base leading-7 text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm sm:leading-6" />
         {notesError instanceof Error ? <p className="mt-3 text-sm text-red-300">{notesError.message}</p> : null}
-      </section>
+      </section> : null}
     </div>
   );
 }
