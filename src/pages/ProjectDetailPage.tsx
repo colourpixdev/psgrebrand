@@ -782,7 +782,7 @@ export function ProjectDetailPage() {
                 busy: 'border-amber-400/30 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25',
                 done: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25',
               };
-              const statusLabels: Record<'pending' | 'open' | 'busy' | 'done', string> = { pending: 'Pending', open: 'Open', busy: 'Busy', done: 'Done' };
+              const statusLabels: Record<'pending' | 'open' | 'busy' | 'done', string> = { pending: 'Pending', open: 'Not started', busy: 'Busy', done: 'Complete' };
               const isAccordionExpanded = expandedAccordionTaskIds.includes(task.id);
               const taskBodyId = `task-body-${task.id}`;
 
@@ -813,6 +813,39 @@ export function ProjectDetailPage() {
                   </div>
                 </button>
 
+                <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-3">
+                  <select
+                    value={taskStatus}
+                    disabled={!canCurrentUserCompleteTask(task) || updateTaskMutation.isPending}
+                    onChange={(event) => updateTaskMutation.mutate({ task, status: event.target.value as TaskItem['status'] })}
+                    aria-label={`Status for ${task.text}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${statusStyles[taskStatus]}`}
+                  >
+                    {(['open', 'pending', 'busy', 'done'] as const).map((status) => (
+                      <option key={status} value={status}>{statusLabels[status]}</option>
+                    ))}
+                  </select>
+                  {canUploadFiles ? (
+                    <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
+                      {uploadMutation.isPending && uploadMutation.variables?.taskId === task.id ? 'Uploading...' : 'Upload file'}
+                      <input
+                        type="file"
+                        disabled={uploadMutation.isPending}
+                        accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = '';
+                          if (file) {
+                            uploadMutation.mutate({ file, taskId: task.id });
+                          }
+                        }}
+                      />
+                    </label>
+                  ) : null}
+                  <span className="text-xs text-slate-500">{taskFiles.length} file{taskFiles.length === 1 ? '' : 's'} attached</span>
+                </div>
+
                 {/* Accordion Body */}
                 {isAccordionExpanded && (
                   <div id={taskBodyId} className="border-t border-white/10 px-4 py-3 text-sm text-slate-200">
@@ -827,17 +860,6 @@ export function ProjectDetailPage() {
                 ) : (
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 flex-1 items-start gap-3">
-                      <select
-                        value={taskStatus}
-                        disabled={!canCurrentUserCompleteTask(task) || updateTaskMutation.isPending}
-                        onChange={(event) => updateTaskMutation.mutate({ task, status: event.target.value as TaskItem['status'] })}
-                        aria-label={`Status for ${task.text}`}
-                        className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${statusStyles[taskStatus]}`}
-                      >
-                        {(['pending', 'open', 'busy', 'done'] as const).map((status) => (
-                          <option key={status} value={status}>{statusLabels[status]}</option>
-                        ))}
-                      </select>
                       <span className="min-w-0">
                         <span className={taskStatus === 'done' ? 'block text-slate-500 line-through' : 'block text-slate-200'}>{task.text}</span>
                         <span className="mt-1 block text-xs text-slate-500">
@@ -880,24 +902,6 @@ export function ProjectDetailPage() {
                       <span className="text-xs text-slate-500">
                         {taskFiles.length} file{taskFiles.length === 1 ? '' : 's'} attached to this task
                       </span>
-                      {canUploadFiles ? (
-                        <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-white/10 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
-                          {uploadMutation.isPending ? 'Uploading...' : 'Upload file'}
-                          <input
-                            type="file"
-                            disabled={uploadMutation.isPending}
-                            accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
-                            className="sr-only"
-                            onChange={(event) => {
-                              const file = event.target.files?.[0];
-                              event.target.value = '';
-                              if (file) {
-                                uploadMutation.mutate({ file, taskId: task.id });
-                              }
-                            }}
-                          />
-                        </label>
-                      ) : null}
                     </div>
                     {task.text.toLowerCase().includes('schedule installation') ? (
                       <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-3">
