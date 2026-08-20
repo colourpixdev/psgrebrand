@@ -657,9 +657,16 @@ export function ProjectDetailPage() {
             <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Stage checklist</p><span className="text-xs text-slate-400">{completedStageCount} of {stagePlan.length} stages</span></div>
             <div className="mt-3 flex flex-wrap gap-2">
               {stagePlan.map((stage, index) => {
-                const completed = selectedProject.tasks.some((task) => (task.stage ?? task.text).trim() === stage && task.completed);
+                const stageTask = selectedProject.tasks.find((task) => (task.stage ?? task.text).trim() === stage);
+                const taskStatus = stageTask ? getTaskStatus(stageTask) : 'pending';
                 const current = stage === selectedProject.currentStage;
-                return <span key={`${stage}-${index}`} className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${completed ? 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100' : current ? 'border-cyan-300/50 bg-cyan-400/20 text-cyan-100' : 'border-white/10 bg-white/5 text-slate-400'}`}>{completed ? '✓ ' : current ? '● ' : '○ '}{stage}</span>;
+                return (
+                  <div key={`${stage}-${index}`} className={`flex flex-wrap items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold ${taskStatus === 'done' ? 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100' : current ? 'border-cyan-300/50 bg-cyan-400/20 text-cyan-100' : 'border-white/10 bg-white/5 text-slate-300'}`}>
+                    <span>{taskStatus === 'done' ? '✓ ' : current ? '● ' : '○ '}{stage}</span>
+                    {stageTask ? <select value={taskStatus} disabled={!canCurrentUserCompleteTask(stageTask) || updateTaskMutation.isPending} onChange={(event) => updateTaskMutation.mutate({ task: stageTask, status: event.target.value as TaskItem['status'] })} aria-label={`Status for ${stage}`} className="rounded-lg border border-white/15 bg-slate-950/60 px-1.5 py-1 text-[11px] text-white outline-none"><option value="pending">Pending</option><option value="open">Started</option><option value="busy">Busy</option><option value="done">Completed</option></select> : null}
+                    {stageTask && canAddTasks ? <><button type="button" disabled={reorderTaskMutation.isPending || index === 0} onClick={() => reorderTaskMutation.mutate({ task: stageTask, direction: 'up' })} aria-label={`Move ${stage} earlier`} className="rounded-md border border-white/15 px-1.5 py-1 text-[11px] text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">↑</button><button type="button" disabled={reorderTaskMutation.isPending || index === stagePlan.length - 1} onClick={() => reorderTaskMutation.mutate({ task: stageTask, direction: 'down' })} aria-label={`Move ${stage} later`} className="rounded-md border border-white/15 px-1.5 py-1 text-[11px] text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">↓</button></> : null}
+                  </div>
+                );
               })}
             </div>
           </div>
@@ -747,7 +754,7 @@ export function ProjectDetailPage() {
                 busy: 'border-amber-400/30 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25',
                 done: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25',
               };
-              const statusLabels: Record<'pending' | 'open' | 'busy' | 'done', string> = { pending: 'Pending', open: 'Not started', busy: 'Busy', done: 'Complete' };
+              const statusLabels: Record<'pending' | 'open' | 'busy' | 'done', string> = { pending: 'Pending', open: 'Started', busy: 'Busy', done: 'Completed' };
               const isAccordionExpanded = expandedAccordionTaskIds.includes(task.id);
               const taskBodyId = `task-body-${task.id}`;
 
@@ -786,7 +793,7 @@ export function ProjectDetailPage() {
                     aria-label={`Status for ${task.text}`}
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${statusStyles[taskStatus]}`}
                   >
-                    {(['open', 'pending', 'busy', 'done'] as const).map((status) => (
+                    {(['pending', 'open', 'busy', 'done'] as const).map((status) => (
                       <option key={status} value={status}>{statusLabels[status]}</option>
                     ))}
                   </select>

@@ -81,7 +81,7 @@ function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
     id: taskRow.id,
     text: taskRow.title || '<Untitled Task>',
     completed,
-    status: status === 'not_started' ? 'open' : status === 'in_progress' ? 'busy' : status === 'complete' ? 'done' : 'open',
+    status: status === 'not_started' ? 'pending' : status === 'in_progress' ? 'busy' : status === 'complete' ? 'done' : 'open',
     stage: undefined,
     assigneeName: undefined,
     assigneeEmail: undefined,
@@ -1920,7 +1920,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
 
   // Map status from frontend format to relational format
   const nextStatus = input.status ?? (input.completed !== undefined ? (input.completed ? 'done' : 'open') : undefined);
-  const relationalStatus = nextStatus === 'done' ? 'complete' : nextStatus === 'busy' ? 'in_progress' : nextStatus === 'pending' ? 'not_started' : nextStatus === 'open' ? 'not_started' : 'not_started';
+  const relationalStatus = nextStatus === 'done' ? 'complete' : nextStatus === 'busy' ? 'in_progress' : nextStatus === 'pending' ? 'not_started' : nextStatus === 'open' ? 'waiting' : 'not_started';
   const relationalPriority = 'normal'; // Default priority for updates
 
   // Update task in relational table
@@ -1941,8 +1941,8 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
   }
 
   // Record activity
-  const activityTitle = relationalStatus === 'complete' ? 'Task completed' : relationalStatus === 'in_progress' ? 'Task in progress' : relationalStatus === 'not_started' ? 'Task reopened' : 'Task updated';
-  const activityVerb = relationalStatus === 'complete' ? 'completed' : relationalStatus === 'in_progress' ? 'marked in progress on' : relationalStatus === 'not_started' ? 'reopened' : 'updated';
+  const activityTitle = relationalStatus === 'complete' ? 'Task completed' : relationalStatus === 'in_progress' ? 'Task in progress' : relationalStatus === 'waiting' ? 'Task started' : relationalStatus === 'not_started' ? 'Task reopened' : 'Task updated';
+  const activityVerb = relationalStatus === 'complete' ? 'completed' : relationalStatus === 'in_progress' ? 'marked in progress on' : relationalStatus === 'waiting' ? 'started' : relationalStatus === 'not_started' ? 'reopened' : 'updated';
   const activity = [
     createActivity(
       activityTitle,
