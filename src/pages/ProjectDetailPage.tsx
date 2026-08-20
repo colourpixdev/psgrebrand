@@ -4,13 +4,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { DatePickerInput } from '../components/DatePickerInput';
 import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
-import { getBranchById } from '../services/branchService';
+import { getBranchById, updateBranch } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { can, canViewProject, canAddTaskComments, getRolePolicy } from '../utils/permissions';
 import { getTaskStatus } from '../utils/taskStatus';
-import type { CommentItem, Project, ProjectFile, ProjectStatus, ProjectStage, TaskItem } from '../types/domain';
+import type { CommentItem, ContactPerson, Division, Project, ProjectFile, ProjectStatus, ProjectStage, TaskItem } from '../types/domain';
 import { normalizeRole } from '../types/domain';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
@@ -94,6 +94,15 @@ export function ProjectDetailPage() {
   const [briefRequestedDateDraft, setBriefRequestedDateDraft] = useState('');
   const [installationDateDraft, setInstallationDateDraft] = useState('');
   const [completionDateDraft, setCompletionDateDraft] = useState('');
+  const [isEditingBranchDetails, setIsEditingBranchDetails] = useState(false);
+  const [branchDetailsDraft, setBranchDetailsDraft] = useState({
+    name: '',
+    division: 'Wealth' as Division,
+    province: '',
+    town: '',
+    physicalAddress: '',
+    contacts: [] as ContactPerson[],
+  });
   const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
   const [answerMessage, setAnswerMessage] = useState('');
   const [answerStage, setAnswerStage] = useState<ProjectStage>('New Project');
@@ -129,6 +138,26 @@ export function ProjectDetailPage() {
       setCompletionDateDraft(project.completionDate);
     }
   }, [project]);
+
+  useEffect(() => {
+    if (!branch) {
+      return;
+    }
+
+    const contacts = branch.contacts?.length
+      ? branch.contacts
+      : branch.contactName
+        ? [{ name: branch.contactName, email: branch.contactEmail, phone: branch.contactPhone, designation: 'Contact Person' }]
+        : [];
+    setBranchDetailsDraft({
+      name: branch.name,
+      division: branch.division,
+      province: branch.province,
+      town: branch.town,
+      physicalAddress: branch.physicalAddress,
+      contacts,
+    });
+  }, [branch]);
 
   useEffect(() => {
     // Reset accordion state when project ID changes to ensure accordions are collapsed by default
@@ -180,6 +209,35 @@ export function ProjectDetailPage() {
       completionDate: completionDateDraft,
     }),
     onSuccess: (updatedProject) => syncProject(updatedProject, 'Project summary fields saved.'),
+  });
+
+  const branchDetailsMutation = useMutation({
+    mutationFn: async () => {
+      if (!branch) {
+        throw new Error('Branch details are unavailable.');
+      }
+
+      const contacts = branchDetailsDraft.contacts.filter((contact) => contact.name.trim());
+      return updateBranch(branch.id, {
+        name: branchDetailsDraft.name.trim(),
+        division: branchDetailsDraft.division,
+        province: branchDetailsDraft.province.trim(),
+        town: branchDetailsDraft.town.trim(),
+        physicalAddress: branchDetailsDraft.physicalAddress.trim(),
+        contactName: contacts[0]?.name.trim() || null,
+        contactEmail: contacts[0]?.email?.trim() || null,
+        contactPhone: contacts[0]?.phone?.trim() || null,
+        contacts,
+      });
+    },
+    onSuccess: async (updatedBranch) => {
+      if (updatedBranch) {
+        queryClient.setQueryData(['branch', updatedBranch.id], updatedBranch);
+      }
+      await queryClient.invalidateQueries({ queryKey: ['branch', branch?.id] });
+      setIsEditingBranchDetails(false);
+      showSuccess('Branch details saved.');
+    },
   });
 
   const questionMutation = useMutation({
@@ -412,6 +470,7 @@ export function ProjectDetailPage() {
   const canDeleteProject = Boolean(rolePolicy?.projectAccess.canDeleteProjects);
   const canCreateAssignedUpdate = canAddComments;
   const canUseConversationComposer = canCreateAssignedUpdate || canAskColourpix;
+  const canEditBranchDetails = ['beverley', 'francois'].includes(user?.name.trim().toLowerCase() ?? '');
 
   function canCurrentUserCompleteTask(task: TaskItem) {
     if (!canCompleteTasks) {
@@ -521,6 +580,56 @@ export function ProjectDetailPage() {
           </div>
         </div>
 
+        {branch ? (
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-100">Branch and contact persons</h2>
+              {canEditBranchDetails && !isEditingBranchDetails ? (
+                <button type="button" onClick={() => setIsEditingBranchDetails(true)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">Edit branch details</button>
+              ) : null}
+            </div>
+
+            {isEditingBranchDetails && canEditBranchDetails ? (
+              <div className="mt-4 grid gap-4 text-sm text-slate-200">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="grid gap-2">Branch<input value={branchDetailsDraft.name} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, name: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                  <label className="grid gap-2">Division<select value={branchDetailsDraft.division} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, division: event.target.value as Division }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50"><option value="Wealth">Wealth</option><option value="Insure">Insure</option><option value="Wealth Insure">Wealth Insure</option></select></label>
+                  <label className="grid gap-2">Province<input value={branchDetailsDraft.province} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, province: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                  <label className="grid gap-2">Town<input value={branchDetailsDraft.town} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, town: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                </div>
+                <label className="grid gap-2">Branch address<textarea value={branchDetailsDraft.physicalAddress} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, physicalAddress: event.target.value }))} rows={2} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                <div className="grid gap-3">
+                  {branchDetailsDraft.contacts.map((contact, index) => (
+                    <div key={`contact-${index}`} className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-3 md:grid-cols-2">
+                      <label className="grid gap-2">Name<input value={contact.name} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, contacts: current.contacts.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item) }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none" /></label>
+                      <label className="grid gap-2">Designation<input value={contact.designation} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, contacts: current.contacts.map((item, itemIndex) => itemIndex === index ? { ...item, designation: event.target.value } : item) }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none" /></label>
+                      <label className="grid gap-2">Email<input value={contact.email ?? ''} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, contacts: current.contacts.map((item, itemIndex) => itemIndex === index ? { ...item, email: event.target.value } : item) }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none" /></label>
+                      <label className="grid gap-2">Phone<input value={contact.phone ?? ''} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, contacts: current.contacts.map((item, itemIndex) => itemIndex === index ? { ...item, phone: event.target.value } : item) }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none" /></label>
+                      <button type="button" onClick={() => setBranchDetailsDraft((current) => ({ ...current, contacts: current.contacts.filter((_, itemIndex) => itemIndex !== index) }))} className="w-fit text-xs font-semibold text-red-200 hover:text-red-100">Remove contact</button>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => setBranchDetailsDraft((current) => ({ ...current, contacts: [...current.contacts, { name: '', designation: 'Contact Person', email: '', phone: '' }] }))} className="w-fit rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Add contact person</button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" disabled={branchDetailsMutation.isPending} onClick={() => branchDetailsMutation.mutate()} className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">{branchDetailsMutation.isPending ? 'Saving...' : 'Save branch details'}</button>
+                  <button type="button" disabled={branchDetailsMutation.isPending} onClick={() => setIsEditingBranchDetails(false)} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
+                </div>
+                {branchDetailsMutation.error instanceof Error ? <p className="text-sm text-red-300">{branchDetailsMutation.error.message}</p> : null}
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-4 text-sm text-white md:grid-cols-2">
+                <div><span className="text-cyan-200">Branch:</span> {branch.name}</div>
+                <div><span className="text-cyan-200">Division:</span> {branch.division}</div>
+                <div><span className="text-cyan-200">Town/Province:</span> {branch.town}, {branch.province}</div>
+                <div className="md:col-span-2"><span className="text-cyan-200">Branch address:</span> {branch.physicalAddress || 'Not captured'}</div>
+                <div className="md:col-span-2 grid gap-3 sm:grid-cols-2">
+                  {branchParticipants.length > 0 ? branchParticipants.map((participant, index) => <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3"><p className="font-medium text-cyan-400">{participant.name}</p><p className="mt-1 text-xs text-slate-300">{participant.designation}</p>{participant.email ? <p className="mt-2 text-xs text-slate-300">{participant.email}</p> : null}{participant.phone ? <p className="mt-1 text-xs text-slate-300">{participant.phone}</p> : null}</div>) : <p className="text-slate-300">No branch contact persons have been added yet.</p>}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</p><p className="mt-1 text-lg font-semibold text-white">{selectedProject.currentStage}</p></div>
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Target completion</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.targetDate)}</p></div>
@@ -621,32 +730,6 @@ export function ProjectDetailPage() {
           </div>
         ) : null}
         {projectSummaryMutation.error instanceof Error ? <p className="mt-2 text-sm text-red-300">{projectSummaryMutation.error.message}</p> : null}
-
-        {branch ? (
-          <div className="mt-5 border-t border-white/10 pt-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-white">Branch and contact persons</h3>
-            </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-4 text-sm text-white">
-              <div>Branch: <span className="text-white">{branch.name}</span></div>
-              <div>Division: <span className="text-white">{branch.division}</span></div>
-              <div>Town/Province: <span className="text-white">{branch.town}, {branch.province}</span></div>
-              <div className="md:col-span-4">Branch address: <span className="text-white">{branch.physicalAddress || 'Not captured'}</span></div>
-            </div>
-            {branchParticipants.length > 0 ? (
-              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {branchParticipants.map((participant, index) => (
-                  <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3">
-                    <p className="font-medium text-cyan-400">{participant.name}</p>
-                    <p className="mt-1 text-sm text-cyan-400">{participant.designation}</p>
-                    {participant.email ? <p className="mt-2 text-xs text-cyan-400">{participant.email}</p> : null}
-                    {participant.phone ? <p className="mt-1 text-xs text-cyan-400">{participant.phone}</p> : null}
-                  </div>
-                ))}
-              </div>
-            ) : <p className="mt-4 text-sm text-white">No branch contact persons have been added yet.</p>}
-          </div>
-        ) : null}
 
         {canDeleteProject ? (
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-red-400/15 pt-5">
