@@ -15,6 +15,7 @@ const DashboardPage = lazyWithChunkReload('dashboard', () => import('./pages/Das
 const MapPage = lazyWithChunkReload('map', () => import('./pages/MapPage').then((module) => ({ default: module.MapPage })));
 const ProjectDetailPage = lazyWithChunkReload('project-detail', () => import('./pages/ProjectDetailPage').then((module) => ({ default: module.ProjectDetailPage })));
 const ProjectsPage = lazyWithChunkReload('projects', () => import('./pages/ProjectsPage').then((module) => ({ default: module.ProjectsPage })));
+const ReportsPage = lazyWithChunkReload('reports', () => import('./pages/ReportsPage').then((module) => ({ default: module.ReportsPage })));
 const BranchesPage = lazyWithChunkReload('branches', () => import('./pages/BranchesPage').then((module) => ({ default: module.BranchesPage })));
 const BranchDetailPage = lazyWithChunkReload('branch-detail', () => import('./pages/BranchDetailPage').then((module) => ({ default: module.BranchDetailPage })));
 const SearchPage = lazyWithChunkReload('search', () => import('./pages/SearchPage').then((module) => ({ default: module.SearchPage })));
@@ -31,8 +32,9 @@ const AuthCallbackPage = lazyWithChunkReload('auth-callback', () => import('./pa
 
 const navigation = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/projects', label: 'Projects', icon: KanbanSquare },
   { to: '/branches', label: 'Branches', icon: MapPinned },
-  { to: '/map', label: 'Map', icon: Map },
+  { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/settings', label: 'Settings', icon: Shield },
 ];
@@ -41,6 +43,7 @@ const routeTitles: Record<string, string> = {
   '/': 'Dashboard',
   '/projects': 'Projects',
   '/branches': 'Branches',
+  '/reports': 'Reports',
   '/users': 'Users',
   '/access-controls': 'Access Controls',
   '/settings': 'Settings',
@@ -197,6 +200,7 @@ function AppRoutes() {
             <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
             <Route path="/branches" element={<BranchesPage />} />
             <Route path="/branches/:branchId" element={<BranchDetailPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
             <Route path="/users" element={canAccessRoute(user, '/users') ? <UsersPage /> : <Navigate to="/" replace />} />
             <Route path="/access-controls" element={canAccessRoute(user, '/access-controls') ? <AccessControlsPage /> : <Navigate to="/" replace />} />
             <Route path="/settings" element={<SettingsPage />} />

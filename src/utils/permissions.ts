@@ -379,8 +379,14 @@ export function canAccessRoute(user: UserRecord | null | undefined, path: string
     return false;
   }
 
-  if (path.startsWith('/access-controls')) {
-    return canManageAccessControls(user);
+  const isInternalManagement = user.role === 'colourpix_admin' || user.role === 'psg_head_office';
+
+  if (path.startsWith('/access-controls') || path.startsWith('/users') || path.startsWith('/settings')) {
+    return isInternalManagement || canManageAccessControls(user);
+  }
+
+  if (path.startsWith('/reports')) {
+    return true;
   }
 
   return true;

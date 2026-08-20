@@ -3,13 +3,13 @@ import { isTaskOutstanding } from '../../utils/taskStatus';
 import type { Project, UserRecord } from '../../types/domain';
 
 const statusTone: Record<Project['status'], string> = {
-  completed: 'bg-emerald-400/15 text-emerald-200 ring-emerald-400/30',
-  busy: 'bg-cyan-400/15 text-cyan-200 ring-cyan-400/30',
-  in_progress: 'bg-sky-400/15 text-sky-200 ring-sky-400/30',
-  awaiting_approval: 'bg-amber-400/15 text-amber-200 ring-amber-400/30',
-  delayed: 'bg-red-400/15 text-red-200 ring-red-400/30',
-  on_hold: 'bg-slate-400/15 text-slate-200 ring-slate-400/30',
-  cancelled: 'bg-stone-400/15 text-stone-200 ring-stone-400/30',
+  completed: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
+  busy: 'bg-sky-100 text-sky-800 ring-sky-200',
+  in_progress: 'bg-sky-100 text-sky-800 ring-sky-200',
+  awaiting_approval: 'bg-amber-100 text-amber-800 ring-amber-200',
+  delayed: 'bg-red-100 text-red-800 ring-red-200',
+  on_hold: 'bg-slate-200 text-slate-700 ring-slate-300',
+  cancelled: 'bg-stone-200 text-stone-700 ring-stone-300',
 };
 
 function isQuestionRequester(question: Project['comments'][number], user: UserRecord | null | undefined) {
@@ -22,44 +22,52 @@ export function ProjectCard({ project, user }: { project: Project; user?: UserRe
   const outstandingTasks = project.tasks.filter(isTaskOutstanding).length;
 
   return (
-    <article className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 transition hover:-translate-y-0.5 hover:border-sky-400/30">
+    <article className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-xs uppercase tracking-[0.18em] text-slate-500">Branch reference</p>
-          <h3 className="mt-2 truncate text-base font-semibold text-white">{project.branch}</h3>
-          <p className="text-sm text-slate-400">
-            {project.town}, {project.province}
-          </p>
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Branch</p>
+          <h3 className="mt-2 truncate text-lg font-semibold text-slate-900">{project.branch}</h3>
+          <p className="mt-1 text-sm text-slate-600">{project.town} · {project.province}</p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone[project.status]}`}>{project.status.replace('_', ' ')}</span>
-          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold text-slate-200">{outstandingTasks} task{outstandingTasks === 1 ? '' : 's'}</span>
+        <span className={`rounded-full px-2.5 py-1 text-[0.7rem] font-semibold ring-1 ${statusTone[project.status]}`}>
+          {project.status.replace('_', ' ')}
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-2 text-sm text-slate-600">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-slate-500">Stage</span>
+          <span className="font-medium text-slate-800">{project.currentStage}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-slate-500">Progress</span>
+          <span className="font-medium text-slate-800">{project.progress}%</span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-slate-500">Target</span>
+          <span className="font-medium text-slate-800">{project.targetDate || 'Not set'}</span>
         </div>
       </div>
 
-      {openQuestions > 0 || unreadAnswers > 0 ? (
+      {(openQuestions > 0 || unreadAnswers > 0 || outstandingTasks > 0) ? (
         <div className="mt-4 flex flex-wrap gap-2">
-          {unreadAnswers > 0 ? <span className="rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-100">{unreadAnswers} new answer{unreadAnswers === 1 ? '' : 's'}</span> : null}
-          {openQuestions > 0 ? <span className="rounded-full border border-amber-400/25 bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-100">{openQuestions} open question{openQuestions === 1 ? '' : 's'}</span> : null}
+          {outstandingTasks > 0 ? <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-slate-700">{outstandingTasks} tasks</span> : null}
+          {openQuestions > 0 ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700">{openQuestions} open</span> : null}
+          {unreadAnswers > 0 ? <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-emerald-700">{unreadAnswers} answered</span> : null}
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-1 text-sm text-slate-300">
-        <p className="truncate">Manager: {project.manager}</p>
-        <p>Target: {project.targetDate}</p>
+      <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500" style={{ width: `${project.progress}%` }} />
       </div>
 
-      <div className="mt-4 flex items-center gap-3">
-        <Link to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`} className="inline-flex items-center justify-center rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">
-          Open branch record
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-700">
+          Open project
         </Link>
-        <Link to={`/projects/${project.id}`} className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-200 transition hover:bg-white/10">
-          Project details
+        <Link to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`} className="text-sm font-medium text-sky-700 hover:text-sky-800">
+          Branch view
         </Link>
-      </div>
-
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
-        <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-400" style={{ width: `${project.progress}%` }} />
       </div>
     </article>
   );
