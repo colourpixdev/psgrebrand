@@ -1,0 +1,1297 @@
+PSG REBRAND CONTROL CENTRE
+IMPLEMENTATION READINESS PLAN
+=============================
+
+Status: Pre-coding architecture and migration analysis only.
+No code, database schema, migrations, packages, Supabase records, or production data were changed.
+
+Purpose
+-------
+This document is the required pre-implementation map for transforming the current project-centric prototype into the approved branch-first PSG Rebrand Rollout Control Centre.
+
+The approved direction is:
+
+  Branch
+    -> One active primary Rebrand Workspace
+        -> Fixed workflow stages
+        -> Relational tasks
+        -> Shared responsibility
+        -> Required files and evidence
+        -> Updates
+        -> Requests
+        -> Approvals
+        -> Immutable activity
+        -> My Actions
+
+The current application must not be refactored page-by-page while preserving conflicting project JSONB, assignee, stage, and permission assumptions.
+
+A. CURRENT ARCHITECTURE MAP
+===========================
+
+A1. PROJECT STRUCTURE
+---------------------
+
+Application entry:
+  src/App.tsx
+
+Shell/layout:
+  src/layouts/AppShell.tsx
+
+Pages:
+  src/pages/LoginPage.tsx
+  src/pages/AuthCallbackPage.tsx
+  src/pages/DashboardPage.tsx
+  src/pages/BranchesPage.tsx
+  src/pages/BranchDetailPage.tsx
+  src/pages/ProjectsPage.tsx
+  src/pages/ProjectDetailPage.tsx
+  src/pages/MapPage.tsx
+  src/pages/SearchPage.tsx
+  src/pages/ReportsPage.tsx
+  src/pages/UsersPage.tsx
+  src/pages/AccessControlsPage.tsx
+  src/pages/SettingsPage.tsx
+  src/pages/ProfilePage.tsx
+  src/pages/SupportPage.tsx
+  src/pages/AboutPage.tsx
+  src/pages/LegalPage.tsx
+
+Shared components:
+  src/components/CurrentTaskCard.tsx
+  src/components/QuickUpdate/QuickUpdate.tsx
+  src/components/uploads/FileGrid.tsx
+  src/components/projects/ProjectCard.tsx
+  src/components/projects/ProjectCreateForm.tsx
+  src/components/timeline/Timeline.tsx
+  src/components/dashboard/*
+  src/components/brand/*
+
+Services:
+  src/services/portalService.ts
+  src/services/branchService.ts
+  src/services/authService.ts
+  src/services/userService.ts
+
+Core types:
+  src/types/domain.ts
+
+Permissions:
+  src/utils/permissions.ts
+
+Task utilities:
+  src/utils/taskStatus.ts
+  src/constants/taskPool.ts
+  src/constants/taskTemplates.ts
+  src/constants/projectTemplates.ts
+
+Supabase:
+  src/lib/supabase.ts
+  src/lib/supabaseHealth.ts
+  supabase/schema.sql
+  supabase/repair-live-database.sql
+  supabase/create-profiles.sql
+  supabase/migrations/*
+
+A2. ROUTES
+----------
+
+Public/authentication routes:
+  /login
+  /auth/callback
+
+Authenticated routes:
+  /
+  /branches
+  /branches/:branchId
+  /projects
+  /projects/:projectId
+  /map
+  /search
+  /users
+  /access-controls
+  /settings
+  /profile
+  /support
+  /about
+  /legal
+
+Current primary navigation:
+  Dashboard
+  Branches
+  Map
+  Users
+  Settings
+
+Current missing target routes:
+  /my-actions
+  /approvals
+  /installations
+  /reports as an independent route
+  global search overlay
+
+A3. CURRENT DATA FETCHING
+-------------------------
+
+TanStack Query keys include:
+  - branches
+  - projects
+  - project/:id
+  - users
+  - portal-summary
+
+Most project-oriented pages load the complete projects collection and filter it in the browser.
+
+Current examples:
+  - Dashboard loads branches and all projects.
+  - BranchesPage loads branches and all projects.
+  - BranchDetailPage loads branches and all projects.
+  - ProjectsPage loads all projects.
+  - SearchPage loads all projects and searches project fields locally.
+  - ReportsPage loads all projects and calculates reports locally.
+
+Problems:
+  - Large collections are loaded unnecessarily.
+  - RLS/scoping is not represented in focused domain queries.
+  - Reporting/search depend on JSONB data being present in every project row.
+  - Concurrent mutations can overwrite whole JSONB arrays.
+
+A4. CURRENT AUTHENTICATION
+--------------------------
+
+Supabase Auth provides authentication.
+AuthContext exposes the current user.
+Profiles are loaded from public.profiles.
+The app supports a local preview fallback when configured.
+
+Current identity concepts include:
+  - auth user
+  - profile row
+  - role
+  - branch string
+  - workspaceIds array
+  - permission overrides
+
+Problems:
+  - Authentication, profile, role, and scope are not cleanly separated.
+  - Role normalisation currently collapses psg_head_office, psg_branch_manager, and sign_company to psg_user.
+  - Access Controls only exposes limited role choices.
+  - User workspace access is not represented by the approved scoped assignment model.
+
+A5. CURRENT AUTHORISATION
+-------------------------
+
+Permission groups currently include:
+  - project access
+  - workflow
+  - communication
+  - files
+  - tasks
+  - reports
+  - user management
+  - notifications
+
+Frontend permission checks include:
+  - create_project
+  - upload_files
+  - add_comments
+  - add_tasks
+  - manage_workflow
+  - export_reports
+  - view_settings
+
+The role policy also contains capabilities for:
+  - task creation
+  - task assignment
+  - task completion
+  - task deletion
+  - task reassignment
+
+These assignment capabilities conflict with the approved responsibility model.
+
+A6. CURRENT DOMAIN TYPES
+------------------------
+
+Branch contains:
+  - id
+  - code
+  - name
+  - division
+  - province
+  - city
+  - town
+  - physicalAddress
+  - latitude/longitude
+  - legacy primary contact fields
+  - contacts array
+
+Project contains:
+  - id
+  - branchId
+  - branchCode
+  - branch display name
+  - workspace fields
+  - client/company fields
+  - project type fields
+  - duplicated location fields
+  - manager/installer/designer fields
+  - currentStage as free-form string
+  - project status
+  - dates
+  - progress
+  - notes
+  - files array
+  - tasks array
+  - comments array
+  - activity array
+
+TaskItem currently contains:
+  - id
+  - text
+  - completed
+  - status: pending/open/busy/done
+  - stage as free-form string
+  - assigneeName
+  - assigneeEmail
+  - assignees array
+  - installationRequest
+  - createdAt
+  - completedAt
+  - completion actor fields
+
+These types directly conflict with the target model.
+
+A7. CURRENT TASK IMPLEMENTATION
+-------------------------------
+
+Task creation and editing occur through portalService.ts.
+
+Current behavior:
+  - Tasks are stored inside projects.tasks JSONB.
+  - New tasks are prepended to the existing task array.
+  - New tasks begin with status pending or open depending on path.
+  - Adding a task requires one or more assignees.
+  - Updating an open task without an assignee can be rejected.
+  - Task status can be changed through a cycle or dropdown depending on page.
+  - Current task is inferred using the first unfinished task.
+  - Task status is mixed with completed boolean.
+  - Stage is task text/stage metadata rather than a fixed stage reference.
+
+A8. CURRENT FILE IMPLEMENTATION
+--------------------------------
+
+Files are stored in:
+  Supabase Storage bucket project-files
+
+File metadata is stored in:
+  projects.files JSONB
+
+Current file metadata may include:
+  - name
+  - path
+  - size
+  - type
+  - uploadedAt
+  - taskId
+
+Current functionality:
+  - Upload
+  - Preview
+  - Download
+  - Rename
+  - Delete
+  - Task association
+
+Problems:
+  - No relational project_files record.
+  - No file category.
+  - No file version history.
+  - No required-file relation.
+  - No formal approval-file relation.
+  - Storage and database metadata can drift.
+  - File update mutates the whole project files array.
+
+A9. CURRENT COMMUNICATION/ACTIVITY
+-----------------------------------
+
+Comments, questions, answers, and requests are stored inside projects.comments JSONB.
+
+Activity is stored inside projects.activity JSONB.
+
+Current behavior includes:
+  - General project updates
+  - Task-linked updates
+  - Task comments
+  - Questions
+  - Answers
+  - Request-like objects
+  - Activity summaries
+
+Problems:
+  - Updates, requests, approvals, and activity are not separate entities.
+  - Activity is editable as part of the project document.
+  - Approval history cannot be reliably reconstructed.
+  - Request response state is mixed with comment state.
+  - No persistent notification system exists.
+
+A10. CURRENT DATABASE
+---------------------
+
+Application-owned tables currently present in schema files:
+  - public.branches
+  - public.projects
+  - public.profiles
+
+Supabase-managed resources:
+  - auth.users
+  - storage.buckets
+  - storage.objects
+
+Current projects table contains JSONB collections:
+  - files
+  - tasks
+  - comments
+  - activity
+
+Current schema also duplicates branch/location/workspace values across projects.
+
+Current schema lacks:
+  - active primary workspace uniqueness
+  - workflow_stages
+  - tasks
+  - responsible groups
+  - task templates as database rows
+  - file categories
+  - project_files
+  - file_versions
+  - requests
+  - approvals
+  - activity table
+  - notifications
+  - scoped role/access tables
+
+A11. CURRENT RLS/POLICIES
+-------------------------
+
+The schema and repair SQL contain broad policies including:
+  - public read access to branches
+  - public read access to projects
+  - authenticated insert/update/delete policies with broad true conditions
+
+This does not meet the approved workspace/branch-scoped security model.
+
+Current security risks:
+  - Public project data exposure.
+  - Authenticated users potentially able to mutate records outside their intended scope.
+  - Storage access requiring stronger linkage to workspace visibility.
+  - Profile self-elevation risk if profile fields are not separated.
+  - Activity not immutable.
+
+A12. CURRENT VISUAL/UX CHARACTER
+-------------------------------
+
+The current UI feels like an unfinished internal admin system with a developing operational visual language.
+
+Reasons:
+  - Dark shell and light content area are not consistently reconciled.
+  - Large rounded cards and nested dark panels dominate screens.
+  - Branch and project pages use competing layouts.
+  - Status terminology is inconsistent.
+  - Operational information is often below decorative or summary surfaces.
+  - Tables and dense control-centre views are underused.
+  - Error messages are not always local to the failing action.
+
+Good foundations:
+  - Responsive Tailwind structure.
+  - Dark navigation shell.
+  - Strong PSG/Colourpix branding opportunity.
+  - Existing file/task controls.
+  - Query loading/error patterns.
+
+B. TARGET ARCHITECTURE MAP
+==========================
+
+B1. TARGET PRODUCT MODEL
+------------------------
+
+Branch
+  -> active primary Rebrand Workspace
+      -> fixed Workflow Stages
+          -> relational Tasks
+              -> responsible group
+              -> optional responsible person
+              -> status/priority/due date
+              -> required files
+              -> updates
+      -> project files
+      -> requests
+      -> approvals
+      -> notifications
+      -> immutable activity
+
+B2. TARGET NAVIGATION
+---------------------
+
+Primary:
+  - Dashboard
+  - Branches
+  - My Actions
+  - Approvals
+  - Installations
+  - Reports
+  - Administration
+
+Secondary:
+  - Global Search
+  - Profile
+  - Support
+  - Map, depending on role
+
+Footer/user menu:
+  - About
+  - Legal
+
+B3. TARGET ROUTES
+-----------------
+
+  /login
+  /auth/callback
+  /
+  /branches
+  /branches/:branchId
+  /my-actions
+  /approvals
+  /installations
+  /reports
+  /search or global search overlay
+  /map
+  /admin/users
+  /admin/roles
+  /admin/templates
+  /admin/file-categories
+  /admin/settings
+  /admin/system-status
+  /profile
+  /support
+  /about
+  /legal
+
+Compatibility routes during migration:
+  - /projects redirects to branch/workspace portfolio view.
+  - /projects/:projectId resolves the workspace branch and redirects to /branches/:branchId.
+
+B4. TARGET DOMAIN SERVICES
+--------------------------
+
+  branchService
+    Branch identity, contacts, locations, branch visibility.
+
+  workspaceService
+    Workspace lookup, lifecycle, health, dates, stage, current task.
+
+  workflowService
+    Fixed stage reference data and stage state.
+
+  taskService
+    Task CRUD, status transitions, responsibility, current task, requirements.
+
+  templateService
+    Task templates and instantiation.
+
+  fileService
+    Relational file metadata, versions, Storage operations, required files.
+
+  updateService
+    Human-authored updates.
+
+  requestService
+    Requests and response history.
+
+  approvalService
+    Approval requests, files, decisions, and history.
+
+  activityService
+    Immutable activity writes and reads.
+
+  notificationService
+    My Actions support and persistent notifications.
+
+  permissionService
+    Role, permission, scope, and RLS-aligned access checks.
+
+  searchService
+    Relational/global search.
+
+  reportService
+    Server/query-driven operational reports.
+
+B5. TARGET VIEW MODELS
+----------------------
+
+Do not use one giant Project interface.
+
+Use separate query models:
+
+  DashboardSummary
+  BranchListRow
+  BranchWorkspaceSummary
+  CurrentTaskView
+  TaskDetailView
+  FileRequirementView
+  ApprovalQueueItem
+  MyActionItem
+  ReportRow
+  ActivityEntry
+
+These view models can join relational data without making every screen load every entity.
+
+B6. TARGET COMPONENT STRUCTURE
+------------------------------
+
+Shared:
+  - AppShell
+  - RoleAwareNavigation
+  - GlobalSearch
+  - NotificationBell
+  - StatusBadge
+  - HealthBadge
+  - EmptyState
+  - LoadingState
+  - ErrorState
+  - ConfirmDialog
+  - SaveFeedback
+
+Branch Workspace:
+  - BranchWorkspaceHeader
+  - HealthSummary
+  - AttentionStrip
+  - StageTimeline
+  - StageSection
+  - CurrentTaskPanel
+  - TaskList
+  - TaskCard
+  - TaskResponsibilityControl
+  - TaskStatusControl
+  - TaskActionComposer
+  - RequiredFilesPanel
+  - FileList
+  - FileCard
+  - ApprovalPanel
+  - RequestThread
+  - UpdateFeed
+  - ActivityTimeline
+
+Administration:
+  - UserTable
+  - RolePolicyEditor
+  - WorkspaceAccessEditor
+  - WorkflowTemplateEditor
+  - FileCategoryEditor
+
+C. MIGRATION MAP
+================
+
+C1. CURRENT BRANCH DATA -> TARGET
+---------------------------------
+
+Current branches.id
+  -> branches.id
+  Method: Preserve existing IDs to protect URLs and references.
+
+Current branches.code or branches.code fallback
+  -> branches.branch_code
+  Method: Validate uniqueness, repair missing codes, retain legacy value in migration report.
+
+Current branches.name/division/province/town/physical_address/coordinates
+  -> branches identity/location columns
+  Method: Move to canonical branch source of truth.
+
+Current branches.contact_name/contact_email/contact_phone
+  -> branch_contacts primary contact row
+  Method: Create contact row and mark primary.
+
+Current branches.contacts JSONB
+  -> branch_contacts rows
+  Method: Parse each contact object, validate name/designation, flag malformed contacts.
+
+C2. CURRENT PROJECTS -> TARGET WORKSPACES
+-----------------------------------------
+
+Current projects.id
+  -> projects.id or workspace_reference
+  Method: Preserve existing identifier as legacy_reference; generate stable workspace UUID where required.
+
+Current projects.branch_id
+  -> projects.branch_id
+  Method: Validate every project references an existing branch.
+
+Current project branch/name/location duplicates
+  -> branches source of truth
+  Method: Compare and produce conflict report; do not silently overwrite branch data.
+
+Current projects.current_stage
+  -> projects.current_stage_id -> workflow_stages
+  Method: Map known values; manually review unknown/free-form values.
+
+Current projects.status
+  -> projects.health and/or lifecycle state
+  Method: Explicit mapping required because current status mixes operational and workflow meanings.
+
+Current projects.progress
+  -> projects.progress
+  Method: Retain initially; later derive from stage/task completion rules.
+
+Current project dates
+  -> workspace date fields
+  Method: Direct field mapping with date validation.
+
+Current manager/installer/designer fields
+  -> branch contact or task responsibility only after business review
+  Method: Do not automatically interpret these as responsible persons.
+
+Current projects.notes
+  -> projects.notes or project_updates
+  Method: Keep current summary as notes; preserve dated historical notes as updates where possible.
+
+C3. CURRENT PROJECT TASKS JSONB -> TARGET TASKS
+-----------------------------------------------
+
+Current task.id
+  -> tasks.id or tasks.legacy_id
+  Method: Preserve legacy ID for traceability.
+
+Current task.text
+  -> tasks.title
+  Method: Direct mapping.
+
+Current task.stage string
+  -> tasks.stage_id
+  Method: Match against fixed workflow stages; manual review unknown values.
+
+Current task.completed/status
+  -> tasks.status
+  Method:
+    pending -> not_started or waiting, manual review
+    open -> not_started or in_progress, manual review
+    busy -> in_progress
+    done -> complete
+    cancelled -> cancelled
+
+Current task assigneeName/assigneeEmail
+  -> optional tasks.responsible_person_id
+  Method: Only map when business owner confirms individual accountability. Do not create task_assignees.
+
+Current multiple assignees array
+  -> no active multi-assignment equivalent
+  Method: Preserve in migration metadata and manually decide whether one person becomes optional responsible person.
+
+Current task stage/order
+  -> tasks.stage_id and sort_order
+  Method: Preserve order where available; identify duplicate/invalid order values.
+
+Current task installationRequest
+  -> tasks.required_action or task-specific metadata/update
+  Method: Manual classification may be required.
+
+Current task createdAt/completedAt/completedBy fields
+  -> task timestamps and actors
+  Method: Direct mapping where valid; unknown actors remain unknown.
+
+Current task current-state assumption
+  -> projects.current_task_id
+  Method: Derive candidate from order/status, require administrator confirmation. Never auto-commit without review.
+
+C4. CURRENT PROJECT FILES JSONB -> TARGET FILES
+-----------------------------------------------
+
+Current file.name
+  -> project_files.display_name
+
+Current file.path
+  -> file_versions.storage_path
+  Method: Verify Storage object exists.
+
+Current file.type/size/uploadedAt
+  -> file_versions.mime_type/size_bytes/uploaded_at
+
+Current file.taskId
+  -> project_files.task_id
+  Method: Validate task belongs to same workspace.
+
+Current file category
+  -> project_files.category_id
+  Method: Infer only where reliable; otherwise Other/manual review.
+
+Current project files array
+  -> project_files plus file_versions
+  Method: Create one logical file record and one current version record per metadata item.
+
+C5. CURRENT COMMENTS JSONB -> TARGET COMMUNICATION
+---------------------------------------------------
+
+Comment with kind=comment and no response semantics
+  -> project_updates
+
+Comment with taskId
+  -> project_updates.task_id
+
+Question/request object
+  -> project_requests
+
+Question answer
+  -> request_responses
+
+Approval-like comment
+  -> approvals and approval_decisions only after manual classification
+
+Unknown mixed comment
+  -> project_updates with migration metadata, manual review flag
+
+Original object
+  -> migration_metadata JSONB or archived legacy record during rollback period
+
+C6. CURRENT ACTIVITY JSONB -> TARGET ACTIVITY
+---------------------------------------------
+
+Current activity.date
+  -> project_activity.occurred_at
+
+Current activity.title
+  -> project_activity.event_type
+
+Current activity.detail
+  -> project_activity.metadata or new_values summary
+
+Current activity.type
+  -> event category/severity
+
+Missing actor/old value/new value
+  -> actor unknown and legacy detail preserved
+
+Do not claim historical values that cannot be reconstructed.
+
+C7. CURRENT PROFILES -> TARGET AUTHORIZATION
+--------------------------------------------
+
+profiles.role
+  -> role assignment reference
+  Method: Preserve exact role identity; do not normalise all client roles to psg_user.
+
+profiles.branch
+  -> branch-scoped role assignment or workspace_access_grant
+  Method: Resolve branch name to branch ID; manual review ambiguous names.
+
+profiles.workspace_ids
+  -> workspace_access_grants or scoped role assignments
+  Method: Convert wildcard/all access into global role capability.
+
+profiles.permission_overrides
+  -> profile permission override records if retained
+  Method: Validate keys against permissions table.
+
+C8. STORAGE MIGRATION
+---------------------
+
+For every project file metadata item:
+
+  1. Confirm project/workspace.
+  2. Confirm Storage bucket and object.
+  3. Create relational file record.
+  4. Create version record.
+  5. Link task/approval/category.
+  6. Report missing object or orphaned object.
+  7. Do not delete legacy object during import.
+
+D. BREAKING CHANGE LIST
+=======================
+
+D1. DOMAIN BREAKING CHANGES
+---------------------------
+
+  - Project becomes an internal workspace representation.
+  - Branch becomes the primary user-facing object.
+  - One primary active workspace per branch is enforced.
+  - Free-form project stages become fixed stage references.
+  - Project health becomes separate from stage and task status.
+  - Current task is an explicit field.
+  - Task assignment fields are removed/replaced.
+  - Task statuses change.
+  - Responsible group becomes required.
+  - Responsible person becomes optional.
+
+D2. TYPE BREAKING CHANGES
+-------------------------
+
+  - ProjectStage string -> WorkflowStage reference.
+  - ProjectStatus/health separation.
+  - TaskStatus pending/open/busy/done -> approved statuses.
+  - TaskItem assignee fields removed.
+  - Project.tasks/files/comments/activity arrays removed from primary domain types.
+  - Project.currentTaskId/current task summary added.
+  - UserRecord role and scope model changes.
+
+D3. SERVICE BREAKING CHANGES
+----------------------------
+
+  - createProject becomes createWorkspace or createBranchWorkspace.
+  - getProjects becomes branch/workspace list queries.
+  - getProjectById becomes getWorkspaceById or branch workspace query.
+  - updateProjectTask becomes task-level mutation.
+  - addProjectTask becomes task insert.
+  - uploadProjectFile becomes file metadata + Storage transaction.
+  - addProjectComment splits into update/request/response mutations.
+  - question/answer methods become request/approval methods.
+  - project activity methods write immutable records.
+
+D4. UI BREAKING CHANGES
+-----------------------
+
+  - /projects is no longer the primary user entry point.
+  - /projects/:projectId redirects to branch workspace.
+  - Branch Details and Project Details merge.
+  - Task assignment controls disappear.
+  - Old status labels disappear.
+  - Current Task Card no longer displays assignees.
+  - Dashboard changes from count-first to attention-first.
+  - Search result shapes change.
+  - Reports move to a dedicated route.
+  - Users and Settings move under Administration.
+
+D5. DATA BREAKING CHANGES
+-------------------------
+
+  - Existing old task statuses require mapping.
+  - Existing assignee data may not map cleanly.
+  - Existing comments may be ambiguous.
+  - Existing activity may lack actor/value history.
+  - Existing project duplicates may be exposed by the new constraint.
+  - Existing branch/project location conflicts require review.
+
+E. PHASE 1 IMPLEMENTATION PLAN
+==============================
+
+Phase 1 is the relational foundation and RLS phase. It must not be started against production without backups, a staging project, a migration report, and rollback procedures.
+
+E1. PHASE 1 OBJECTIVES
+----------------------
+
+  - Create relational reference/domain tables.
+  - Preserve current JSONB fields.
+  - Add migration metadata/reporting support.
+  - Seed fixed workflow stages.
+  - Seed responsibility groups.
+  - Define roles and permissions.
+  - Define scoped access grants.
+  - Add one-primary-workspace constraint after duplicate cleanup.
+  - Design and test workspace-scoped RLS.
+  - Keep existing application reads/writes working during dual-read preparation.
+
+E2. PHASE 1 SCHEMA WORKSTREAMS
+------------------------------
+
+Reference data:
+  - workflow_stages
+  - responsibility_groups
+  - file_categories
+  - roles
+  - permissions
+  - role_permissions
+
+Core data:
+  - branch_contacts
+  - tasks
+  - task_templates
+  - task_template_file_requirements
+  - task_file_requirements
+  - project_files
+  - file_versions
+  - project_updates
+  - project_requests
+  - request_responses
+  - approvals
+  - approval_files
+  - approval_decisions
+  - project_activity
+  - notifications
+  - profile_role_assignments
+  - workspace_access_grants
+
+Existing table preparation:
+  - branches canonical fields
+  - projects workspace fields
+  - profiles identity/access fields
+
+E3. PHASE 1 INDEXES
+-------------------
+
+Required first indexes:
+
+  - branches.branch_code unique
+  - branches lower(name)
+  - branches province/division/town
+  - projects.branch_id
+  - projects.lifecycle_state/health
+  - projects.current_stage_id/current_task_id
+  - tasks.workspace_id/status
+  - tasks.workspace_id/is_current
+  - tasks.due_at
+  - tasks.responsible_group_id/responsible_person_id
+  - project_files.workspace_id/task_id/category_id
+  - approvals.workspace_id/status
+  - project_requests.workspace_id/status
+  - notifications.recipient_id/read_at/created_at
+  - project_activity.workspace_id/occurred_at
+
+Do not add full-text indexes until the relational columns and query patterns are stable.
+
+E4. PHASE 1 CONSTRAINTS
+-----------------------
+
+Implement and test:
+
+  - Valid branch codes.
+  - Valid stage keys.
+  - Valid responsibility groups.
+  - Valid task statuses.
+  - Valid priorities.
+  - Waiting reason required for Waiting.
+  - Blocker reason required for Blocked.
+  - Completion metadata required for Complete.
+  - One current task per workspace.
+  - Current task belongs to workspace.
+  - One active primary workspace per branch.
+  - Files belong to their workspace/task/approval context.
+  - Immutable activity.
+  - Valid access scope relationships.
+
+E5. PHASE 1 RLS PLAN
+--------------------
+
+Create a workspace visibility rule used conceptually by all policies.
+
+A user may see a workspace when:
+
+  - They have global all-workspace permission.
+  - They have branch-scoped role access.
+  - They have workspace-scoped role access.
+  - They have an active workspace_access_grant.
+  - They are permitted to see a specific approval/request/action through role policy.
+
+Write permissions must be separate from read permissions.
+
+Examples:
+
+  - A user may read a file but not delete it.
+  - A user may read an approval but not decide it.
+  - A user may view a branch but not edit its identity.
+  - An installer may access installation evidence but not commercial approvals.
+  - A user may update a task if permitted but may never update project_activity.
+
+E6. PHASE 1 SEED DATA
+---------------------
+
+Seed fixed responsibility groups:
+  - Colourpix
+  - PSG Head Office
+  - PSG Branch
+  - Branch Manager
+  - Sign Company
+  - Installer
+
+Seed fixed workflow stages from the approved 14-stage lifecycle.
+
+Seed roles:
+  - colourpix_admin
+  - psg_head_office
+  - psg_branch_manager
+  - sign_company
+  - psg_user
+
+Seed permissions only after the business permission matrix is approved.
+
+E7. PHASE 1 TEST PLAN
+---------------------
+
+Schema tests:
+  - Foreign key tests.
+  - Unique branch/workspace tests.
+  - Status constraint tests.
+  - Waiting/blocker reason tests.
+  - Current task uniqueness tests.
+  - File context tests.
+  - Approval history immutability tests.
+  - Activity immutability tests.
+
+RLS tests:
+  - Admin can see all permitted workspaces.
+  - Head Office sees national data allowed by policy.
+  - Branch Manager sees only allowed branch.
+  - Installer sees only explicit workspace sections.
+  - PSG User sees only granted scopes.
+  - User cannot elevate role.
+  - User cannot read another user's notifications.
+  - User cannot modify activity.
+
+Migration tests:
+  - Every source branch maps.
+  - Every source workspace maps.
+  - Task counts reconcile.
+  - File metadata counts reconcile.
+  - Storage objects are checked.
+  - Ambiguous comments are reported.
+  - Legacy data remains available.
+
+E8. PHASE 1 ACCEPTANCE CRITERIA
+-------------------------------
+
+Phase 1 is complete only when:
+
+  - New tables exist in a staging environment.
+  - Reference data is seeded and protected.
+  - Existing data has a migration report.
+  - No production data has been deleted.
+  - RLS tests pass for every role.
+  - Duplicate workspace candidates are known.
+  - Current JSONB data is still readable.
+  - Rollback procedure is documented.
+  - The application has not yet been switched to destructive relational-only reads.
+
+F. RISK REGISTER
+================
+
+R1. Data migration risk
+Risk:
+  JSONB data may contain malformed, inconsistent, or incomplete structures.
+
+Impact:
+  Tasks/files/comments may be lost or misclassified.
+
+Mitigation:
+  Backup, dry-run mapping, reconciliation reports, manual review queue, legacy retention.
+
+R2. Duplicate branch/workspace risk
+Risk:
+  New one-primary-workspace constraint may expose existing duplicates.
+
+Impact:
+  Migration cannot apply cleanly; users may see conflicting projects.
+
+Mitigation:
+  Detect duplicates before constraint, choose canonical workspace, archive extras, preserve history.
+
+R3. Task assignee migration risk
+Risk:
+  Existing assignee arrays conflict with the new optional responsibility model.
+
+Impact:
+  Incorrect people may become responsible person.
+
+Mitigation:
+  Do not auto-map all assignees. Preserve legacy metadata and require review for optional person mapping.
+
+R4. Status migration risk
+Risk:
+  Pending/Open/Busy/Done do not map perfectly to Not Started/In Progress/Waiting/Blocked/Complete.
+
+Impact:
+  Operational meaning may change.
+
+Mitigation:
+  Create mapping rules, flag ambiguous records, require business review for Waiting/Blocked.
+
+R5. Current task risk
+Risk:
+  Old data has no trustworthy explicit current task.
+
+Impact:
+  The wrong task may be shown as current.
+
+Mitigation:
+  Generate candidates only, then require administrator confirmation.
+
+R6. RLS exposure risk
+Risk:
+  Existing broad/public policies may expose branches/projects/files.
+
+Impact:
+  Data breach or unauthorised mutation.
+
+Mitigation:
+  Audit existing policies first, test role sessions, replace with workspace-scoped rules, revoke public data access where not required.
+
+R7. Storage risk
+Risk:
+  Storage objects and JSONB metadata may not match.
+
+Impact:
+  Broken downloads, orphaned files, failed deletion.
+
+Mitigation:
+  Reconcile paths, retain orphan report, use file_versions, do not delete during import.
+
+R8. Concurrency risk
+Risk:
+  Current JSONB mutations replace complete arrays and can overwrite another user's change.
+
+Impact:
+  Lost task/file/comment updates.
+
+Mitigation:
+  Move to row-level mutations, add updated_at/version checks, use optimistic concurrency or RPC where required.
+
+R9. Role normalisation risk
+Risk:
+  Current normalizeRole() collapses non-admin roles.
+
+Impact:
+  Wrong navigation, incorrect permissions, unsafe access assumptions.
+
+Mitigation:
+  Preserve exact role key, add role mapping tests, reconcile profile/database/auth data.
+
+R10. Installer access risk
+Risk:
+  Installer may receive full project access instead of installation-only access.
+
+Impact:
+  Exposure of quotes, approvals, private branch information, or unrelated branches.
+
+Mitigation:
+  Explicit workspace_access_grants and section/category-level policies.
+
+R11. Schema drift risk
+Risk:
+  Live schema differs from repository expectations, as demonstrated by missing optional columns.
+
+Impact:
+  Production saves fail or compatibility fallbacks silently omit data.
+
+Mitigation:
+  Versioned migration tracking, deployment schema checks, staging rehearsal, no silent production schema assumptions.
+
+R12. Dual-write divergence risk
+Risk:
+  Old JSONB and new relational records may disagree.
+
+Impact:
+  Users see inconsistent data depending on page/query.
+
+Mitigation:
+  Define authoritative write path, reconciliation jobs/reports, bounded dual-write period, explicit cutover date.
+
+R13. Approval history risk
+Risk:
+  Generic comments cannot reliably identify formal decisions.
+
+Impact:
+  Historical approval proof may be incomplete.
+
+Mitigation:
+  Manual classification report, preserve original comment object, only treat new relational approvals as authoritative after cutover.
+
+R14. Activity history risk
+Risk:
+  Old activity lacks actor/old/new values.
+
+Impact:
+  Historical audit cannot be fully reconstructed.
+
+Mitigation:
+  Mark unknown fields explicitly, preserve original detail, make all new activity immutable.
+
+R15. File category risk
+Risk:
+  Existing files have no category.
+
+Impact:
+  Required-file validation cannot work immediately.
+
+Mitigation:
+  Infer cautiously, default to Other, provide manual categorisation queue.
+
+R16. Performance risk
+Risk:
+  Large branch/project collections are currently loaded and filtered client-side.
+
+Impact:
+  Slow dashboards and browser memory pressure as rollout grows.
+
+Mitigation:
+  Server-side filtered queries, pagination, report views, targeted workspace queries.
+
+R17. UI migration risk
+Risk:
+  Users currently depend on both Branch Details and Project Details routes.
+
+Impact:
+  Confusion or broken bookmarks.
+
+Mitigation:
+  Redirect legacy routes, maintain compatibility links, release workspace in parallel before removing old page.
+
+R18. Mobile risk
+Risk:
+  Dense desktop task/file UI is difficult on phones.
+
+Impact:
+  Installers cannot reliably update work or upload evidence.
+
+Mitigation:
+  Design and test mobile workflows separately, use camera upload and sticky task actions.
+
+R19. Permission business-rule risk
+Risk:
+  Role names exist but exact business permissions are unresolved.
+
+Impact:
+  Incorrect access model may be encoded in schema/RLS.
+
+Mitigation:
+  Complete Phase 0 business rule lock before creating production policies.
+
+R20. Scope/feature-creep risk
+Risk:
+  Generic workflow engines, dependencies, scheduling, and enterprise features expand the project.
+
+Impact:
+  Slower delivery and less reliable core rollout workflow.
+
+Mitigation:
+  Fixed stages, configurable templates only, postpone dependencies and scheduling until proven necessary.
+
+G. DECISION GATES BEFORE IMPLEMENTATION
+=======================================
+
+The following must be approved before Phase 1 production design:
+
+  - Exact task status definitions and transition rules.
+  - Exact permission matrix for each role.
+  - Whether responsible person is allowed for every task or only selected templates.
+  - Required files per stage/task.
+  - Which stages require approval.
+  - Whether health is automatic, manual, or hybrid.
+  - Whether Branch Manager can edit task status.
+  - Whether PSG Head Office can edit tasks.
+  - Installer visibility and allowed file categories.
+  - Whether a branch can have archived/replacement workspaces.
+  - Date/time and overdue rules.
+  - Support persistence timing.
+
+H. FINAL READINESS CONCLUSION
+============================
+
+The current application has enough useful foundation to evolve, but it is not ready for a direct implementation refactor.
+
+The highest priority is to fix the domain/security foundation before visual or page-level work:
+
+  1. Preserve and reconcile existing data.
+  2. Lock the remaining business rules.
+  3. Create the relational foundation in staging.
+  4. Test RLS and access grants.
+  5. Build a reversible dual-read/dual-write migration layer.
+  6. Consolidate Branch and Project into Branch Workspace.
+  7. Replace task assignment/status assumptions.
+  8. Add explicit current task and My Actions.
+  9. Replace JSONB operational collections.
+  10. Rebuild dashboard, reporting, search, approvals, notifications, and mobile workflows.
+
+Do not modify production until the Phase 1 acceptance criteria and RLS tests pass.

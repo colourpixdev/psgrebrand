@@ -1,0 +1,774 @@
+PSG REBRAND BUSINESS RULES AND UX SPECIFICATION
+================================================
+
+Status: Proposed specification for review.
+No code, database schema, migrations, or Supabase records were changed.
+
+Purpose
+-------
+This document resolves the business and UX decisions that must be agreed before defining the final relational schema.
+
+The product is a branch-first operational system for managing the PSG branch rebrand rollout across South Africa and Namibia.
+
+Core mental model:
+
+  Branch
+    -> One primary rebrand workspace
+        -> Fixed lifecycle
+        -> Configurable task templates
+        -> Files
+        -> Updates
+        -> Requests
+        -> Approvals
+        -> Immutable activity history
+
+The user should think about the branch and its work, not about database records called projects, JSONB arrays, or foreign keys.
+
+1. BUSINESS OBJECTS
+-------------------
+
+BRANCH
+A physical PSG location and the primary object users recognise.
+
+REBRAND WORKSPACE
+The operational work belonging to one branch. Internally this may remain a project record, but the user-facing term should be Branch Workspace or Rebrand Workspace.
+
+STAGE
+A fixed point in the standard PSG rebrand lifecycle.
+
+TASK
+A discrete work item or checklist item inside a stage.
+
+FILE
+A document, image, drawing, quote, approval record, or installation evidence item attached to a workspace, task, or approval.
+
+UPDATE
+Human-authored progress communication.
+
+REQUEST
+A communication requiring another person to respond.
+
+APPROVAL
+A formal decision with an explicit outcome.
+
+ACTIVITY
+An automatic, immutable record of a system event.
+
+2. TASK DEFINITION
+------------------
+A task is a discrete piece of work that can be started, paused, blocked, completed, or cancelled inside a project stage.
+
+Example Design stage tasks:
+
+  - Create artwork
+  - Internal artwork review
+  - PSG review artwork
+  - Make artwork amendments
+  - Final artwork approval
+
+All five are tasks. The Design stage is not itself a task. The stage groups and orders tasks and describes where the branch is in the lifecycle.
+
+A task should answer:
+
+  - What work needs to happen?
+  - What stage does it belong to?
+  - What is its status?
+  - What is the next required action?
+  - Is anything blocking it?
+  - Is a file or approval required?
+  - When was it changed?
+  - Who changed it?
+
+TASK RESPONSIBILITY
+-------------------
+Tasks do not require personal ownership or assignment.
+
+The purpose of the task system is to communicate what work needs to happen and who is expected to act, without turning the application into a personal task-management system.
+
+Every task may have:
+
+  - Responsible role
+  - Optional responsible person
+  - Required action
+  - Status
+  - Priority
+  - Due date
+  - Blocker reason where applicable
+
+RESPONSIBLE ROLE
+----------------
+The responsible role identifies the group expected to take action.
+
+Examples:
+
+  - Colourpix
+  - PSG Head Office
+  - PSG Branch
+  - Branch Manager
+  - Sign Company
+  - Installer
+
+Responsible role is the primary responsibility indicator.
+
+RESPONSIBLE PERSON
+------------------
+Responsible person is optional.
+
+It should only be used when individual accountability is actually required.
+
+For example:
+
+  Responsible role: PSG Head Office
+  Responsible person: John Smith
+
+The application must not require every task to have a responsible person.
+The system must never prevent a task from being created simply because an individual has not been assigned.
+
+MY ACTIONS
+----------
+The application should provide a "My Actions" view where appropriate.
+
+This is NOT the same as a traditional "My Assigned Tasks" system.
+
+My Actions may include:
+
+  - Tasks where the user is the responsible person
+  - Approvals requiring the user's decision
+  - Requests requiring the user's response
+  - Tasks where the user's role is responsible and their action is required
+
+The purpose is to answer:
+
+  "What requires my attention?"
+
+rather than:
+
+  "What tasks have been assigned to me?"
+
+ACCOUNTABILITY
+--------------
+The system must maintain a complete activity history showing:
+
+  - Who created the task
+  - Who changed the task
+  - Who changed its status
+  - Who changed the responsible role
+  - Who changed the responsible person
+  - Who added an update
+  - Who uploaded a file
+  - Who marked the task complete
+  - Who reopened it
+  - Who blocked it
+
+This provides accountability without requiring every task to have a personal owner.
+
+TASK STATUS
+-----------
+Use these statuses:
+
+  NOT_STARTED
+  IN_PROGRESS
+  WAITING
+  BLOCKED
+  COMPLETE
+  CANCELLED
+
+Definitions:
+
+Not started:
+  Work has not begun.
+
+In progress:
+  Work is actively being done.
+
+Waiting:
+  Work cannot continue until a person, approval, document, response, or external event is received.
+
+Blocked:
+  Work cannot proceed because a known problem must be resolved. A blocker reason is mandatory.
+
+Complete:
+  The task is finished and accepted for the purpose of the workflow.
+
+Cancelled:
+  The task is no longer required or was replaced.
+
+Do not use Pending and Open as separate states. They are too ambiguous. Use Not Started for work that has not begun and Waiting for work that is paused pending another dependency.
+
+TASK EDITING RULES
+------------------
+A user with workspace task-edit permission may:
+
+  - Add a task
+  - Edit task text and description
+  - Change task status
+  - Reorder tasks
+  - Add a blocker reason
+  - Add or remove required-file rules
+  - Add task comments/updates
+  - Upload permitted files
+  - Mark a task complete
+  - Reopen a completed task if permitted
+
+Changing a task to Blocked requires a blocker reason.
+Changing a task to Complete requires all mandatory completion checks for that task.
+Changing a task to Waiting should record what the task is waiting for.
+
+CURRENT TASK
+------------
+The workspace must have one explicit current task.
+
+The current task is selected deliberately by an authorised editor. It must not be inferred from the first incomplete task.
+
+There may be zero current tasks when:
+
+  - The project has not started
+  - The project is complete
+  - The workflow is awaiting setup
+
+There must not be more than one current task at a time.
+
+When the current task is completed, the system should suggest the next incomplete task but should not silently choose it without recording the transition.
+
+TASK ORDER AND PRIORITY
+-----------------------
+Tasks have:
+
+  - sort_order for workflow sequence
+  - priority: normal, important, urgent
+  - optional due date
+
+Priority is not ownership.
+
+Dependencies are postponed until the core workflow proves they are necessary. Waiting and Blocked statuses are sufficient for the initial version.
+
+3. FIXED WORKFLOW AND TASK TEMPLATES
+------------------------------------
+The product should use a fixed PSG rebrand workflow, not a configurable workflow engine.
+
+The workflow stages are stable business rules. They should not be freely renamed or reordered by ordinary workspace users.
+
+Task templates are configurable. Administrators may:
+
+  - Add optional task templates
+  - Disable optional templates
+  - Edit task descriptions
+  - Define required files
+  - Define whether approval is required
+  - Define default stage
+  - Define suggested priority
+
+Administrators may not casually change the core stage lifecycle without a controlled product change.
+
+STANDARD WORKFLOW
+-----------------
+
+1. Branch confirmed
+2. Brief requested
+3. Site information collected
+4. Design / artwork
+5. Internal review
+6. PSG approval
+7. Quote
+8. Quote approval
+9. Production
+10. Installation planning
+11. Installation
+12. Installation evidence
+13. Final inspection
+14. Complete
+
+STAGE RULES
+-----------
+
+Branch confirmed
+Purpose: Confirm the location and the scope of work.
+Entry: Branch exists and is in rollout scope.
+Required information: Branch identity, code, division, location, primary contact.
+Exit: Rebrand workspace is created and initial workflow is available.
+
+Brief requested
+Purpose: Request the information needed to start the rebrand.
+Required information: Request date, request details, expected response.
+Possible blockers: No response, incomplete brief, wrong contact.
+Exit: Brief received or request is formally escalated.
+
+Site information collected
+Purpose: Collect address, measurements, photos, site restrictions, and signage details.
+Required files: Site photographs and relevant measurements.
+Possible blockers: Missing access, unclear dimensions, missing site contact.
+Exit: Required site information is complete.
+
+Design / artwork
+Purpose: Produce design or artwork for review.
+Required files: Working artwork or design file.
+Exit: Artwork is ready for internal review.
+
+Internal review
+Purpose: Quality-check artwork and information before client submission.
+Exit: Artwork is approved internally or amendments are requested.
+
+PSG approval
+Purpose: Obtain explicit PSG/client approval.
+Required: Approval request and reviewed artwork.
+Exit: Approved, rejected, or changes requested.
+
+Quote
+Purpose: Prepare and submit the commercial quote.
+Required files: Quote document.
+Exit: Quote submitted.
+
+Quote approval
+Purpose: Record commercial approval.
+Exit: Quote accepted or rejected.
+
+Production
+Purpose: Manufacture the signage or rebrand components.
+Required information: Approved artwork and accepted quote.
+Exit: Production completed or exception recorded.
+
+Installation planning
+Purpose: Confirm date, access, site readiness, and installer requirements.
+Required information: Installation date and instructions.
+Exit: Installation date confirmed and site ready.
+
+Installation
+Purpose: Perform the physical installation.
+Exit: Installer reports work complete or blocked.
+
+Installation evidence
+Purpose: Capture photographs and completion evidence.
+Required files: Installation photographs and any required completion documents.
+Exit: Evidence is uploaded and reviewable.
+
+Final inspection
+Purpose: Confirm the result and resolve defects.
+Exit: Inspection passed or rework requested.
+
+Complete
+Purpose: Close the rebrand workspace.
+Required: All mandatory tasks, files, approvals, and inspection checks complete.
+
+4. BRANCH DATA RULES
+--------------------
+The branch is the source of truth for physical location and branch identity.
+
+BRANCH IDENTITY
+  - Branch ID
+  - Branch code
+  - Branch display name
+  - Division
+  - Branch operational status
+
+LOCATION
+  - Province
+  - Town or city
+  - Physical address
+  - Latitude
+  - Longitude
+
+CONTACTS
+  - Primary branch contact
+  - PSG contact if applicable
+  - Other contacts
+  - Name
+  - Designation
+  - Email
+  - Phone
+
+REBRAND WORKSPACE LINK
+  - One primary workspace/project
+  - Workspace lifecycle state
+  - Created date
+  - Archived date if applicable
+
+Branch data must not be duplicated unnecessarily into the workspace.
+The workspace may store a historical snapshot only when there is a deliberate audit requirement.
+
+5. ONE BRANCH = ONE PRIMARY WORKSPACE
+-------------------------------------
+The system must enforce one primary rebrand workspace per branch at database level.
+
+If a workspace is archived:
+
+  - It remains visible in history.
+  - It cannot be edited as the active workspace unless restored.
+  - An administrator may create a replacement primary workspace through an explicit action.
+  - The branch page clearly identifies the active workspace.
+
+The frontend must never decide uniqueness only by project name or generated ID.
+
+6. PROJECT HEALTH
+------------------
+Project health is separate from stage and task status.
+
+Values:
+
+  ON_TRACK
+  AT_RISK
+  BLOCKED
+  COMPLETE
+
+Health is calculated from:
+
+  - Blocked tasks
+  - Overdue tasks
+  - Missing approvals
+  - Missed milestone dates
+  - Missing required files
+  - Manual administrator override
+
+A project may be in the Design stage while its health is At Risk.
+A task may be In Progress while the overall project is Blocked because another task is blocked.
+
+7. PERMISSIONS AND BUSINESS RULES
+---------------------------------
+Permissions are role-based and enforced by Supabase RLS/backend policies.
+Frontend controls only hide unavailable actions.
+
+COLOURPIX ADMIN
+Can:
+
+  - View all branches and workspaces
+  - Create and edit branches
+  - Create and archive workspaces
+  - Edit workflow tasks
+  - Change task status
+  - Upload, rename, and delete files
+  - Create and resolve requests
+  - Manage approvals
+  - Manage users and permissions
+  - View all reports
+  - Change workspace configuration
+
+PSG HEAD OFFICE
+Can:
+
+  - View all branches and workspaces
+  - View national rollout dashboard
+  - View national reports
+  - Add updates and requests
+  - Review approval requests
+  - Approve or reject work where explicitly authorised
+  - View and download files
+  - Change task status only if granted project-edit permission
+
+By default, PSG Head Office cannot:
+
+  - Create branches
+  - Delete workspaces
+  - Change permissions
+  - Delete files
+  - Change workflow definitions
+
+PSG BRANCH MANAGER
+Can:
+
+  - View their own branch workspace
+  - View branch contacts and project progress
+  - Add permitted updates
+  - Create requests
+  - Review files relevant to their branch
+  - Approve only explicitly assigned approval types
+  - Change task status only if business policy grants it
+
+By default, they cannot:
+
+  - View other branches
+  - View national reports
+  - Create workspaces
+  - Delete files
+  - Change permissions
+
+SIGN COMPANY / INSTALLATION PARTNER
+Can:
+
+  - View only workspaces explicitly made available to the partner
+  - View installation and production tasks relevant to their work
+  - View files required for their work
+  - Upload installation evidence
+  - Add blockers and updates
+  - Change status of tasks they are permitted to edit
+
+By default, they cannot:
+
+  - View unrelated branch information
+  - View private commercial approvals
+  - Delete files
+  - Approve PSG work
+  - Change workflow stages
+  - Manage users
+
+PSG USER
+Can:
+
+  - View workspaces allowed by branch or workspace scope
+  - Download permitted files
+  - View permitted communication
+  - Add no task edits unless an override is granted
+
+8. ROLE-SPECIFIC HOME SCREENS
+-----------------------------
+The same route may render a different dashboard emphasis by role.
+
+COLOURPIX ADMIN
+Home screen title: National rollout control centre.
+Show:
+  - National KPIs
+  - At-risk and blocked branches
+  - Overdue tasks
+  - Pending approvals
+  - Branches without workspaces
+  - Recent uploads and activity
+  - Quick actions for branch/workspace management
+
+PSG HEAD OFFICE
+Home screen title: PSG actions and approvals.
+Show:
+  - Branches awaiting PSG action
+  - Approval requests
+  - At-risk branches
+  - Upcoming installations
+  - National progress
+  - Recent questions and requests
+
+BRANCH MANAGER
+Home screen title: Your branch.
+Show:
+  - Branch identity
+  - Current stage
+  - Current task
+  - Required branch action
+  - Files awaiting review
+  - Important dates
+  - Recent communication
+
+INSTALLATION PARTNER
+Home screen title: Installation work.
+Show:
+  - Relevant workspaces
+  - Installation tasks
+  - Upcoming dates
+  - Blockers
+  - Evidence upload action
+  - Messages requiring response
+
+PSG USER
+Home screen title: Rollout overview.
+Show only permitted branches, projects, files, and updates.
+
+9. BRANCH WORKSPACE UX
+----------------------
+The Branch Workspace is the primary operational screen.
+
+Above the fold:
+
+  - Branch name and code
+  - Division and location
+  - Primary contact
+  - Overall health
+  - Current stage
+  - Progress
+  - Current task
+  - Current task status
+  - Next required action
+  - Installation date
+  - Blocker warning if present
+  - Last update
+
+Tabs:
+
+  Overview
+  Workflow
+  Files
+  Communication
+  Approvals
+  Activity
+
+The user should never need to open a separate Project Details page to understand the branch.
+
+10. COMMUNICATION RULES
+-----------------------
+UPDATES
+General progress messages. They do not require a response.
+
+REQUESTS
+Messages requiring a response. They have open, answered, and closed state.
+
+APPROVALS
+Formal decisions. They require decision-maker, outcome, timestamp, and optional comments.
+
+ACTIVITY
+Automatic history. It cannot be edited or deleted by normal users.
+
+All human-authored messages may be linked to a project or task but are not owned by a task.
+
+11. FILE RULES
+--------------
+Files may be attached to:
+
+  - Workspace/project
+  - Task
+  - Approval request
+
+A file must have:
+
+  - Category
+  - Uploader
+  - Upload timestamp
+  - Storage path
+  - File type
+  - Size
+  - Version information where replaced
+
+Required categories:
+
+  - Brief
+  - Site information
+  - Artwork
+  - Quote
+  - Approval
+  - Production
+  - Installation
+  - Installation evidence
+  - Final inspection
+  - Other
+
+File deletion should be permission-controlled, soft-deleted first, and recorded in activity.
+
+12. SEARCH RULES
+----------------
+Global search should search:
+
+  - Branch names and codes
+  - Workspace/project IDs
+  - Task titles and descriptions
+  - People and branch contacts
+  - File names and categories
+  - Updates and requests
+  - Activity
+  - Towns, provinces, and addresses
+
+Results should be grouped by entity type and filtered by visibility.
+
+13. REPORTING RULES
+-------------------
+Management reports:
+
+  - National rollout
+  - At-risk and blocked branches
+  - Installation schedule
+  - Approval backlog
+  - Progress by province and division
+
+Operational reports:
+
+  - Tasks by stage
+  - Overdue tasks
+  - Blocked tasks
+  - Waiting tasks
+  - Missing required files
+  - Upcoming installations
+
+Branch reports:
+
+  - Full branch history
+  - Workflow progress
+  - Files
+  - Approvals
+  - Updates
+  - Activity
+
+Reports should not use individual task ownership or assignee filters.
+
+14. DECISIONS CONFIRMED
+-----------------------
+Decision: Primary product object
+Answer: PSG branch.
+Reason: This matches the user's mental model and the rollout business process.
+
+Decision: Branch and project relationship
+Answer: One branch has one primary rebrand workspace.
+Reason: The rebrand is the branch's operational lifecycle.
+
+Decision: Workflow model
+Answer: Fixed PSG workflow.
+Reason: The business process is standard and a configurable workflow engine adds unnecessary complexity.
+
+Decision: Task configuration
+Answer: Configurable task templates within fixed stages.
+Reason: Administrators can adapt checklists without changing lifecycle rules.
+
+Decision: Task ownership
+Answer: No task owners or assignees.
+Reason: Tasks are shared operational work items managed by users with permission.
+
+Decision: Task accountability
+Answer: Accountability comes from current task, status, due date, blocker, required action, and audit history.
+Reason: The product should not imply that one person owns a task.
+
+Decision: Current task
+Answer: Store an explicit current task reference.
+Reason: It should not be inferred from task array order.
+
+Decision: Project health
+Answer: Separate health from stage and task status.
+Reason: A project may be in a normal stage while being at risk or blocked.
+
+Decision: Database direction
+Answer: Gradually replace JSONB task/file/comment/activity storage with relational records.
+Reason: Relational records are required for search, reporting, concurrency, notifications, and auditability.
+
+15. DECISIONS TO CONFIRM BEFORE SCHEMA DESIGN
+---------------------------------------------
+These are the remaining decisions that require business approval.
+
+1. Can a PSG Branch Manager change task status, or only add requests and comments?
+2. Can a PSG Branch Manager upload files, or only view/download them?
+3. Which approval types can a Branch Manager approve?
+4. Can PSG Head Office edit task text and status, or only review/report?
+5. Can an installation partner see the full branch workspace or only an installation-focused view?
+6. Can an installation partner view quote and commercial files?
+7. Can PSG Head Office create branches or only Colourpix Admin?
+8. Can a user with edit permission delete files, or is deletion admin-only?
+9. Is the fixed workflow identical for every branch/division?
+10. Which tasks are mandatory in each stage?
+11. Which file categories are mandatory before a stage can complete?
+12. Which stages require formal approvals?
+13. Should a project be allowed to have multiple active tasks at once?
+14. Should the current task be manually selected only, or can the system suggest the next task?
+15. Should task due dates be mandatory for some stages?
+16. What is the definition of a missed deadline?
+17. Can completed tasks be reopened by all editors or admins only?
+18. Should project health be fully automatic, manual, or hybrid?
+19. Should support remain email-based for the first release?
+20. Should there be a future workspace table even if the current rollout has one workspace?
+
+16. NEXT SPECIFICATION PHASE
+----------------------------
+After the decisions above are approved, produce the definitive database specification.
+
+The database specification must include:
+
+  - Table purpose
+  - Fields
+  - Primary keys
+  - Foreign keys
+  - Indexes
+  - Constraints
+  - RLS considerations
+  - JSONB migration mapping
+  - Data that cannot be migrated automatically
+  - Validation and cleanup requirements
+  - Relationship diagram
+  - Final decision register
+
+Do not implement anything until the business rules, permissions, statuses, workflow, and branch/project relationship are approved.
+
+17. FINAL PRODUCT DIRECTION
+---------------------------
+The final product should be:
+
+  A branch-first PSG rollout control centre where every branch has one rebrand workspace, a fixed lifecycle, configurable task checklists, clear current work, explicit status, shared task editing, reliable files, formal approvals, clear communication, and immutable history.
+
+The application should optimise for operational clarity and speed, not for maximum configurability.

@@ -1,0 +1,1507 @@
+PSG REBRAND CURRENT VS FUTURE PRODUCT, UX, UI AND FUNCTIONALITY AUDIT
+=======================================================================
+
+Status: Analysis and recommendations only.
+No application code, database schema, migrations, packages, Supabase records, or production data were changed.
+
+Purpose
+-------
+This audit compares the actual current implementation with the approved Business Rules and UX Specification and the Definitive Relational Database Specification.
+
+The product direction is:
+
+  A branch-first PSG rollout control centre where every branch has one rebrand workspace, a fixed lifecycle, configurable task checklists, clear current work, explicit status, shared task editing, reliable files, formal approvals, clear communication, and immutable history.
+
+EXECUTIVE ASSESSMENT
+--------------------
+The current app is a useful operational prototype, but it is not yet the approved product architecture.
+
+It currently feels like:
+
+  A partially consolidated internal admin/project-management system with a useful branch view, rather than a finished national rollout control centre.
+
+What is already valuable:
+
+  - Supabase-backed authentication and data access
+  - Responsive React structure
+  - Branch list and branch detail flows
+  - Project/task/file operations
+  - Task-linked files
+  - Task comments and updates
+  - Basic role policies
+  - Map and reporting foundations
+  - Storage upload, preview, download, rename, and delete flows
+  - Error boundaries and query caching
+
+What is structurally wrong:
+
+  - Branch and Project are still competing primary concepts.
+  - Branch Details and Project Details duplicate operational information.
+  - Tasks, files, comments, questions, and activity remain embedded in project JSONB.
+  - The current code still requires task assignees even though the approved rules do not.
+  - The current task is inferred rather than explicitly stored.
+  - Current task statuses are Pending/Open/Busy/Done rather than the approved states.
+  - There is no My Actions view.
+  - There is no relational approval, request, notification, or audit model.
+  - Role definitions, UI role options, type normalisation, and permission defaults disagree.
+  - Current RLS policies are too broad for the target security model.
+  - Live schema drift has already caused production project creation failures.
+  - The dashboard is mostly metrics plus embedded reports, not an attention-based control centre.
+
+The app should not be refactored page-by-page without first resolving these model conflicts.
+
+1. CURRENT APPLICATION ARCHITECTURE
+-----------------------------------
+
+Framework:
+  - React 19
+  - TypeScript
+  - Vite
+  - React Router
+  - Tailwind CSS
+  - TanStack Query
+  - React Hook Form
+  - Zod
+  - Supabase Auth, PostgreSQL, and Storage
+  - Leaflet / React Leaflet
+
+Application entry:
+  - src/App.tsx
+
+Shared shell:
+  - src/layouts/AppShell.tsx
+
+Current route architecture:
+  - Lazy-loaded page modules with chunk-reload recovery
+  - AuthProvider wraps the application
+  - SaveFeedbackProvider provides global save notifications
+  - AppShell wraps all authenticated routes
+  - RouteErrorBoundary catches render failures
+  - Supabase reachability is checked after authentication
+
+Current state/data approach:
+  - TanStack Query loads branches, projects, users, and individual projects.
+  - Project data is mostly loaded as one large projects collection.
+  - Many mutations read the existing project, mutate arrays in memory, and write the complete tasks/files/comments/activity JSONB fields back to projects.
+  - LocalStorage is used as a fallback for branches, projects, profile identity, and notification retry data.
+  - The frontend maps database rows into domain objects in portalService.ts and branchService.ts.
+
+Main architectural weakness:
+  The service layer is a compatibility layer around a denormalised JSONB project document, not a domain API for branch workspaces and relational operations.
+
+Security weakness:
+  The current SQL schema grants broad authenticated access and includes public read policies for branches/projects. Frontend checks are not a sufficient security boundary.
+
+2. CURRENT ROUTE/PAGE INVENTORY
+-------------------------------
+
+| Current route | Current purpose | Current problems | Recommendation | Future destination |
+|---|---|---|---|---|
+| /login | Authentication | Technical/preview language can leak into production | Keep, simplify | Login |
+| /auth/callback | Supabase auth callback | Technical route only | Keep | Authentication callback |
+| / | Dashboard | Metrics plus embedded Reports; little actionable work | Redesign | Role-specific Control Centre |
+| /branches | Branch directory and branch administration | Combines branch editing, project status, contacts, and navigation | Keep but redesign | Branches |
+| /branches/:branchId | Branch-first project/task/file view | Duplicates Project Details and lacks unified tabs | Merge | Branch Workspace |
+| /projects | Project list and project creation | Competes with Branches; uses project language | Remove from primary nav; retain admin redirect temporarily | Branch portfolio/admin view |
+| /projects/:projectId | Detailed task/file/project editor | Too large, overlaps Branch Details, JSONB-dependent | Merge and split into workspace tabs | Branch Workspace |
+| /map | Geographic view | Useful but hard-coded coordinate fallbacks | Keep, improve data source | Map |
+| /search | Project-field search | Does not search tasks, files, updates, requests, or activity | Replace | Global Search |
+| /users | User/profile display | Says manual creation only; not a complete user admin experience | Move to Administration | Admin Users |
+| /access-controls | Role and per-user permission overrides | UI exposes only limited role choices; role model conflicts with code | Redesign | Administration / Roles |
+| /settings | Supabase/auth technical status | Not a real workspace settings page | Split | Workspace Settings and System Status |
+| /profile | Personal identity fields | URL-only image fields, limited security/preferences | Keep and expand | Profile |
+| /support | mailto-based request form | No persistence or support history | Keep temporarily, redesign later | Support Requests |
+| /about | Product/about information | Not operational | Move to footer | Secondary |
+| /legal | Policy copy | Not operational | Move to footer | Secondary |
+| /reports | No dedicated route; ReportsPage embedded in Dashboard | Reporting is coupled to Dashboard | Split | Reports |
+| My Actions | Does not exist | Approved requirement missing | Add | My Actions |
+| Approvals | Does not exist as a dedicated page | Approval objects live in comments JSONB | Add | Approvals |
+| Installations | Does not exist as a dedicated view | Installation work is buried in tasks/projects | Add as filtered view or role-specific mode | Installations |
+| Notifications | No persistent notification page/table | Uses local retry queue only | Add later | Notifications drawer/page |
+
+3. CURRENT INFORMATION ARCHITECTURE AUDIT
+-----------------------------------------
+Current primary navigation is:
+
+  Dashboard
+  Branches
+  Map
+  Users
+  Settings
+
+Projects, Search, Support, Profile, About, Legal, and Access Controls are secondary routes.
+
+This is not yet aligned with the approved target because:
+
+  - There is no My Actions.
+  - There is no Approvals area.
+  - There is no clear Administration grouping.
+  - Reports are hidden inside Dashboard.
+  - Projects remains a separate route and primary data concept even if it is not in the sidebar.
+  - Users and Settings are visible as primary navigation but are administrative/technical concerns.
+
+Recommended future navigation:
+
+  Dashboard
+  Branches
+  My Actions
+  Approvals
+  Installations
+  Reports
+  Administration
+  Profile
+  Support
+
+Map may remain primary for administrators and secondary for other roles.
+Search should become global header search.
+About and Legal should move to the footer/user menu.
+
+Recommended mobile navigation:
+
+  Dashboard
+  Branches
+  My Actions
+  Reports
+  More
+
+For installation partners, role-specific mobile emphasis should be:
+
+  My Work
+  Installation tasks
+  Upload evidence
+  Blockers/messages
+  Profile
+
+4. DASHBOARD AUDIT
+------------------
+Current implementation:
+
+  - Loads all accessible branches and projects.
+  - Calculates Active Projects, Awaiting Approval, Installations Today, Completed, and delayed/on-hold counts.
+  - Embeds ReportsPage below the metrics.
+  - Contains unused or weakly used navigation-related imports/state.
+
+Problems:
+
+  - It answers how many records exist, not what needs attention.
+  - It has no My Actions section.
+  - It has no blocker queue.
+  - It has no overdue task queue.
+  - It has no missing-file queue.
+  - It has no persistent approval queue.
+  - It has no branches-without-workspace view.
+  - It calculates many concepts from denormalised arrays in the browser.
+  - It is not role-specific.
+  - Reports are embedded into an already broad page.
+  - “Installations today” is less useful than a configurable upcoming installation view.
+
+Future dashboard by role:
+
+COLOURPIX ADMIN
+  - National rollout health
+  - At-risk branches
+  - Blocked branches
+  - Overdue tasks
+  - Pending approvals
+  - Branches without workspaces
+  - Recent uploads/activity
+  - Quick branch/workspace actions
+
+PSG HEAD OFFICE
+  - Items requiring PSG action
+  - Approval requests
+  - Branches at risk
+  - Upcoming installations
+  - Questions and requests
+  - National progress
+
+BRANCH MANAGER
+  - Their branch
+  - Current stage
+  - Current task
+  - Required action
+  - Files awaiting review
+  - Important dates
+  - Recent communication
+
+INSTALLATION PARTNER
+  - Installation work available through explicit access grants
+  - Evidence upload actions
+  - Blockers
+  - Upcoming dates
+  - Relevant messages
+
+PSG USER
+  - Only visible rollout information and relevant My Actions.
+
+Above the fold should show attention queues before decorative or secondary statistics.
+
+5. BRANCH LIST AUDIT
+--------------------
+Current implementation is a useful starting point. It loads branches and projects, matches projects by branch ID/name, supports search, branch editing, contact editing, and deletion.
+
+Problems:
+
+  - Project matching has needed multiple fallbacks because branch and project identity are duplicated.
+  - The page mixes directory, administration, project health, and project launch.
+  - Branch cards can become overloaded.
+  - Active project status is derived from project records rather than a guaranteed one-to-one workspace relationship.
+  - It does not expose current task, responsible role, blocker, or missing files prominently.
+  - There is no reliable “no workspace” state separate from “no visible project.”
+
+Future branch list columns:
+
+  - Branch
+  - Branch code
+  - Division
+  - Location
+  - Workspace state
+  - Stage
+  - Health
+  - Current task
+  - Responsible role
+  - Progress
+  - Installation date
+  - Last activity
+  - Required action
+
+Filters:
+
+  - Health
+  - Stage
+  - Task status
+  - Province
+  - Division
+  - Responsible role
+  - Installation date/month
+  - Missing files
+  - Missing workspace
+
+Do not show full task lists or file previews in the branch list.
+
+6. BRANCH WORKSPACE AUDIT
+-------------------------
+The current BranchDetailPage already contains useful pieces:
+
+  - Branch identity
+  - Location
+  - Contacts
+  - Project count
+  - Outstanding task count
+  - File count
+  - Current task highlight
+  - Quick updates
+  - Pending tasks
+  - All tasks
+  - Task files
+  - Task comments
+  - Preview/download/rename/delete
+  - Recent updates/activity
+
+However, it is not yet the approved Branch Workspace because:
+
+  - It can render multiple projects for a branch even though the target is one primary workspace.
+  - It has no explicit current_task_id.
+  - It infers the current task as the first unfinished task.
+  - It still uses old task terminology and status values.
+  - It has no stage timeline for the fixed 14-stage lifecycle.
+  - It has no health model separate from project status.
+  - It has no approval tab.
+  - It has no required-file/missing-file summary.
+  - It has no responsible role/responsible person display.
+  - It has no My Actions context.
+  - It duplicates ProjectDetailPage functionality.
+  - Quick update and task operations are spread across long scrolling sections.
+
+Recommended top-to-bottom hierarchy:
+
+  1. Branch header and identity
+  2. Health, stage, progress, and dates
+  3. Current task card with status, responsible role, required action, and blocker
+  4. Attention strip: approvals, blockers, missing files, overdue work
+  5. Stage timeline
+  6. Current task action panel
+  7. Workflow task list
+  8. Files and missing-file summary
+  9. Communication and requests
+  10. Approvals
+  11. Activity history
+
+Branch Details and Project Details should be merged into one route, with the current project route redirecting to the branch workspace.
+
+7. WORKFLOW UX AUDIT
+--------------------
+Current implementation:
+
+  - Project stages are free-form strings.
+  - Timeline derives stages from task.stage or task.text.
+  - Workflow status is inferred from completed tasks.
+  - Project status is recalculated from stage/task state in some paths.
+  - There is no fixed stage table.
+
+This directly conflicts with the approved fixed lifecycle.
+
+Recommendation:
+  Use a hybrid vertical stage timeline plus task list.
+
+Why vertical:
+  - The 14 stages are too many for a reliable desktop-only horizontal timeline.
+  - Mobile needs a readable sequence.
+  - Long stage names need room.
+  - A vertical timeline can show completed/current/future/blocked states clearly.
+
+Each stage displays:
+
+  - Stage number
+  - Stage name
+  - Stage status
+  - Completion date
+  - Required files summary
+  - Approval state where relevant
+  - Task count
+  - Expand/collapse action
+
+Stage states:
+
+  - Complete: green and collapsed by default
+  - Current: strong highlight and expanded
+  - Future: neutral
+  - Blocked: red warning and blocker reason
+  - Waiting: amber warning
+  - Skipped/cancelled: muted with explanation
+
+The lifecycle should be stored in workflow_stages rows protected as system data.
+
+8. TASK UX AUDIT
+----------------
+Current task implementation is incompatible with the approved task model.
+
+Current code still contains:
+
+  - TaskAssignee type
+  - assigneeName
+  - assigneeEmail
+  - assignees array
+  - buildTaskAssignees()
+  - required assignee validation when adding tasks
+  - “Assign every open task to at least one person” errors
+  - task assignment UI
+  - participant summaries derived from assignees
+  - current task display showing assigned people
+  - old task statuses pending/open/busy/done
+
+This is a critical mismatch.
+
+Current task creation can fail because no person is assigned. That must be removed in the future design.
+
+Future task record should use:
+
+  - stage
+  - title
+  - description
+  - status
+  - priority
+  - sort order
+  - due date
+  - responsible group
+  - optional responsible person
+  - required action
+  - waiting reason
+  - blocker reason
+  - required completion checks
+  - created/updated/completed actor fields
+
+Task interaction should allow a user to:
+
+  - Change status directly
+  - Select responsible role
+  - Optionally select a responsible person
+  - Add a required action
+  - Add/update blocker reason
+  - Add waiting reason
+  - Set priority and due date
+  - Upload required files
+  - Add a quick update
+  - Complete/reopen where permitted
+
+The task card should not require users to navigate to another page for common actions.
+
+9. CURRENT TASK AUDIT
+---------------------
+CurrentTaskCard.tsx uses:
+
+  project.tasks.find(task => !task.completed)
+
+This is not acceptable for the target model.
+
+Problems:
+
+  - It ignores explicit current task selection.
+  - It may select a Pending/Waiting task that is not the true current task.
+  - It displays assigned-user language that the approved model is removing.
+  - It provides a quick update but no explicit task status or responsible role.
+
+Future:
+
+  - Add workspace.current_task_id.
+  - Display current task prominently.
+  - Show status, responsible group, optional person, due date, required action, blocker, and missing files.
+  - When complete, suggest the next task but require intentional confirmation.
+
+10. FILE UX AUDIT
+-----------------
+Current implementation:
+
+  - Files are stored in Supabase Storage.
+  - Metadata is stored in projects.files JSONB.
+  - Files may have taskId.
+  - Branch and Project Details support upload/preview/download/rename/delete.
+  - Upload errors were recently made visible.
+  - Upload now refreshes latest metadata before appending.
+
+Problems:
+
+  - File metadata and storage are duplicated without a relational file record.
+  - No categories are required.
+  - No versions are preserved.
+  - No required-file checklist exists.
+  - No approval-file relationship exists.
+  - File deletion currently depends on project JSONB update plus Storage removal.
+  - Storage policy and project-row policy must remain perfectly aligned.
+  - Missing metadata and orphaned Storage objects are difficult to identify.
+  - The accepted MIME list is not perfectly aligned between app validation and SQL bucket configuration.
+
+Future file UX must show:
+
+  - Required files
+  - Present files
+  - Missing files
+  - Category
+  - Version
+  - Uploaded by
+  - Date
+  - Approval state
+  - Task/workspace relationship
+  - Preview/download/delete actions
+
+11. APPROVAL UX AUDIT
+---------------------
+Current approval functionality is represented through comment/question objects and answer flows in projects.comments.
+
+Problems:
+
+  - No approvals table.
+  - No approval_files relation.
+  - No approval_decisions history.
+  - Approval status is mixed with question status and project status.
+  - There is no reliable pending approval queue.
+  - There is no clear decision history.
+  - A formal decision cannot be safely reconstructed from generic comments.
+
+Future approval centre must show:
+
+  - What requires approval
+  - Approval type
+  - Requester
+  - Decision role/group
+  - Optional decision person
+  - Files under review
+  - Current status
+  - Requested date
+  - Due date
+  - Previous decisions
+  - Comments
+
+Actions:
+
+  - Approve
+  - Reject
+  - Request changes
+  - Withdraw
+
+12. COMMUNICATION AUDIT
+-----------------------
+Current implementation stores comments, questions, answers, request metadata, and activity inside projects.comments and projects.activity.
+
+The Project Details UI does distinguish some task comments and questions, but the data model does not provide durable separation.
+
+Future separation:
+
+  Updates:
+    Human progress information with no response requirement.
+
+  Requests:
+    Messages requiring a response, with response history and status.
+
+  Approvals:
+    Formal decision records.
+
+  Activity:
+    Automatic immutable system events.
+
+Do not create one generic feed that attempts to represent all four concepts.
+
+13. SEARCH AUDIT
+----------------
+Current SearchPage searches only project-level fields:
+
+  - Branch
+  - Town
+  - Province
+  - Current stage
+  - Project type
+  - Project status
+  - Manager
+
+It does not search:
+
+  - Task title/description
+  - File names
+  - File categories
+  - Updates
+  - Requests
+  - Activity
+  - Branch contacts
+  - Responsible role/person
+
+Future global search should group results by:
+
+  - Branches
+  - Workspaces
+  - Tasks
+  - People
+  - Files
+  - Updates
+  - Requests
+  - Approvals
+  - Activity
+
+14. MY ACTIONS AUDIT
+--------------------
+My Actions does not currently exist.
+
+The current application has:
+
+  - Dashboard task summary in a limited form
+  - Task assignee logic
+  - Current task card
+  - No responsible groups
+  - No approvals table
+  - No request-response table
+  - No persistent notifications
+
+Future My Actions should aggregate:
+
+  - Tasks where the current user is responsible person
+  - Tasks where the current user's responsibility group is expected to act
+  - Approvals requiring the user's decision
+  - Requests requiring the user's response
+  - Overdue relevant work
+  - Workspaces with blockers relevant to the user's permitted role
+
+This is an attention queue, not a personal task assignment list.
+
+15. ROLE/PERMISSION AUDIT
+-------------------------
+Current role types include:
+
+  - colourpix_admin
+  - psg_user
+  - psg_head_office
+  - psg_branch_manager
+  - sign_company
+
+Critical code issue:
+  normalizeRole() maps psg_head_office, psg_branch_manager, and sign_company to psg_user. This means the type-level role definitions and role policy definitions do not reliably survive authentication normalisation.
+
+Access Controls issue:
+  roleOptions currently exposes only colourpix_admin and psg_user, despite the type system and schema supporting more roles.
+
+Current policy mismatch:
+
+  - PSG Head Office policy is read/report/comment-oriented.
+  - PSG Branch Manager policy is almost entirely read-only.
+  - Sign Company policy is almost entirely read-only.
+  - The approved future requires explicit installation and branch workflows.
+
+Current task mutation mismatch:
+  Task creation and editing require assignee data, which conflicts with the approved model.
+
+Current frontend/RLS mismatch:
+  UI checks are more restrictive in some places, but database policies in schema/repair SQL are broad authenticated/public policies. Frontend-only permission checks must not be treated as security.
+
+Future authorization needs:
+
+  - Global roles
+  - Branch-scoped roles
+  - Workspace-scoped access grants
+  - Installer section restrictions
+  - Role-based responsible-group actions
+  - Permission-level decisions enforced in RLS/service layer
+
+16. DATABASE/UI MISMATCH
+------------------------
+Actual current persistent application tables:
+
+  - branches
+  - projects
+  - profiles
+
+Supabase-managed resources:
+
+  - auth.users
+  - storage.buckets
+  - storage.objects
+
+Current denormalised project collections:
+
+  - projects.tasks JSONB
+  - projects.files JSONB
+  - projects.comments JSONB
+  - projects.activity JSONB
+
+Missing approved future tables:
+
+  - branch_contacts
+  - workflow_stages
+  - responsibility_groups
+  - tasks
+  - task_templates
+  - task_file_requirements
+  - file_categories
+  - project_files
+  - file_versions
+  - project_updates
+  - project_requests
+  - request_responses
+  - approvals
+  - approval_files
+  - approval_decisions
+  - project_activity
+  - notifications
+  - roles
+  - permissions
+  - role_permissions
+  - profile_role_assignments
+  - workspace_access_grants
+
+Current type mismatches:
+
+  - ProjectStage is free-form string instead of fixed stage reference.
+  - ProjectStatus is project status, but health is not separate.
+  - TaskStatus is pending/open/busy/done instead of approved states.
+  - TaskItem includes obsolete assignee fields.
+  - Project has files/tasks/comments/activity arrays instead of relations.
+  - Project has no currentTaskId.
+  - Project has no health field.
+  - Branch has contacts JSONB and legacy contact columns.
+  - UserRecord has workspaceIds but no proper scoped role assignment model.
+
+17. SUPABASE/RLS SECURITY AUDIT
+------------------------------
+Current schema risks:
+
+  - Branches have public read policy in the schema.
+  - Projects have public read policy in the schema.
+  - Authenticated insert/update/delete policies use broad true conditions in the base schema/repair scripts.
+  - Projects are not scoped by profile branch/workspace access at the database policy level.
+  - Files need policy checks tied to workspace visibility, not only path shape.
+  - Profiles require strict separation between self-editable identity fields and administrator-only role/access fields.
+  - Activity needs insert-only/immutable semantics.
+
+Target security model:
+
+  - No public project/branch reads unless deliberately required.
+  - Workspace visibility function/policy is the central RLS condition.
+  - Installer access through explicit workspace_access_grants.
+  - Commercial/approval files restricted by category or section permission.
+  - Users cannot self-elevate.
+  - Users cannot modify activity history.
+  - Deletion and approval decisions require separate permissions.
+  - Storage object policies must verify the associated project/workspace.
+
+18. RESPONSIVE DESIGN AUDIT
+---------------------------
+Current strengths:
+
+  - Tailwind responsive classes are widely used.
+  - AppShell has a mobile header and fixed bottom navigation.
+  - Project and branch cards collapse into responsive grids.
+  - Task controls wrap on small screens.
+
+Current problems:
+
+  - mobileNavigation simply takes the first five primary navigation items rather than a role-specific mobile model.
+  - Long branch/project workspaces create excessive vertical scrolling.
+  - Accordion task bodies contain files, comments, inputs, and actions all at once.
+  - Dense task controls can become difficult to use on phones.
+  - No installation-specific camera/evidence workflow exists.
+  - Tables/reporting need intentional mobile representations rather than simple wrapping.
+  - Current content shell mixes light content background with dark nested panels, which can reduce hierarchy on small screens.
+
+Future mobile priorities:
+
+  - Current task card first
+  - One-tap status change
+  - One-tap blocker action
+  - Camera upload for evidence
+  - Compact file list
+  - Full-screen task detail drawer/page
+  - Sticky save/action control
+  - Role-specific bottom navigation
+
+19. VISUAL DESIGN AUDIT
+-----------------------
+Current visual character:
+
+  - Dark navy outer shell
+  - Light grey content panel
+  - Dark translucent cards
+  - Cyan, teal, green, amber, red, and purple accents
+  - Large rounded corners
+  - Many cards and nested cards
+  - Strong Tailwind utility styling
+
+Assessment:
+  The UI currently feels like an unfinished internal admin system with a developing operational visual language, not yet a cohesive professional control centre.
+
+Why:
+
+  - Similar content is rendered in different visual systems across pages.
+  - Branch and project cards use different hierarchy.
+  - Status labels vary by page.
+  - Dark cards inside a light shell can make the page feel visually fragmented.
+  - Dashboard KPIs, report cards, task accordions, and project cards all use competing container styles.
+  - Large rounded surfaces reduce information density for an operations application.
+  - Some text is low contrast or inconsistent between dark and light surfaces.
+  - Error and success messaging is not consistently local to the action that failed.
+  - The visual language uses decorative surfaces where dense tables and clear lists would be more useful.
+
+Recommended direction:
+  Professional operational workspace, with dark navigation, light neutral content, restrained surfaces, strong status colours, dense tables, clear task hierarchy, and fewer nested cards.
+
+20. PRIORITISED UX/FUNCTIONALITY PROBLEMS
+-----------------------------------------
+CRITICAL
+
+C1. Task assignee requirement contradicts approved business rules.
+Current: addProjectTask/updateProjectTask can reject tasks without an assignee.
+Impact: Tasks cannot be created under the approved shared-task model.
+Recommendation: Replace with responsible_group_id and optional responsible_person_id.
+
+C2. Current task is inferred.
+Current: first incomplete task is displayed as current.
+Impact: Users may work on the wrong task.
+Recommendation: Add explicit workspace current_task_id and intentional transitions.
+
+C3. Old task statuses remain.
+Current: pending/open/busy/done.
+Impact: Waiting, blocked, not started, and in-progress semantics are unclear.
+Recommendation: Migrate to approved statuses with required reasons.
+
+C4. No relational operational model.
+Current: tasks/files/comments/activity are JSONB arrays.
+Impact: Weak search, reporting, concurrency, audit, and integrity.
+Recommendation: Relational migration.
+
+C5. RLS is too broad.
+Current: base policies allow broad authenticated/public access.
+Impact: Potential data exposure and unauthorised mutation.
+Recommendation: Workspace/branch-scoped RLS before production redesign.
+
+C6. Role normalisation collapses roles.
+Current: non-admin roles may become psg_user.
+Impact: Wrong permissions and wrong user experience.
+Recommendation: Preserve exact role identity through auth/profile mapping.
+
+C7. No explicit one-primary-workspace database constraint.
+Current: duplicate prevention depends on IDs and frontend logic.
+Impact: Branches can appear to have missing or duplicate projects.
+Recommendation: Partial unique primary-workspace constraint.
+
+HIGH
+
+H1. Branch and Project pages duplicate functionality.
+H2. No My Actions view.
+H3. No dedicated Approval model or queue.
+H4. No persistent notifications.
+H5. No file categories, versions, or missing-file requirements.
+H6. Dashboard lacks action queues.
+H7. Search does not cover tasks/files/updates/activity.
+H8. Project stage is free text and task-derived.
+H9. Project health is conflated with project status.
+H10. Installer access cannot be safely limited to installation sections.
+H11. Users/access controls are not aligned with the approved role model.
+H12. Live schema drift has already caused failed project inserts.
+
+MEDIUM
+
+M1. Reports are embedded in Dashboard instead of having their own route.
+M2. Support is mailto-only.
+M3. Profile image fields use URLs instead of uploads.
+M4. Map coordinates rely on hard-coded fallbacks.
+M5. Mobile navigation is not role-specific.
+M6. Task accordions are too dense for mobile.
+M7. Loading, empty, and error states vary between pages.
+M8. Existing documentation describes functionality that is not implemented.
+
+LOW
+
+L1. About/Legal placement.
+L2. Visual spacing and card-radius consistency.
+L3. Icon/button standardisation.
+L4. More polished report exports.
+
+21. REMOVE / KEEP / REDESIGN
+----------------------------
+REMOVE
+
+  - Projects from primary navigation.
+  - Mandatory task assignment validation.
+  - task_assignees concept.
+  - Old Pending/Open/Busy task semantics.
+  - Generic project-level quick update selector once task-specific action UI is available.
+  - Public project/branch access policies.
+  - Project and Branch Details as separate competing workspaces.
+  - Hard-coded assumption that “project” is the user-facing primary object.
+
+KEEP
+
+  - React/TypeScript/Vite stack.
+  - Supabase Auth.
+  - Supabase Storage.
+  - Branch directory concept.
+  - Map concept.
+  - Task-linked files.
+  - Task comments/updates as concepts, after normalisation.
+  - Activity history concept.
+  - Responsive shell.
+  - Query caching and error boundary.
+  - Task templates as a concept.
+
+REDESIGN
+
+  - Dashboard.
+  - Branch list.
+  - Branch Details and Project Details into Branch Workspace.
+  - Task data and UI.
+  - File data and UI.
+  - Approval and request flows.
+  - Roles and permissions.
+  - Search.
+  - Reports.
+  - Settings.
+  - Support.
+  - Mobile navigation.
+  - Visual system.
+
+22. MIGRATION IMPACT MAP
+------------------------
+Frontend types affected:
+
+  - domain.ts
+  - Project
+  - TaskItem
+  - ProjectFile
+  - CommentItem
+  - ActivityItem
+  - UserRecord
+  - ProjectStage
+  - TaskStatus
+
+Services affected:
+
+  - portalService.ts
+  - branchService.ts
+  - authService.ts
+  - userService.ts
+
+Pages affected:
+
+  - App.tsx
+  - AppShell.tsx
+  - DashboardPage.tsx
+  - BranchesPage.tsx
+  - BranchDetailPage.tsx
+  - ProjectsPage.tsx
+  - ProjectDetailPage.tsx
+  - SearchPage.tsx
+  - ReportsPage.tsx
+  - AccessControlsPage.tsx
+  - UsersPage.tsx
+  - SettingsPage.tsx
+  - SupportPage.tsx
+
+Components affected:
+
+  - CurrentTaskCard.tsx
+  - QuickUpdate.tsx
+  - FileGrid.tsx
+  - ProjectCard.tsx
+  - Timeline.tsx
+  - dashboard task/activity components
+  - task form and task pool components
+
+Constants affected:
+
+  - domain status values
+  - portal stages
+  - taskPool.ts
+  - taskTemplates.ts
+  - projectTemplates.ts
+  - permissions.ts
+
+Data access changes:
+
+  - getProjects becomes workspace/branch queries.
+  - getProjectById becomes getWorkspaceByBranch or getBranchWorkspace.
+  - Task mutations become task-level inserts/updates rather than whole project JSONB replacement.
+  - File upload creates project_files and file_versions records.
+  - Comments split into updates, requests, responses, and approvals.
+  - Activity is inserted as immutable events.
+  - My Actions becomes a relational query across tasks, approvals, requests, and responsibility groups.
+
+23. RECOMMENDED FINAL APPLICATION STRUCTURE
+--------------------------------------------
+
+App
+  Authentication
+  National Control Centre
+  Branches
+    Branch list
+    Branch Workspace
+      Overview
+      Workflow
+      Files
+      Communication
+      Approvals
+      Activity
+  My Actions
+  Installations
+  Reports
+  Search
+  Administration
+    Users
+    Roles and permissions
+    Workflow/task templates
+    File categories
+    Workspace settings
+    System status
+  Profile
+  Support
+  Secondary legal/about pages
+
+24. COMPONENT ARCHITECTURE
+---------------------------
+Shared application components:
+
+  - AppShell
+  - GlobalSearch
+  - NotificationBell
+  - RoleAwareNavigation
+  - StatusBadge
+  - HealthBadge
+  - EmptyState
+  - LoadingState
+  - ErrorState
+  - ConfirmDialog
+  - SaveFeedback
+
+Branch workspace components:
+
+  - BranchWorkspaceHeader
+  - WorkspaceHealthSummary
+  - CurrentTaskPanel
+  - AttentionStrip
+  - StageTimeline
+  - StageSection
+  - TaskList
+  - TaskCard
+  - TaskStatusControl
+  - TaskResponsibilityControl
+  - TaskActionComposer
+  - RequiredFilesPanel
+  - FileList
+  - FileCard
+  - ApprovalPanel
+  - RequestThread
+  - UpdateFeed
+  - ActivityTimeline
+
+Administration components:
+
+  - UserTable
+  - RolePolicyEditor
+  - WorkspaceAccessEditor
+  - WorkflowTemplateEditor
+  - FileCategoryEditor
+
+Current component problems:
+
+  - ProjectDetailPage is too large and owns too many domains.
+  - BranchDetailPage is also large and duplicates project logic.
+  - CurrentTaskCard contains obsolete assignment display and inferred-current logic.
+  - FileGrid is reusable but assumes project-level files and task-folder structures.
+  - Timeline derives stages from tasks rather than fixed workflow rows.
+  - Task template constants are split between taskPool.ts and taskTemplates.ts.
+
+25. FRONTEND TYPE ARCHITECTURE
+------------------------------
+Future domain types should map closely to tables:
+
+  Branch
+  BranchContact
+  Workspace
+  WorkflowStage
+  Task
+  TaskTemplate
+  TaskFileRequirement
+  FileCategory
+  ProjectFile
+  FileVersion
+  ProjectUpdate
+  ProjectRequest
+  RequestResponse
+  Approval
+  ApprovalFile
+  ApprovalDecision
+  ProjectActivity
+  Notification
+  Profile
+  Role
+  Permission
+  RoleAssignment
+  WorkspaceAccessGrant
+  ResponsibilityGroup
+
+Do not create one giant Project interface containing all operational collections.
+Use query-specific view models for dashboard/list/workspace screens while keeping domain types relational.
+
+26. REPORTING UX
+----------------
+Dashboard widgets:
+
+  - Blocked branches
+  - Overdue tasks
+  - Pending approvals
+  - Upcoming installations
+  - Missing files
+  - My Actions
+
+Interactive report tables:
+
+  - National rollout
+  - At-risk branches
+  - Blocked branches
+  - Installation schedule
+  - Approval backlog
+  - Tasks by stage/status
+  - Missing required files
+
+Downloadable reports:
+
+  - CSV for raw operational data
+  - Excel for manipulation and meetings
+  - PDF for formal management distribution
+
+Reports should be server/query driven after relational migration rather than calculated from large client-side JSONB arrays.
+
+27. USER JOURNEYS
+-----------------
+
+COLOURPIX ADMIN
+  Login
+  -> National Control Centre
+  -> At-risk branches
+  -> Branch Workspace
+  -> Current task/blocker
+  -> Change status or responsibility
+  -> Upload/update
+  -> Review activity
+  -> Return to dashboard
+
+PSG HEAD OFFICE
+  Login
+  -> My Actions or PSG Actions dashboard
+  -> Pending approval
+  -> Review related files
+  -> Approve/request changes
+  -> Activity records decision
+
+BRANCH MANAGER
+  Login
+  -> Your branch
+  -> Current task and required action
+  -> Review files or request information
+  -> Add update/request
+  -> See response and recent activity
+
+INSTALLATION PARTNER
+  Login
+  -> Installation Work
+  -> Explicitly granted workspace
+  -> Installation task
+  -> Upload evidence
+  -> Mark progress or report blocker
+  -> See relevant response
+
+28. WHAT IS WRONG WITH THE CURRENT APP?
+---------------------------------------
+The main problem is not that the app lacks pages. It is that the current data model and user model do not match the approved business model.
+
+The app has accumulated features around a project JSON document. This makes the interface look functional, but it creates contradictions:
+
+  - Branch is supposed to be primary, but Project remains a competing object.
+  - Tasks are supposed to be shared work, but code requires assignees.
+  - Workflow is supposed to be fixed, but stages are free-form and task-derived.
+  - Current work is supposed to be explicit, but current task is inferred.
+  - Activity is supposed to be immutable, but activity is an editable JSONB array.
+  - Files are supposed to be reliable, but file metadata is duplicated in JSONB.
+  - Roles are supposed to be explicit, but role normalisation collapses role distinctions.
+  - RLS is supposed to protect data, but base policies are broad.
+  - Dashboard is supposed to guide action, but it primarily displays counts.
+
+29. WHAT IS ALREADY GOOD?
+--------------------------
+Preserve these foundations:
+
+  - React/TypeScript/Vite technical stack.
+  - Supabase integration.
+  - Branch directory and branch identity concept.
+  - Private Storage bucket concept.
+  - Task-linked files.
+  - Task comments and quick updates.
+  - Activity/event concept.
+  - Responsive application shell.
+  - Query invalidation and save feedback patterns.
+  - Existing error boundary.
+  - Fixed national rollout use case.
+  - Existing task template concept, after consolidation.
+
+30. TOP 20 CHANGES
+------------------
+1. Define the Branch Workspace as the primary user-facing object.
+2. Merge Branch Details and Project Details.
+3. Enforce one active primary workspace per branch in the database.
+4. Replace mandatory task assignees with responsible group and optional person.
+5. Replace old task statuses with approved statuses.
+6. Add explicit current_task_id/current task selection.
+7. Add task due dates, priorities, waiting reasons, and blocker reasons.
+8. Replace task/file/comment/activity JSONB with relational tables.
+9. Create fixed workflow stage reference rows.
+10. Separate workspace health from stage and task status.
+11. Create relational approvals and approval decisions.
+12. Create relational requests, responses, and updates.
+13. Create immutable project_activity.
+14. Create persistent notifications and My Actions queries.
+15. Align exact roles and stop collapsing roles in normalizeRole().
+16. Replace broad RLS policies with workspace/branch-scoped policies.
+17. Restrict installer access through explicit workspace access grants.
+18. Redesign Dashboard around attention, not just metrics.
+19. Replace field-only search with global relational search.
+20. Rebuild mobile workflow around current tasks, actions, and evidence upload.
+
+31. RECOMMENDED IMPLEMENTATION PHASES
+-------------------------------------
+Phase order should be foundation first, then migration-safe UX, then operational features.
+
+PHASE 0 - BUSINESS RULE LOCK
+Objective:
+  Resolve remaining role, approval, required-file, health, and current-task decisions.
+
+Affected:
+  Specifications only.
+
+Database impact:
+  None.
+
+UX impact:
+  Final terminology and permission matrix.
+
+Risk:
+  Medium if decisions remain implicit.
+
+Dependencies:
+  Business approval.
+
+Acceptance criteria:
+  All unresolved decisions in the database specification are answered.
+
+PHASE 1 - ARCHITECTURE AND DATA FOUNDATION
+Objective:
+  Create relational tables, reference rows, RLS design, access grants, and audit model.
+
+Likely files/components:
+  - Supabase schema/migrations
+  - domain types
+  - auth/permission services
+  - portal data services
+
+Database impact:
+  Highest. New relational tables and migration tooling.
+
+UX impact:
+  None or minimal while legacy reads remain.
+
+Risk:
+  High because existing data is JSONB.
+
+Dependencies:
+  Approved database specification and migration mapping.
+
+Acceptance criteria:
+  New schema exists in a non-production environment; counts and foreign keys validate; RLS tests pass.
+
+PHASE 2 - DUAL-READ / DUAL-WRITE MIGRATION LAYER
+Objective:
+  Allow old and new data models to coexist during validation.
+
+Likely files/components:
+  - portalService
+  - branchService
+  - type adapters
+  - migration scripts, created only after approval
+
+Database impact:
+  Read/write compatibility layer.
+
+UX impact:
+  None expected.
+
+Risk:
+  High concurrency and data divergence risk.
+
+Dependencies:
+  Phase 1 schema and verified mapping.
+
+Acceptance criteria:
+  New and old reads agree for sampled branches; writes are auditable; rollback is possible.
+
+PHASE 3 - NAVIGATION AND BRANCH WORKSPACE
+Objective:
+  Merge Branch Details and Project Details and make Branch Workspace primary.
+
+Likely files/components:
+  - App.tsx
+  - AppShell
+  - BranchesPage
+  - BranchDetailPage
+  - ProjectDetailPage
+  - new workspace components
+
+Database impact:
+  Reads workspace/stage/task relations.
+
+UX impact:
+  Major navigation and page consolidation.
+
+Risk:
+  High because users currently rely on both routes.
+
+Dependencies:
+  Stable workspace/task queries.
+
+Acceptance criteria:
+  A user can open a branch and understand health, stage, current task, blockers, files, communication, approvals, and history without opening a second competing page.
+
+PHASE 4 - TASK AND WORKFLOW UX
+Objective:
+  Implement fixed lifecycle, explicit current task, new status model, responsibility group, optional responsible person, required actions, waiting/blocker rules, and task templates.
+
+Likely files/components:
+  - task types
+  - task services
+  - TaskCard
+  - StageTimeline
+  - CurrentTaskPanel
+  - task template UI
+
+Database impact:
+  Tasks, stages, templates, responsibility groups, requirements.
+
+UX impact:
+  Major task workflow redesign.
+
+Risk:
+  High because old task assumptions are widespread.
+
+Dependencies:
+  Relational tasks and approved status rules.
+
+Acceptance criteria:
+  A task can be created without a person; status changes require correct reasons; only one current task exists; old assignee validation is gone.
+
+PHASE 5 - FILES AND REQUIRED EVIDENCE
+Objective:
+  Add relational files, categories, versions, task requirements, previews, uploads, deletion, and missing-file visibility.
+
+Likely files/components:
+  - FileGrid
+  - upload controls
+  - task/workspace file panels
+  - Storage service
+
+Database impact:
+  project_files, file_versions, file_categories, task requirements.
+
+UX impact:
+  Category-first upload and evidence workflow.
+
+Risk:
+  High because Storage and JSONB metadata must be reconciled.
+
+Dependencies:
+  Workspace/task migration.
+
+Acceptance criteria:
+  Every file has metadata, category, uploader, version, and workspace relationship; orphan files are reported; required files are visible.
+
+PHASE 6 - COMMUNICATION AND APPROVALS
+Objective:
+  Separate updates, requests, approvals, responses, and decisions.
+
+Likely files/components:
+  - ProjectDetail/BranchDetail communication sections
+  - request composer
+  - approval panel
+  - activity display
+
+Database impact:
+  Updates, requests, responses, approvals, files, decision history.
+
+UX impact:
+  Clear distinction between information, response requests, and formal decisions.
+
+Risk:
+  Medium to high due to ambiguous legacy comments.
+
+Dependencies:
+  Activity and identity mapping.
+
+Acceptance criteria:
+  Approval status and history are reconstructable; requests have response state; updates do not masquerade as approvals.
+
+PHASE 7 - ROLES, RLS, AND PARTNER ACCESS
+Objective:
+  Align roles, permissions, scoped access, installer sections, and backend enforcement.
+
+Likely files/components:
+  - permissions.ts
+  - authService
+  - userService
+  - AccessControlsPage
+  - AppShell navigation
+
+Database impact:
+  Roles, permissions, assignments, workspace_access_grants, RLS.
+
+UX impact:
+  Role-specific dashboards and navigation.
+
+Risk:
+  Critical security risk if incomplete.
+
+Dependencies:
+  Relational workspace and profile model.
+
+Acceptance criteria:
+  RLS tests demonstrate that every role sees and edits only permitted records; frontend restrictions match backend behaviour.
+
+PHASE 8 - MY ACTIONS AND NOTIFICATIONS
+Objective:
+  Provide attention-based actions without mandatory task assignment.
+
+Likely files/components:
+  - Dashboard
+  - MyActions page
+  - notification drawer
+  - notification service
+
+Database impact:
+  Notifications and relational action queries.
+
+UX impact:
+  Role-specific attention workflow.
+
+Risk:
+  Medium.
+
+Dependencies:
+  Responsible groups, approvals, requests, and due dates.
+
+Acceptance criteria:
+  My Actions includes responsible-role tasks, optional responsible-person tasks, approvals, requests, and overdue relevant work.
+
+PHASE 9 - SEARCH AND REPORTING
+Objective:
+  Search and report across relational records.
+
+Likely files/components:
+  - SearchPage/global search
+  - ReportsPage
+  - report query services
+  - export components
+
+Database impact:
+  Indexes, full-text search, report views/queries.
+
+UX impact:
+  Grouped search results and action-oriented reports.
+
+Risk:
+  Medium.
+
+Dependencies:
+  Relational data and RLS.
+
+Acceptance criteria:
+  Searches for branch, code, task, person, file, quote, installation, and activity return grouped visible results; reports answer overdue/approval/missing-file questions.
+
+PHASE 10 - MOBILE AND VISUAL SYSTEM
+Objective:
+  Make the operational workflows fast and clear on phone/tablet as well as desktop.
+
+Likely files/components:
+  - AppShell
+  - Branch Workspace
+  - TaskCard
+  - file upload components
+  - status/health components
+
+Database impact:
+  None beyond needed query shapes.
+
+UX impact:
+  Mobile task actions, camera evidence, compact branch cards, role-specific navigation.
+
+Risk:
+  Medium.
+
+Dependencies:
+  Stable core workflows.
+
+Acceptance criteria:
+  Installation partner can find relevant work, update status, report a blocker, and upload evidence on a phone without desktop-only controls.
+
+32. FINAL AUDIT CONCLUSION
+--------------------------
+The current application is a functional prototype with valuable operational building blocks, but it is not yet architecturally aligned with the approved PSG Rebrand Control Centre.
+
+The most important work is not visual polish. It is resolving the domain model:
+
+  - Branch as primary object
+  - One active primary workspace per branch
+  - Fixed stages
+  - Relational tasks
+  - Responsible group plus optional responsible person
+  - Explicit current task
+  - Separate task status and workspace health
+  - Relational files and requirements
+  - Formal approvals
+  - Immutable activity
+  - Scoped RLS and partner access
+  - My Actions
+
+The existing React/TypeScript/Vite/Supabase stack can support the future product. The current page structure, types, services, JSONB data model, permissions, and RLS policies cannot be carried forward unchanged.
+
+The correct next step is to approve the unresolved business decisions, then implement Phase 1 in a separate migration-safe environment. No production refactor should begin before the current JSONB data has been mapped, backed up, and validated against the relational model.

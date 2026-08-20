@@ -1,0 +1,743 @@
+PSG REBRAND APP AUDIT INPUT
+========================================
+
+This document combines the project guidance docs and the App Audit summary for easy copy/paste into ChatGPT.
+
+============================================================
+1) README.md
+============================================================
+
+# PSG Rebrand
+
+Configurable project workspace platform for managed client delivery, rollout operations, requests, reports, and support workflows.
+
+## Stack
+
+- React 19
+- Vite
+- TypeScript
+- Tailwind CSS
+- React Router
+- TanStack Query
+- React Hook Form
+- Zod
+- Supabase-ready data and auth layer
+
+## Scripts
+
+- `npm run dev`
+- `npm run build`
+- `npm run check`
+- `npm run preview`
+- `npm run website:preview`
+
+## Notes
+
+This platform includes a Supabase-backed dashboard, project workflows, project detail pages, reports, search, map, and user profile management.
+Project files upload to a private Supabase Storage bucket and are downloaded through short-lived signed links.
+
+The public marketing and sales site lives in [website](website). It is separate from the authenticated workspace app: the website handles business intake, project enquiries, workspace requests, demos, and customisation requests; the app remains the invitation-only workspace instance for active client work.
+
+## Supabase Setup
+
+Create a local `.env.local` file with these values, then run the SQL file in [supabase/schema.sql](supabase/schema.sql) inside the Supabase SQL editor:
+
+```bash
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-public-key
+VITE_ENABLE_PREVIEW_AUTH=false
+```
+
+When both values are present, the app uses Supabase Auth and data APIs; otherwise it falls back to the built-in mock data flow.
+
+Preview role sign-in is disabled by default for production safety. Enable it only for local testing by setting `VITE_ENABLE_PREVIEW_AUTH=true`.
+
+For sign-in testing, create Supabase Auth users that match the seeded profile emails in [supabase/schema.sql](supabase/schema.sql) or your own users with the same role metadata shape used in [src/services/authService.ts](src/services/authService.ts).
+
+The setup SQL also creates private Storage buckets:
+
+- `project-files` accepts PDF, DOCX, XLSX, JPG, PNG, DWG, and AI files up to 25 MB and stores project file metadata in the `projects.files` JSON field.
+- `voice-updates` accepts M4A, MP3, WAV, OGG, WebM, AAC, and MP4 audio up to 50 MB for admin/head-office voice note transcription.
+
+### RLS hardening
+
+[supabase/repair-live-database.sql](supabase/repair-live-database.sql) now provisions branch access, backfills the current project location columns, and scopes branch, project, profile, and project-file access by the signed-in user's profile role:
+
+- Colourpix administrators and PSG head office can view all projects.
+- PSG branch managers can view only their branch projects.
+- Sign companies can view only projects assigned to their installer name or branch value.
+- Profile writes are restricted to Colourpix administrators.
+- Storage access is tied to projects the user can view.
+
+To apply the hardened policies through the Supabase Management API, set `SUPABASE_ACCESS_TOKEN` locally with a Supabase Personal Access Token from the account tokens page. It should start with `sbp_`.
+
+```bash
+npm run apply:rls
+npm run check:rls
+```
+
+Without a PAT, run [supabase/repair-live-database.sql](supabase/repair-live-database.sql) in the Supabase SQL Editor, then run `npm run check:rls` locally.
+
+## Supabase Edge Functions
+
+The user invite flow calls the `invite-user` Edge Function. Deploy it after logging into the Supabase CLI:
+
+```bash
+npx supabase login
+npx supabase functions deploy invite-user --project-ref your-project-ref
+```
+
+[supabase/config.toml](supabase/config.toml) sets `verify_jwt = false` for this function so browser CORS preflight requests can reach the function. The function still verifies the caller session itself and only allows Colourpix administrators to send invites.
+
+Voice note transcription calls the `transcribe-voice-update` Edge Function. It verifies the caller session, allows Colourpix administrators and PSG head office only, downloads the private audio object with the service role, and sends it to OpenAI transcription. Configure the secret before using audio uploads:
+
+```bash
+npx supabase secrets set OPENAI_API_KEY=your-openai-key --project-ref your-project-ref
+npx supabase functions deploy transcribe-voice-update --project-ref your-project-ref
+```
+
+Optionally set `OPENAI_TRANSCRIPTION_MODEL`; otherwise the function uses `gpt-4o-mini-transcribe`.
+
+## Repository
+
+GitHub: https://github.com/francois2botha-star/rebrandreport
+
+CI rebuild trigger: 2026-08-11 10:25Z
+
+============================================================
+2) docs/app-overview-for-guidance.md
+============================================================
+
+# PSG Rebrand: Product Overview for Guidance
+
+## Executive Summary
+
+PSG Rebrand is intended to be a secure, role-aware project workspace platform for managing repeatable work across separate client workspaces. The application is licensed software, with the first workspace configured for the PSG National Signage Rollout and Colourpix CC positioned as the default service partner at this stage. PSG signage is the first proof-of-concept template, not the limit of the product. Its purpose is to replace scattered spreadsheets, WhatsApp messages, email threads, and manual status chasing with one shared project record for every site, location, customer request, rollout item, or delivery job.
+
+The platform gives platform administrators, workspace administrators, client administrators, site contacts, and delivery partners a controlled view of the project work relevant to them. It tracks each project from initial setup through information gathering, approvals, quotations, production or delivery, evidence, signoff, and completion.
+
+The current version is a working production-oriented scaffold connected to Supabase for authentication, project data, file storage, role-based access, and live project updates. It already supports dashboard reporting, project workflow management, project templates, file uploads, comments, project Q&A requests, voice-note batch updates, search, maps, reports, and user profile management.
+
+## Intended Use
+
+The app is intended to serve as the single operational source of truth for managed projects across multiple client workspaces. PSG signage is the current active workspace and default template, but the product is intended to support other private, public, signage, service delivery, facilities, operations, and multi-location project workflows over time.
+
+It should help the business answer questions such as:
+
+- Which sites, jobs, requests, or locations are in progress, delayed, awaiting approval, or completed?
+- What stage is each project currently at?
+- Who is responsible for the next action?
+- Which projects need client approval, design confirmation, a purchase order, evidence, or signoff?
+- Which delivery partner, service partner, or supplier is assigned?
+- What journal entries, files, questions, tasks, decisions, and activity belong to each project?
+- Which client users are waiting for an answer from the design partner?
+- What has changed recently, and who made the update?
+
+The authenticated workspace is not meant to be a public website. It is an internal operational tool for managing project delivery and communicating status clearly between clients, workspace administrators, service partners, and suppliers. The public landing page may collect quote, access, and new-workspace requests, which can then be reviewed before users are invited.
+
+Every signed-in user should also have a clear support channel. Project or workspace questions should go to the workspace administrator. Product support, functionality requests, report customization requests, workflow/template suggestions, and technical issues should go to PSG Rebrand support with the workspace administrator copied so requests can be approved before implementation.
+
+## Workspace Model
+
+PSG Rebrand should support separate client workspaces so users only see the projects they are meant to see. A workspace can represent a national client rollout, a regional programme, a public works programme, a signage deployment, a service-delivery queue, or a dedicated customer environment.
+
+The current default workspace is PSG National Signage Rollout. Future workspaces should carry at least:
+
+- Workspace name
+- Client company
+- Default service partner
+- Member users
+- Platform administrators
+- Project records and journal entries scoped to that workspace
+
+Francois and nominated senior workspace administrators should have all-workspace administrative access. Other users should belong only to the specific workspaces they are invited into. Colourpix CC is currently the default service partner for all workspaces and should be presented as "in partnership with Colourpix CC" rather than as the licence owner.
+
+## Project Templates and SaaS Direction
+
+PSG Rebrand should be treated as a configurable service that can be sold or resold to companies that need controlled project workspaces. The platform should support project templates so each workspace can use language and workflows that match the work being managed.
+
+Current template direction:
+
+- Signage rollout: multi-site signage, graphics, approvals, production, installation, photos, and signoff.
+- General rollout: repeatable delivery across locations, departments, customers, or operational sites.
+- Service delivery: customer requests, supplier updates, approvals, operational tasks, and closeout records.
+
+The code should continue to preserve legacy database field names such as branch and installer where they already exist, but the user interface should increasingly display generic labels such as site, location, delivery partner, service partner, workspace administrator, client administrator, and site contact.
+
+## Recommended Product Direction: One Project Journal
+
+The strongest long-term direction for PSG Rebrand is to treat every project as a chronological Project Journal.
+
+Instead of thinking of Comments, Questions, Notes, Activity, Files, Tasks, Voice Updates, and Timeline as separate modules, the platform should increasingly treat them as different types of entries in one living project feed.
+
+Every significant event would become a timestamped journal entry, for example:
+
+- Project created
+- Survey uploaded
+- Client question asked
+- Workspace answer posted
+- Stage changed
+- File uploaded
+- Voice-note transcript processed
+- AI suggestion applied
+- Task assigned
+- Delivery partner update received
+- Installation photos uploaded
+- Client signed off
+- Project completed
+
+This would make the Project Journal the complete story of the project from start to finish.
+
+### Why This Matters
+
+A unified journal would give the portal three major advantages:
+
+- A complete audit trail that explains exactly what happened and when.
+- Better reporting, because every event has structured metadata.
+- AI-ready project history, allowing the system to summarise progress, identify bottlenecks, measure response times, and answer questions such as "Why is this project delayed?"
+
+### Journal Entry Types
+
+Journal entries could include:
+
+- Comment
+- Question
+- Answer
+- File upload
+- Task
+- Voice note
+- Status change
+- Photo upload
+- Report
+- Email
+- SMS
+- WhatsApp message
+- Meeting note
+- Phone call
+- Installation update
+- Approval
+- Decision
+
+The user experience would feel similar to a professional activity feed: one timeline, different entry types, clear filters, and threaded replies where needed.
+
+### Metadata On Every Entry
+
+Every journal entry should carry structured metadata:
+
+- Date
+- Time
+- User
+- Role
+- Type
+- Visibility
+- Related stage
+- Attachments
+- Tags
+- Linked project fields
+- Linked decisions or approvals
+
+This metadata is what makes reporting powerful. For example, the business could later report on all client questions in June, all delivery-partner uploaded files last month, average response time from client question to workspace answer, or all projects with repeated communication and delayed status.
+
+### Visibility Rules
+
+Not every journal entry should be visible to every user.
+
+Recommended visibility options:
+
+- Workspace administrators only
+- Client and workspace administrators
+- Delivery partner and workspace administrators
+- Everyone on the project
+
+This allows one journal to support internal notes, supplier communication, client-facing updates, and general project activity without splitting the project record across separate places.
+
+### Threaded Discussions
+
+Some journal entries should support replies. A client question, for example, may need a short conversation before it is closed.
+
+Example:
+
+- Question: Has the landlord approved the fascia?
+- Reply: Yes, approval received this morning.
+- Reply: Approval letter uploaded.
+- Reply: Waiting on final signature.
+- Reply: Approved and closed.
+
+In the journal, this can display as one question entry with expandable replies, similar to Microsoft Teams or GitHub discussions.
+
+### AI Summaries
+
+Once all meaningful events live in one structured journal, the portal can generate a project summary at the top of each project.
+
+Example summary:
+
+> Project currently sits in Production. Artwork was approved on 4 July. Quote accepted. Delivery scheduled for 18 July. No outstanding client questions. One delivery-partner task is overdue. Waiting for completion evidence.
+
+This would help managers understand the current position without reading a long history manually.
+
+### Meeting Minutes and Bulk Updates
+
+The same journal model can support uploaded meeting transcripts or voice notes.
+
+For example, Beverley could upload a Teams transcript. AI could identify projects discussed, summarise actions, extract deadlines, assign responsible people, and create journal entries against the relevant projects.
+
+This would turn meetings and voice updates into structured operational records instead of leaving them as unsearchable notes.
+
+### Decision Log
+
+One important journal entry type should be a Decision.
+
+Example:
+
+- Decision: Replace illuminated sign with ACM panel
+- Reason: Budget constraints
+- Approved by: Client Administrator
+- Linked document: Quote 241.pdf
+
+This prevents later disputes or uncertainty about who approved a change and why.
+
+### Journal Filters, Search, and Export
+
+Every project journal should support filtering by entry type, user, role, visibility, date range, stage, tag, and attachment.
+
+Users should be able to filter the project history to show only comments, files, questions, photos, voice updates, tasks, approvals, or decisions.
+
+The journal should also be searchable. Searching for "approval" should return entries such as landlord approval uploaded, artwork approval received, or quote approval received.
+
+For dispute resolution or management review, each project should be exportable as a chronological PDF report containing project details, timeline, communication, files, tasks, photos, questions, approvals, decisions, and signoff.
+
+## Recommended Policy Structure
+
+The platform should avoid a single flat list of permissions. Each role should be governed by a grouped policy so management can understand exactly what each user type may do.
+
+Recommended policy categories:
+
+- Project access
+- Workflow permissions
+- Communication permissions
+- Files
+- Tasks
+- Reports
+- User management
+- Notifications
+
+This structure has now been introduced in the app code as a role policy model. The user interface can still expose simple actions, but those actions should be checked against the grouped policy before they are allowed.
+
+### Project Access Policy
+
+Project access should define whether a role can:
+
+- View assigned projects
+- View all projects
+- Create projects
+- Archive projects
+- Delete projects
+- Export a project
+- Duplicate a project
+
+### Workflow Policy
+
+Workflow policy should define whether a role can:
+
+- Change project stage
+- Change project status
+- Change progress
+- Mark a project completed
+- Reopen completed projects
+- Change target dates
+
+Business rules should then sit on top of these permissions. For example, a delivery partner may be allowed to change stage, but only within the delivery sequence: Production to Scheduled, then In Progress, then Delivered.
+
+============================================================
+3) docs/psg-rebrand-definitive-relational-database-specification.txt
+============================================================
+
+No code, SQL migrations, Supabase changes, or data changes were made.
+
+This is a design specification for the definitive relational database.
+
+Project purpose:
+- Branch-first operational system for managing projects
+- Each branch has one active rebrand workspace
+- Tasks do not require personal ownership
+- Tasks have a responsible role/group
+- Tasks may optionally have a responsible person
+- Tasks, files, updates, requests, approvals, notifications, and activity should be relational
+
+Core principles:
+1. Keep a strong branch-first lens throughout the system.
+2. One active primary rebrand workspace per branch.
+3. Internal app users are Colourpix staff and PSG Head Office.
+4. Branch managers and installers are external contacts, not app roles.
+5. Tasks use a responsible group and optional responsible person.
+6. Tasks do not require a responsible person.
+7. Use soft deletion for files, tasks, requests, and workspaces where history matters.
+8. Do not use JSONB for tasks, files, comments, or activity collections.
+9. Maintain the legacy project data structure for compatibility.
+
+Tables and usage:
+- branches
+- workspaces or rebrand_workspaces
+- workflow_stages
+- responsibility_groups
+- project_tasks
+- task_templates
+- task_file_requirements
+- project_files
+- file_versions
+- project_updates
+- project_requests
+- request_responses
+- approvals
+- approval_decisions
+- project_activity
+
+The database should support secure, role-aware, operational tracking across branches and project stages.
+
+============================================================
+4) docs/psg-rebrand-current-vs-future-audit.txt
+============================================================
+
+No application code, database schema, migrations, packages, Supabase records, or production data were changed.
+
+This document compares the current state versus the future desired state.
+
+Current state:
+- A partially consolidated internal admin/project-management system with a useful branch view, rather than a finished national rollout control centre.
+- Supabase-backed authentication and data access
+- Dashboard metrics plus embedded reports
+- Tasks, files, comments, and activity remain embedded in project JSONB
+- Reports are hidden inside the Dashboard
+- Branches and projects are managed in one app overlay
+
+Future state:
+- Branch-first PSG rollout control centre
+- One rebrand workspace per branch
+- Fixed lifecycle, configurable task checklists, clear current work, explicit status, shared task editing, reliable files, formal approvals, clear communication, and immutable history
+
+Key gap:
+- The current app has the right ideas and structure, but the layer between dashboard, project records, and journal history is still immature.
+
+============================================================
+5) docs/psg-rebrand-future-state-audit.txt
+============================================================
+
+This is a future-state design doc for the app.
+
+The application should become a branch-first rollout operations system.
+
+Primary goals:
+- National rollout control centre
+- Task workflow visibility
+- clearer reporting
+- branch-focused view
+- current tasks and overdue tasks
+- rollout map
+- reports page
+
+Dashboard expected contents:
+- My current tasks
+- Overdue tasks
+- National rollout health
+- branch-level metrics
+
+The app should have a clear operational dashboard rather than a generic admin shell.
+
+============================================================
+6) supabase/migrations/20260819000100_add_rebrand_relational_foundation.sql
+============================================================
+
+This migration adds a relational foundation alongside the legacy `public.projects` structure.
+
+Key elements:
+
+- `workflow_stages` table
+- `responsibility_groups` table
+- `rebrand_workspaces` table
+- `project_tasks` table
+- `task_templates` table
+- `project_files` table
+- `file_versions` table
+- `project_updates` table
+- `project_requests` table
+- `request_responses` table
+- `approvals` table
+- `approval_decisions` table
+- `project_activity` table
+
+Important business rules in this migration:
+
+- One active primary rebrand workspace per branch.
+- Internal app users are Colourpix staff and PSG Head Office.
+- Branch Managers and Installers are external contacts, not app roles.
+- Tasks use a responsible group and optional responsible person.
+- Tasks do not require a responsible person.
+- Stages may be marked complete even when files are missing.
+- Approvals and external sign-offs are recorded by internal users.
+- At-risk health is calculated by the application/reporting layer when due dates pass.
+
+The migration also includes a unique current-task relationship and indexes for search and status.
+
+============================================================
+7) supabase/schema.sql
+============================================================
+
+This is the legacy schema currently used by the app.
+
+Core tables:
+- `branches`
+- `projects`
+- `profiles`
+
+Important legacy fields in `projects`:
+- `branch_id`
+- `branch_code`
+- `branch`
+- `manager`
+- `manager_email`
+- `installer`
+- `designer`
+- `current_stage`
+- `status`
+- `target_date`
+- `installation_date`
+- `completion_date`
+- `progress`
+- `branch_manager_view_only`
+- `notes`
+- `files`
+- `tasks`
+- `comments`
+- `activity`
+- `workspace_id`
+- `workspace_name`
+- `client_company`
+- `graphics_partner`
+- `project_type`
+- `project_type_name`
+- `site_label`
+- `delivery_partner_label`
+
+This means the app is still fundamentally built around a single large project record with nested JSONB collections rather than fully relational task, update, approval, and activity entities.
+
+============================================================
+8) Current app audit summary (written by me)
+============================================================
+
+## Executive summary
+
+This app is a secure project-workspace system for managing rollout / rebrand work across branches, sites, and project tasks. The intent is to replace scattered messages, spreadsheets, and status chasing with a single operational view of active projects, files, approvals, questions, tasks, reports, and activity.
+
+The codebase is a hybrid of:
+- a legacy PSG branch rebrand model based on `public.projects` plus JSONB arrays
+- a newer relational model for workspaces, tasks, approvals, files, and activity
+- a UI that still exposes some old operational concepts while also trying to be a modern workspace dashboard
+
+This split is the biggest reason the app feels confusing to administer.
+
+## What the app is meant to do
+
+The product is basically a controlled operational workspace for:
+- branch/site rollout projects
+- status tracking and lifecycle management
+- approvals and sign-off
+- task management
+- file uploads and evidence
+- project communication / Q&A
+- reporting and dashboard metrics
+- role-based visibility for different kinds of users
+
+The authenticated workspace is not meant to be a public website. It is an internal operational tool for managing project delivery and communicating status clearly between clients, workspace administrators, service partners, and suppliers.
+
+## Current app layout and purpose
+
+The main app shell is defined in `src/App.tsx` and `src/layouts/AppShell.tsx`.
+
+Current navigation:
+- Dashboard
+- Branches
+- Map
+- Users
+- Settings
+
+Main pages:
+- / : Dashboard
+- /projects : project list/grid
+- /branches : branch list
+- /users : user management
+- /settings : app/settings
+- /map : location view
+- /search : search
+- /support / /profile / etc.
+
+The actual page behavior is:
+- `DashboardPage` pulls all branches and projects, filters them by the signed-in user, and shows metrics + embedded reporting.
+- `ProjectsPage` shows project cards and allows project creation if the user's role permits it.
+- `ReportsPage` is a built-in reporting view for branch detail, overview, and blocker reporting.
+
+So the app is presently:
+- dashboard-first
+- reporting-heavy
+- project-card-driven
+- hybrid between admin dashboard and project management system
+
+## User model and permissions
+
+The role model uses:
+- `colourpix_admin`
+- `psg_user`
+- `psg_head_office`
+- `psg_branch_manager`
+- `sign_company`
+
+The permission model is already thoughtfully designed and separates:
+- project access
+- workflow
+- communication
+- files
+- tasks
+- reports
+- user management
+- notifications
+
+The biggest issue is that the UX does not yet clearly reflect those personas.
+
+## Data model: what tables exist now
+
+There are two data models in the codebase, and that matters.
+
+### Legacy operational model still in active use
+The `public.projects` table in `supabase/schema.sql` currently holds the main project record, including arrays such as:
+- `files`
+- `tasks`
+- `comments`
+- `activity`
+
+This is flexible, but it makes reporting and project journaling harder.
+
+### New relational foundation designed for the future
+The migration `20260819000100_add_rebrand_relational_foundation.sql` introduces a more serious operational structure with tables such as:
+- `workflow_stages`
+- `responsibility_groups`
+- `rebrand_workspaces`
+- `project_tasks`
+- `task_templates`
+- `file_categories`
+- `task_file_requirements`
+- `project_files`
+- `file_versions`
+- `project_updates`
+- `project_requests`
+- `request_responses`
+- `approvals`
+- `approval_decisions`
+- `project_activity`
+
+This is the better architecture for reporting and audit history.
+
+## What each table is really for
+
+### `branches`
+Branch master data: address, region, contact details, location.
+
+### `projects`
+Main project record with status, dates, notes, and nested task/file/comment/activity arrays.
+
+### `profiles`
+User identity and role mapping.
+
+### `workflow_stages`
+Lifecycle stage definitions.
+
+### `responsibility_groups`
+Business responsibility units like Colourpix and PSG Head Office.
+
+### `rebrand_workspaces`
+Branch-level workspace container for a rollout.
+
+### `project_tasks`
+Operational work items with stage, group, person, due date, status, and priority.
+
+### `project_files` and `file_versions`
+File catalog and version tracking.
+
+### `project_updates`
+General project journal text updates.
+
+### `project_requests`
+Questions or requests awaiting answer.
+
+### `request_responses`
+Threaded replies to requests.
+
+### `approvals`
+Artwork, quote, and sign-off records.
+
+### `project_activity`
+Append-only audit log for meaningful events.
+
+## What is confusing right now
+
+The app is trying to be three things at once:
+1. dashboard / portfolio overview
+2. project operations tracker
+3. future project journal / relational workflow system
+
+The data model is split between legacy JSONB and relational tables.
+
+The role model is better than the UX. Permissions are defined, but navigation still looks generic rather than person-driven.
+
+## Recommended restructure
+
+For you as the administrator:
+- Overview
+- Workspaces
+- Branches
+- Users
+- Reports
+- Settings
+
+For Beverley as project coordinator:
+- My workload
+- Active projects
+- Tasks
+- Questions
+- Approvals
+- Reports
+- Project journal
+
+For PSG users:
+- My projects
+- Updates
+- Files
+- Reports
+- Support
+
+The real fix is to unify on one source-of-truth model:
+- workspace
+- project
+- stage
+- task
+- request
+- update
+- file
+- approval
+- activity record
+
+That aligns with the product direction in the guidance docs and the relational migration.
+
+============================================================
+9) Additional key context from project docs
+============================================================
+
+The following project guidance expresses the product direction very clearly:
+
+- Replace scattered spreadsheets, WhatsApp messages, email threads, and manual status chasing with one shared project record.
+- Keep the platform secure, role-aware, and maintainable.
+- Treat project updates as a single Project Journal timeline rather than separate comment / notes / files / tasks modules.
+- Use relational tables instead of large JSONB arrays for operational records.
+- Create clear user-specific flows for admin, coordinator, and PSG viewing users.
+- Make reporting one of the core product surfaces, not a dashboard embed.
+
+============================================================
+End of audit input

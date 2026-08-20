@@ -1,0 +1,1729 @@
+PSG REBRAND DEFINITIVE RELATIONAL DATABASE SPECIFICATION
+==========================================================
+
+Status: Proposed definitive database blueprint for review.
+No code, SQL migrations, Supabase changes, or data changes were made.
+
+SOURCE OF TRUTH
+---------------
+This specification follows the approved Business Rules and UX Specification.
+
+Important approved decisions:
+
+  - The PSG branch is the primary business object.
+  - Each branch has one active primary rebrand workspace.
+  - The lifecycle is fixed.
+  - Task templates are configurable.
+  - Tasks do not require personal ownership.
+  - Tasks have a responsible role/group.
+  - Tasks may optionally have a responsible person.
+  - The application provides My Actions, not a mandatory assigned-task system.
+  - Tasks, files, updates, requests, approvals, notifications, and activity should be relational.
+  - JSONB remains appropriate for limited flexible metadata and snapshots only.
+
+1. DATABASE DESIGN PRINCIPLES
+-----------------------------
+
+1. Use PostgreSQL relational tables for operational collections that require search, filtering, reporting, history, or integrity.
+2. Use stable UUID primary keys for new records.
+3. Preserve human-readable branch codes and project references as unique business identifiers.
+4. Use foreign keys for all important relationships.
+5. Enforce business rules at database level where possible.
+6. Keep immutable activity separate from editable operational records.
+7. Use soft deletion for files, tasks, requests, and workspaces where history matters.
+8. Do not duplicate branch identity into workspace records except for an intentional historical snapshot.
+9. Do not use JSONB for tasks, files, comments, or activity collections.
+10. Use JSONB only for flexible metadata, audit snapshots, configuration extensions, and provider payloads.
+11. Never use frontend permission checks as the security boundary.
+12. Prefer a small number of clear tables over a generic enterprise workflow engine.
+
+2. DEFINITIVE TABLE LIST
+------------------------
+
+Existing tables to keep and modify:
+
+  - profiles
+  - branches
+  - projects, retained physically for compatibility but treated as workspaces conceptually
+
+New tables:
+
+  - branch_contacts
+  - workflow_stages
+  - responsibility_groups
+  - tasks
+  - task_templates
+  - task_template_file_requirements
+  - task_file_requirements
+  - project_files
+  - file_versions
+  - project_updates
+  - project_requests
+  - request_responses
+  - approvals
+  - approval_files
+  - approval_decisions
+  - project_activity
+  - notifications
+  - roles
+  - permissions
+  - role_permissions
+  - profile_role_assignments
+  - workspace_access_grants
+
+Tables deliberately not included in the minimum design:
+
+  - task_assignees: not required because tasks do not use mandatory assignment.
+  - task_dependencies: postponed until actual dependency requirements are proven.
+  - generic workflow_definitions: not required because the PSG lifecycle is fixed.
+  - generic workflow_transitions: not required for the initial fixed lifecycle.
+  - separate comments table: updates, request responses, and approval decisions provide clearer semantics.
+  - separate workspace_members table: workspace_access_grants handles scoped access and partner access.
+  - separate branch_status_history table: project_activity and branch changes can capture history.
+
+3. TABLE: profiles
+------------------
+Purpose:
+  Application-level user profile linked to Supabase Auth.
+
+Why it exists:
+  Authentication answers who can sign in. Profiles answer who the person is in the PSG workspace.
+
+Primary key:
+  id UUID.
+
+Important fields:
+  - id
+  - auth_user_id UUID, linked to auth.users.id
+  - email, required and normalised
+  - display_name, required
+  - title or profile_title
+  - company
+  - avatar_url
+  - logo_url
+  - active boolean, default true
+  - created_at
+  - updated_at
+  - deleted_at, nullable only if profile history must be retained
+
+Foreign keys:
+  - auth_user_id -> auth.users.id
+
+Indexes:
+  - unique lower(email)
+  - unique auth_user_id
+  - active
+
+Constraints:
+  - email required
+  - display_name required
+  - inactive profiles cannot receive new access grants
+
+Audit:
+  - Role and access changes are recorded in project_activity or a dedicated security audit stream.
+  - Profile identity edits should record actor and timestamp.
+
+RLS:
+  - Users can read their own profile.
+  - Users can update their own identity fields.
+  - Administrators can manage profiles.
+  - Ordinary users cannot change their own role, active state, or access grants.
+
+4. TABLE: branches
+------------------
+Purpose:
+  Physical PSG locations and the primary business object.
+
+Keep/modify:
+  Keep the existing table and migrate contacts into branch_contacts.
+
+Primary key:
+  id text or UUID. Existing branch IDs should be retained during migration to avoid breaking links.
+
+Important fields:
+  - id
+  - branch_code, required and unique, such as PSG012
+  - name, required
+  - division, required
+  - operational_status: active, paused, closed, archived
+  - province, required
+  - town_or_city, required
+  - physical_address, required
+  - latitude, nullable
+  - longitude, nullable
+  - created_at
+  - updated_at
+  - archived_at, nullable
+
+Foreign keys:
+  None required for branch identity.
+
+Indexes:
+  - unique branch_code
+  - lower(name)
+  - division
+  - province
+  - town_or_city
+  - operational_status
+  - geographic index only if spatial queries are introduced
+
+Constraints:
+  - branch_code unique and stable
+  - latitude between -90 and 90 when present
+  - longitude between -180 and 180 when present
+  - archived branch cannot receive a new active workspace
+
+Soft deletion:
+  Use operational_status and archived_at. Do not hard-delete a branch with historical work.
+
+Audit:
+  Branch identity, location, status, and contact changes must create activity records.
+
+RLS:
+  - Administrators can manage all branches.
+  - Head Office can read all branches if permitted.
+  - Branch Managers can read their permitted branch only.
+  - Installation partners can read only branches connected to an active access grant.
+
+5. TABLE: branch_contacts
+--------------------------
+Purpose:
+  Stores one row per branch contact instead of a contacts JSONB array.
+
+Primary key:
+  id UUID.
+
+Important fields:
+  - id
+  - branch_id
+  - name, required
+  - designation, required
+  - email
+  - phone
+  - contact_type: branch, PSG, operational, other
+  - is_primary boolean
+  - active boolean
+  - created_at
+  - updated_at
+  - deleted_at
+
+Foreign keys:
+  - branch_id -> branches.id
+
+Indexes:
+  - branch_id
+  - lower(email)
+  - is_primary
+  - active
+
+Constraints:
+  - At most one active primary branch contact for each branch and contact_type where business rules require it.
+  - A contact must belong to an active or historically retained branch.
+
+RLS:
+  Follow branch visibility. Contacts should not be exposed to users who cannot see the branch.
+
+6. TABLE: projects / rebrand workspaces
+---------------------------------------
+Purpose:
+  Operational rebrand workspace belonging to a branch.
+
+Naming:
+  The physical table may remain projects for compatibility. The product language should call it rebrand_workspace or branch_workspace.
+
+Primary key:
+  id UUID or retained text ID during migration.
+
+Important fields:
+  - id
+  - branch_id, required
+  - workspace_reference, unique and human-readable
+  - workspace_type, default rebrand
+  - lifecycle_state: setup, active, complete, archived
+  - health: on_track, at_risk, blocked, complete
+  - current_stage_id, nullable during setup
+  - current_task_id, nullable
+  - target_date
+  - brief_requested_date
+  - installation_date
+  - completion_date
+  - progress numeric or integer
+  - notes
+  - created_by
+  - updated_by
+  - created_at
+  - updated_at
+  - archived_at
+  - archived_by
+  - metadata JSONB for non-operational extensions only
+
+Foreign keys:
+  - branch_id -> branches.id
+  - current_stage_id -> workflow_stages.id
+  - current_task_id -> tasks.id
+  - created_by -> profiles.id
+  - updated_by -> profiles.id
+
+Indexes:
+  - branch_id
+  - lifecycle_state
+  - health
+  - current_stage_id
+  - current_task_id
+  - installation_date
+  - target_date
+  - updated_at
+  - unique workspace_reference
+
+Critical constraint:
+  Only one workspace for a branch may have lifecycle_state in setup or active and is_primary = true.
+
+Recommended business fields:
+  - is_primary boolean
+  - lifecycle_state
+
+The database should enforce a partial unique index conceptually equivalent to:
+
+  one active primary workspace per branch
+
+Archived workspaces do not conflict with a new primary workspace. Historical workspaces remain readable and auditable.
+
+RLS:
+  Workspace visibility is the central project-data security rule. Every task, file, update, request, approval, activity, and notification policy must derive from workspace visibility.
+
+7. TABLE: workflow_stages
+-------------------------
+Purpose:
+  Stores the fixed PSG lifecycle as stable reference data.
+
+Recommendation:
+  Use rows, not a PostgreSQL enum and not a free-form configuration engine.
+
+Why rows:
+  - Stages need display names, ordering, descriptions, required rules, and reporting labels.
+  - Tasks and templates need foreign keys.
+  - Rows allow metadata changes without changing database types.
+  - The lifecycle can remain fixed by protecting system rows from ordinary edits.
+
+Primary key:
+  id UUID or stable text key such as design_artwork.
+
+Important fields:
+  - id
+  - stage_key, required and unique
+  - display_name, required
+  - sort_order, required and unique
+  - description
+  - is_system_stage, true for the fixed PSG lifecycle
+  - is_active
+  - created_at
+  - updated_at
+
+Seeded stages:
+  - branch_confirmed
+  - brief_requested
+  - site_information
+  - design_artwork
+  - internal_review
+  - psg_approval
+  - quote
+  - quote_approval
+  - production
+  - installation_planning
+  - installation
+  - installation_evidence
+  - final_inspection
+  - complete
+
+Constraints:
+  - stage_key unique
+  - sort_order unique
+  - system stages cannot be deleted
+  - lifecycle order cannot be changed through ordinary administration
+
+RLS:
+  All authenticated users may read active stages. Only controlled administrators may update descriptions or display metadata. No ordinary user may remove a system stage.
+
+8. TABLE: responsibility_groups
+--------------------------------
+Purpose:
+  Stores the business groups used as the primary task responsibility indicator.
+
+This is separate from authentication roles. A user authentication role answers what a person may do. A responsibility group answers which business group is expected to act.
+
+Primary key:
+  id UUID or stable text key.
+
+Seeded values:
+  - colourpix
+  - psg_head_office
+  - psg_branch
+  - branch_manager
+  - sign_company
+  - installer
+
+Fields:
+  - id
+  - group_key
+  - display_name
+  - description
+  - active
+  - created_at
+  - updated_at
+
+Indexes:
+  - unique group_key
+  - active
+
+Constraints:
+  - system groups cannot be deleted if referenced by tasks.
+
+9. TABLE: tasks
+----------------
+Purpose:
+  Discrete work items inside a rebrand workspace and stage.
+
+Primary key:
+  id UUID.
+
+Important fields:
+  - id
+  - workspace_id
+  - stage_id
+  - template_id, nullable
+  - title, required
+  - description
+  - status: not_started, in_progress, waiting, blocked, complete, cancelled
+  - priority: normal, important, urgent
+  - sort_order, required
+  - due_at, nullable
+  - responsible_group_id, required
+  - responsible_person_id, nullable
+  - required_action, nullable or required depending on workflow
+  - waiting_reason, required when status = waiting
+  - blocker_reason, required when status = blocked
+  - required_completion_checks JSONB, only for flexible validation configuration
+  - is_current boolean, default false
+  - created_by, required
+  - updated_by, required
+  - completed_by, nullable
+  - completed_at, nullable
+  - reopened_by, nullable
+  - reopened_at, nullable
+  - created_at
+  - updated_at
+  - deleted_at
+
+Foreign keys:
+  - workspace_id -> projects.id
+  - stage_id -> workflow_stages.id
+  - template_id -> task_templates.id
+  - responsible_group_id -> responsibility_groups.id
+  - responsible_person_id -> profiles.id
+  - created_by -> profiles.id
+  - updated_by -> profiles.id
+  - completed_by -> profiles.id
+  - reopened_by -> profiles.id
+
+Indexes:
+  - workspace_id, stage_id
+  - workspace_id, status
+  - workspace_id, is_current
+  - due_at
+  - responsible_group_id
+  - responsible_person_id
+  - template_id
+  - updated_at
+  - lower(title) for basic search
+
+Constraints:
+  - title required and non-empty
+  - status must be one of the defined states
+  - priority must be valid
+  - responsible_group_id required
+  - responsible_person_id nullable
+  - blocked status requires blocker_reason
+  - waiting status requires waiting_reason
+  - complete status requires completed_by and completed_at after completion
+  - non-complete status must not retain misleading completion metadata
+  - at most one current task per workspace
+  - deleted tasks cannot be current
+  - task stage must belong to a fixed workflow stage
+
+Status transitions:
+  - not_started -> in_progress, waiting, blocked, cancelled
+  - in_progress -> waiting, blocked, complete, not_started
+  - waiting -> in_progress, blocked, cancelled
+  - blocked -> in_progress, waiting, cancelled
+  - complete -> in_progress only through a permitted reopen action
+  - cancelled -> not_started only through an administrator restore action
+
+The database should validate required reasons and completion metadata. More complex transition policy may be enforced in a service/RPC layer while the database protects impossible states.
+
+No task owner is required. Responsible person is optional.
+
+10. TABLE: task_templates
+-------------------------
+Purpose:
+  Reusable task definitions that administrators can use to create workspace tasks.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - template_key
+  - stage_id
+  - title
+  - description
+  - is_required
+  - suggested_priority
+  - responsible_group_id
+  - suggested_sort_order
+  - requires_approval
+  - active
+  - version integer
+  - created_by
+  - updated_by
+  - created_at
+  - updated_at
+  - retired_at
+
+Foreign keys:
+  - stage_id -> workflow_stages.id
+  - responsible_group_id -> responsibility_groups.id
+  - created_by -> profiles.id
+  - updated_by -> profiles.id
+
+Indexes:
+  - stage_id, active
+  - template_key
+  - responsible_group_id
+
+Constraints:
+  - template_key unique per version or active template
+  - suggested_priority valid
+  - stage must be a system workflow stage
+
+Instantiation:
+  When a template is added to a workspace, copy its current title, description, stage, priority, responsibility group, approval requirement, and file requirements into a new task and task-file-requirement set.
+
+Historical protection:
+  Later template edits must not change existing task records. Template version is stored on the task or through template_id plus a snapshot JSONB field.
+
+11. TABLE: task_template_file_requirements
+-------------------------------------------
+Purpose:
+  Defines files expected by a task template.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - template_id
+  - file_category_id or category_key
+  - requirement_name
+  - description
+  - minimum_count
+  - accepted_mime_types JSONB or a controlled category relation
+  - is_required
+  - created_at
+  - updated_at
+
+Foreign keys:
+  - template_id -> task_templates.id
+  - file_category_id -> file_categories.id if file categories become a reference table
+
+Recommendation:
+  A small file_categories table is justified because categories are used in filtering, validation, reporting, and permissions. It is included below as a supporting reference table.
+
+12. TABLE: task_file_requirements
+---------------------------------
+Purpose:
+  Stores the requirements copied to an actual task at instantiation time.
+
+Why separate from template requirements:
+  A historical task must not change when an administrator edits a template.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - task_id
+  - category_key or file_category_id
+  - requirement_name
+  - description
+  - minimum_count
+  - is_required
+  - satisfied_at, nullable
+  - satisfied_by, nullable
+  - created_at
+  - updated_at
+
+Foreign keys:
+  - task_id -> tasks.id
+  - satisfied_by -> profiles.id
+
+Indexes:
+  - task_id
+  - is_required
+  - satisfied_at
+
+Constraints:
+  - minimum_count >= 1
+  - required requirements must be satisfied before task completion when the workflow rule requires it
+
+13. TABLE: file_categories
+---------------------------
+Purpose:
+  Controlled list of file categories.
+
+This table is small but justified because categories are used by validation, search, reports, required-file rules, and permissions.
+
+Primary key:
+  id UUID or stable text key.
+
+Seeded categories:
+  - brief
+  - site_information
+  - artwork
+  - quote
+  - approval
+  - production
+  - installation
+  - installation_evidence
+  - final_inspection
+  - other
+
+Fields:
+  - id
+  - category_key
+  - display_name
+  - description
+  - active
+  - created_at
+  - updated_at
+
+Constraints:
+  - category_key unique
+  - system categories cannot be deleted if referenced
+
+14. TABLE: project_files
+------------------------
+Purpose:
+  Logical file record linked to a workspace, optional task, and optional approval.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - workspace_id
+  - task_id, nullable
+  - approval_id, nullable
+  - category_id
+  - display_name
+  - current_version_id, nullable until first version exists
+  - is_required, usually derived from task_file_requirements but retained for convenience only if necessary
+  - uploaded_by
+  - created_at
+  - updated_at
+  - deleted_by
+  - deleted_at
+
+Foreign keys:
+  - workspace_id -> projects.id
+  - task_id -> tasks.id
+  - approval_id -> approvals.id
+  - category_id -> file_categories.id
+  - uploaded_by -> profiles.id
+  - deleted_by -> profiles.id
+
+Indexes:
+  - workspace_id
+  - task_id
+  - approval_id
+  - category_id
+  - lower(display_name)
+  - deleted_at
+
+Constraints:
+  - at least one of workspace_id, task_id, or approval_id must identify context; workspace_id is always required
+  - deleted files are excluded from normal reads
+  - a task file must belong to the same workspace as its task
+  - an approval file must belong to the same workspace as its approval
+
+RLS:
+  File visibility follows workspace visibility and file category restrictions. Delete is more restrictive than read or upload.
+
+15. TABLE: file_versions
+------------------------
+Purpose:
+  Preserves uploaded file history and supports replacements.
+
+A separate table is justified because file replacement, audit history, approval evidence, and rollback require version records.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - file_id
+  - version_number
+  - storage_bucket
+  - storage_path
+  - mime_type
+  - size_bytes
+  - checksum, nullable but recommended
+  - uploaded_by
+  - uploaded_at
+  - deleted_by, nullable
+  - deleted_at, nullable
+  - metadata JSONB for provider-specific values
+
+Foreign keys:
+  - file_id -> project_files.id
+  - uploaded_by -> profiles.id
+  - deleted_by -> profiles.id
+
+Indexes:
+  - file_id, version_number
+  - storage_path unique
+  - checksum where present
+
+Constraints:
+  - version_number unique per file
+  - size_bytes >= 0
+  - storage_path required
+  - only one current version per logical file, represented by project_files.current_version_id
+
+16. TABLE: project_updates
+---------------------------
+Purpose:
+  Human-authored progress messages that do not require a response.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - workspace_id
+  - task_id, nullable
+  - author_id
+  - body
+  - created_at
+  - edited_at, nullable
+  - deleted_at, nullable
+  - metadata JSONB for optional client display information
+
+Foreign keys:
+  - workspace_id -> projects.id
+  - task_id -> tasks.id
+  - author_id -> profiles.id
+
+Indexes:
+  - workspace_id, created_at desc
+  - task_id, created_at desc
+  - author_id
+  - full-text search index on body if required
+
+RLS:
+  Read follows workspace visibility. Create/edit/delete follow communication permissions. Activity records preserve the original event even if an update is soft-deleted.
+
+17. TABLE: project_requests
+---------------------------
+Purpose:
+  Questions or requests that require a response.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - workspace_id
+  - task_id, nullable
+  - created_by
+  - required_role or required_group_id, nullable
+  - required_person_id, nullable
+  - subject
+  - body
+  - status: open, answered, closed, cancelled
+  - due_at, nullable
+  - created_at
+  - updated_at
+  - closed_at
+  - closed_by
+
+Foreign keys:
+  - workspace_id -> projects.id
+  - task_id -> tasks.id
+  - created_by -> profiles.id
+  - required_person_id -> profiles.id
+  - closed_by -> profiles.id
+
+Indexes:
+  - workspace_id, status
+  - task_id, status
+  - required_person_id, status
+  - due_at
+  - created_at desc
+
+Constraints:
+  - body required
+  - answered/closed records require appropriate timestamp and actor
+  - request must belong to a visible workspace
+
+18. TABLE: request_responses
+-----------------------------
+Purpose:
+  Preserves the response history for a request.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - request_id
+  - author_id
+  - body
+  - created_at
+  - edited_at, nullable
+  - deleted_at, nullable
+
+Foreign keys:
+  - request_id -> project_requests.id
+  - author_id -> profiles.id
+
+Indexes:
+  - request_id, created_at
+  - author_id
+
+19. TABLE: approvals
+---------------------
+Purpose:
+  Formal decision request linked to a workspace, task, and optionally one or more files.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - workspace_id
+  - task_id, nullable
+  - approval_type: artwork, quote, installation, final_inspection, other
+  - requested_by
+  - decision_role or required_group_id
+  - decision_person_id, nullable
+  - status: pending, approved, rejected, changes_requested, withdrawn
+  - subject
+  - description
+  - requested_at
+  - due_at, nullable
+  - decided_at, nullable
+  - current_decision_id, nullable
+  - created_at
+  - updated_at
+
+Foreign keys:
+  - workspace_id -> projects.id
+  - task_id -> tasks.id
+  - requested_by -> profiles.id
+  - decision_person_id -> profiles.id
+  - current_decision_id -> approval_decisions.id
+
+Indexes:
+  - workspace_id, status
+  - task_id, status
+  - decision_person_id, status
+  - approval_type
+  - due_at
+
+Constraints:
+  - pending approvals cannot have decided_at
+  - decided approvals require a decision record
+  - decision person is optional when the responsible group decides collectively
+
+20. TABLE: approval_files
+--------------------------
+Purpose:
+  Join table connecting approvals to files under review.
+
+Primary key:
+  id UUID or composite approval_id/file_id.
+
+Fields:
+  - approval_id
+  - file_id
+  - created_at
+
+Foreign keys:
+  - approval_id -> approvals.id
+  - file_id -> project_files.id
+
+Constraints:
+  - unique approval_id/file_id
+  - both records must belong to the same workspace
+
+21. TABLE: approval_decisions
+-----------------------------
+Purpose:
+  Preserves approval decision history.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - approval_id
+  - decision: approved, rejected, changes_requested, withdrawn
+  - decided_by
+  - comment
+  - created_at
+
+Foreign keys:
+  - approval_id -> approvals.id
+  - decided_by -> profiles.id
+
+Indexes:
+  - approval_id, created_at desc
+  - decided_by
+
+Constraints:
+  - decision is valid
+  - approval status is derived from or synchronised with the latest decision
+  - decisions are immutable; corrections create a new decision record
+
+22. TABLE: project_activity
+---------------------------
+Purpose:
+  Immutable audit history for meaningful workspace and security events.
+
+Primary key:
+  id UUID.
+
+Required fields:
+  - id
+  - workspace_id, nullable for global security events
+  - branch_id, nullable
+  - actor_id, nullable for automated events
+  - event_type
+  - entity_type
+  - entity_id
+  - occurred_at
+  - request_id or correlation_id, nullable
+  - source: user, automation, import, migration
+  - old_values JSONB, nullable
+  - new_values JSONB, nullable
+  - metadata JSONB, nullable
+  - ip_address, nullable and subject to privacy policy
+  - user_agent, nullable
+
+The fields reconstruct:
+
+  WHO: actor_id and source
+  WHAT: event_type, entity_type, entity_id
+  WHEN: occurred_at
+  WHERE: workspace_id/branch_id and optional request context
+  OLD VALUE: old_values
+  NEW VALUE: new_values
+
+Event examples:
+  - workspace_created
+  - workspace_archived
+  - task_created
+  - task_edited
+  - task_status_changed
+  - task_reopened
+  - task_blocked
+  - task_responsibility_changed
+  - file_uploaded
+  - file_deleted
+  - approval_requested
+  - approval_decided
+  - request_created
+  - request_answered
+  - permission_changed
+  - access_grant_changed
+
+Indexes:
+  - workspace_id, occurred_at desc
+  - branch_id, occurred_at desc
+  - actor_id, occurred_at desc
+  - entity_type, entity_id, occurred_at desc
+  - event_type, occurred_at desc
+
+Constraints:
+  - no update or delete for normal users
+  - event_type and entity identifiers required
+  - activity records cannot be edited after creation
+
+RLS:
+  Users can read activity only for visible workspaces. Security events may be restricted to administrators.
+
+23. TABLE: notifications
+-------------------------
+Purpose:
+  Persistent in-app notifications and future email delivery tracking.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - recipient_id
+  - notification_type
+  - workspace_id, nullable
+  - task_id, nullable
+  - request_id, nullable
+  - approval_id, nullable
+  - activity_id, nullable
+  - title
+  - body
+  - created_at
+  - read_at, nullable
+  - email_status: not_requested, queued, sent, failed, not_applicable
+  - email_sent_at, nullable
+  - metadata JSONB
+
+Foreign keys:
+  - recipient_id -> profiles.id
+  - workspace_id -> projects.id
+  - task_id -> tasks.id
+  - request_id -> project_requests.id
+  - approval_id -> approvals.id
+  - activity_id -> project_activity.id
+
+Indexes:
+  - recipient_id, read_at, created_at desc
+  - workspace_id, created_at desc
+  - notification_type
+  - email_status
+
+RLS:
+  A user can read and mark only their own notifications. Administrators may inspect delivery status without changing user read state.
+
+24. TABLE: roles
+----------------
+Purpose:
+  Authentication/application roles.
+
+This is separate from responsibility_groups.
+
+Seeded roles:
+  - colourpix_admin
+  - psg_head_office
+  - psg_branch_manager
+  - sign_company
+  - psg_user
+
+Fields:
+  - id
+  - role_key
+  - display_name
+  - description
+  - active
+  - created_at
+  - updated_at
+
+Constraints:
+  - role_key unique
+  - system roles cannot be deleted while assigned
+
+25. TABLE: permissions
+----------------------
+Purpose:
+  Atomic capabilities used by authorization.
+
+Examples:
+  - view_all_workspaces
+  - view_assigned_branch
+  - edit_workspace
+  - edit_tasks
+  - change_task_status
+  - upload_files
+  - delete_files
+  - create_requests
+  - answer_requests
+  - create_approvals
+  - decide_approvals
+  - view_national_reports
+  - manage_users
+  - manage_permissions
+
+Fields:
+  - id
+  - permission_key
+  - display_name
+  - description
+  - active
+  - created_at
+  - updated_at
+
+Constraints:
+  - permission_key unique
+  - system permissions cannot be deleted while used
+
+26. TABLE: role_permissions
+----------------------------
+Purpose:
+  Default permissions for each role.
+
+Primary key:
+  composite role_id/permission_id or UUID.
+
+Fields:
+  - role_id
+  - permission_id
+  - allowed
+  - created_at
+  - updated_at
+
+Foreign keys:
+  - role_id -> roles.id
+  - permission_id -> permissions.id
+
+Constraints:
+  - unique role_id/permission_id
+
+27. TABLE: profile_role_assignments
+------------------------------------
+Purpose:
+  Assigns roles to profiles globally or within a defined scope.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - profile_id
+  - role_id
+  - scope_type: global, branch, workspace
+  - branch_id, nullable
+  - workspace_id, nullable
+  - active
+  - granted_by
+  - created_at
+  - revoked_at
+  - revoked_by
+
+Foreign keys:
+  - profile_id -> profiles.id
+  - role_id -> roles.id
+  - branch_id -> branches.id
+  - workspace_id -> projects.id
+  - granted_by -> profiles.id
+  - revoked_by -> profiles.id
+
+Constraints:
+  - global scope cannot include branch_id/workspace_id
+  - branch scope requires branch_id
+  - workspace scope requires workspace_id
+  - active assignments are unique per profile, role, and scope
+
+28. TABLE: workspace_access_grants
+----------------------------------
+Purpose:
+  Provides explicit workspace access for external partners and exceptions.
+
+This table is required because an installation partner must not automatically see the entire branch workspace.
+
+Primary key:
+  id UUID.
+
+Fields:
+  - id
+  - workspace_id
+  - profile_id
+  - access_level: view, operational_edit, installation_edit
+  - allowed_sections JSONB or controlled access flags
+  - active
+  - granted_by
+  - created_at
+  - revoked_at
+  - revoked_by
+
+Allowed sections may include:
+  - installation_tasks
+  - production_files
+  - installation_evidence
+  - installation_updates
+
+Do not grant commercial approvals or private branch information by default.
+
+Foreign keys:
+  - workspace_id -> projects.id
+  - profile_id -> profiles.id
+  - granted_by -> profiles.id
+  - revoked_by -> profiles.id
+
+Indexes:
+  - workspace_id, active
+  - profile_id, active
+  - access_level
+
+Constraints:
+  - unique active workspace/profile grant
+  - revoked grants cannot be used for RLS
+
+29. OPTIONAL TABLE: profile_permission_overrides
+------------------------------------------------
+Purpose:
+  Per-user exceptions to role defaults.
+
+Recommendation:
+  Keep this only if the Access Controls product is genuinely required. It is simpler than creating a complete custom permission profile for every user.
+
+Fields:
+  - profile_id
+  - permission_id
+  - allowed
+  - granted_by
+  - created_at
+  - updated_at
+
+Constraints:
+  - unique profile_id/permission_id
+  - only authorised administrators can change it
+
+30. WORKFLOW DECISION
+---------------------
+Stages should be rows in workflow_stages.
+
+They should not be a free-form workflow engine.
+
+The fixed lifecycle is represented by seeded system rows. Task templates and task requirements reference those rows. Ordinary users cannot add, delete, reorder, or rename the system lifecycle.
+
+This provides:
+
+  - Foreign-key integrity
+  - Human-readable labels
+  - Stable reporting
+  - Fixed lifecycle rules
+  - Template relationships
+  - Future display metadata
+
+31. RESPONSIBILITY DECISION
+---------------------------
+Use columns on tasks, not a separate responsibility history table.
+
+Required:
+  - responsible_group_id -> responsibility_groups.id
+
+Optional:
+  - responsible_person_id -> profiles.id
+
+Why this is correct:
+  - One primary group is required.
+  - One optional individual may be named.
+  - Multiple assignees are not required.
+  - Responsibility changes are captured by project_activity.
+  - A separate responsibility table would overcomplicate a simple current-state relationship.
+
+32. TASK TEMPLATE INSTANTIATION
+-------------------------------
+When an administrator adds a template to a workspace:
+
+1. Create a task row.
+2. Copy current template title and description.
+3. Copy stage, priority, responsible group, approval requirement, and sort order.
+4. Copy template file requirements into task_file_requirements.
+5. Copy the template version into a task_template_version field or snapshot.
+6. Record task_created_from_template in activity.
+
+After creation, the task becomes independent of future template edits.
+
+33. APPROVAL MODEL
+------------------
+Approvals need their own history table.
+
+Current approval state is stored on approvals for fast querying.
+Every decision is stored immutably in approval_decisions.
+Related files use approval_files.
+
+Approval decisions:
+  - approved
+  - rejected
+  - changes_requested
+  - withdrawn
+
+The approval record must preserve:
+  - Who requested it
+  - Which role/person must decide
+  - Which task and files are involved
+  - Every decision
+  - Decision comments
+  - Decision timestamps
+
+34. RLS STRATEGY
+----------------
+AUTH.USERS
+  Supabase controls authentication. Application RLS uses auth.uid() to identify the profile.
+
+PROFILES
+  Users read their own profile. Administrators manage users. Users cannot self-elevate.
+
+BRANCHES
+  Read access derives from global role, branch role assignment, or workspace access. Write access is restricted to administrators.
+
+PROJECTS/WORKSPACES
+  A user may read a workspace when:
+    - They have global all-workspace permission.
+    - They have an active branch-scoped role for the workspace branch.
+    - They have an active workspace_access_grant.
+    - They are the explicitly permitted responsible person for an action where policy allows it.
+
+TASKS
+  Read follows workspace visibility. Write requires edit_tasks or change_task_status. Responsible person does not automatically grant broad workspace access.
+
+FILES
+  Read follows workspace visibility plus section/category restrictions. Upload requires upload_files and valid workspace access. Delete requires delete_files and a stronger administrator/owner policy.
+
+UPDATES
+  Read follows workspace visibility. Create/edit/delete follows communication permissions.
+
+REQUESTS
+  Read follows workspace visibility and required-response visibility. Create/answer/close use explicit permissions.
+
+APPROVALS
+  Read follows workspace visibility. Only the decision role/person or authorised administrators can decide.
+
+ACTIVITY
+  Read follows workspace visibility. Insert is performed by trusted service paths. Normal users cannot update/delete activity.
+
+NOTIFICATIONS
+  Users can read and mark only their own notifications.
+
+ROLE EXPECTATIONS
+  Colourpix Admin: global access.
+  PSG Head Office: national read access plus explicitly allowed approvals/edits.
+  Branch Manager: branch-scoped access.
+  Installer: workspace grant limited to operational installation sections.
+  PSG User: scope defined by active role assignment and grants.
+
+35. INDEX STRATEGY
+------------------
+Branch search:
+  - lower(branches.name)
+  - branch_code
+  - province
+  - town_or_city
+  - division
+
+Workspace lookup:
+  - branch_id
+  - workspace_reference
+  - lifecycle_state
+  - health
+  - current_stage_id
+  - current_task_id
+  - installation_date
+  - target_date
+
+Task reporting:
+  - workspace_id/status
+  - stage_id/status
+  - due_at
+  - responsible_group_id
+  - responsible_person_id
+  - is_current
+  - priority
+  - lower(title)
+
+Approvals:
+  - workspace_id/status
+  - decision_person_id/status
+  - approval_type
+  - due_at
+
+Requests:
+  - workspace_id/status
+  - required_person_id/status
+  - due_at
+
+Notifications:
+  - recipient_id/read_at/created_at
+  - email_status
+
+Activity:
+  - workspace_id/occurred_at
+  - entity_type/entity_id/occurred_at
+  - actor_id/occurred_at
+  - event_type/occurred_at
+
+Files:
+  - workspace_id
+  - task_id
+  - approval_id
+  - category_id
+  - lower(display_name)
+  - storage_path
+
+Avoid indexes on low-cardinality booleans unless combined with another selective field or supported by a partial index.
+
+36. MIGRATION FROM CURRENT JSONB
+--------------------------------
+CURRENT PROJECT JSONB TASKS -> tasks
+
+Existing fields:
+  id -> tasks.id, preserving legacy ID in legacy_id
+  text -> title
+  current stage or stage -> stage_id
+  completed/status -> mapped status
+  createdAt -> created_at
+  completedAt -> completed_at
+  installationRequest -> task-specific installation request field or update
+  assignee data -> optional responsible_person_id after review
+
+Old status mapping:
+  pending -> not_started or waiting, manual review required
+  open -> not_started or in_progress, manual review required
+  busy -> in_progress
+  done -> complete
+  cancelled -> cancelled
+
+Old multiple assignees:
+  Do not create task_assignees. Select an optional responsible person only where the business owner confirms it. Otherwise preserve the old values in migration metadata and discard them from active responsibility.
+
+Current task:
+  There is no reliable explicit current task in the old model. Derive a candidate using stage/order/status, then require an administrator to confirm current_task_id.
+
+CURRENT PROJECT JSONB FILES -> project_files/file_versions
+
+For each file:
+  - Create project_files row.
+  - Copy name to display_name.
+  - Copy path to file_versions.storage_path.
+  - Copy size/type/uploadedAt.
+  - Copy taskId to task_id after task mapping.
+  - Categorise automatically where filename/task context is reliable.
+  - Mark uncategorised files as Other.
+  - Verify that the Storage object exists.
+  - Record orphan metadata or missing Storage objects for manual cleanup.
+
+CURRENT COMMENTS -> project_updates, project_requests, request_responses, or approvals
+
+Mapping:
+  kind=comment -> project_updates unless it clearly asks for a response.
+  taskId -> task_id.
+  author/date/message -> author_id, created_at, body.
+  kind=question or request status -> project_requests.
+  answered question -> project_requests plus request_responses.
+  approval-like content -> manual classification into approvals.
+
+Questions and answers cannot always be classified automatically. Preserve original objects in migration_metadata and create a manual review report.
+
+CURRENT ACTIVITY -> project_activity
+
+Map:
+  date -> occurred_at where precision is available.
+  title -> event_type mapping.
+  detail -> metadata or new_values summary.
+  type -> event severity/type.
+  Unknown events -> legacy_event.
+
+Old activity may not contain actor IDs, old values, or new values. Those cannot be reconstructed automatically. Preserve the original detail and mark actor as unknown.
+
+CURRENT PROJECT FIELDS -> projects/workspaces
+
+  branch_id -> branch_id
+  branch/branch name -> remove as operational source of truth; retain only historical snapshot if required
+  province/town/address -> branch source of truth; reconcile differences manually
+  current_stage -> workflow_stages
+  status -> project health/status mapping review
+  dates -> corresponding workspace date fields
+  manager/installer/designer -> do not automatically convert to task responsibility without business approval
+  notes -> workspace notes or project_updates depending on whether historical note history is required
+
+Migration sequence:
+
+1. Back up existing projects.
+2. Create new reference tables.
+3. Import and validate branches.
+4. Create workspaces from projects.
+5. Import stages and task templates.
+6. Migrate tasks.
+7. Migrate task file requirements.
+8. Migrate files and versions.
+9. Migrate updates and requests.
+10. Migrate approvals where identifiable.
+11. Migrate activity.
+12. Resolve branch/workspace duplicates.
+13. Confirm current task per workspace.
+14. Compare counts and file paths.
+15. Run parallel reads from old and new models.
+16. Only then switch reads and writes.
+17. Retain legacy JSONB during a defined rollback period.
+
+Data requiring manual cleanup:
+  - Duplicate branch/workspace records
+  - Missing branch IDs
+  - Invalid project IDs
+  - Old status values
+  - Unclear comments versus requests
+  - Approval-like comments
+  - Files without categories
+  - Storage objects missing from metadata
+  - Metadata missing from Storage
+  - Old task assignees that should not become responsible people
+  - Current task selection
+  - Missing timestamps
+  - Unknown actors
+
+37. DATA INTEGRITY RULES
+------------------------
+Database-enforceable rules:
+
+  - Branch code is unique.
+  - Branch location fields required.
+  - One active primary workspace per branch.
+  - Workspace branch foreign key required.
+  - Workspace stage must reference a fixed stage.
+  - Workspace current task must belong to the same workspace.
+  - Task title required.
+  - Task responsible group required.
+  - Responsible person optional.
+  - Task status must be valid.
+  - Task priority must be valid.
+  - At most one current task per workspace.
+  - Blocked task requires blocker reason.
+  - Waiting task requires waiting reason.
+  - Complete task requires completion actor and timestamp.
+  - Completed tasks cannot remain current.
+  - File must belong to a workspace.
+  - Task file must belong to the same workspace as its task.
+  - Approval file must belong to the same workspace as its approval.
+  - File version number is unique per file.
+  - Approval decisions are valid and immutable.
+  - Request status and response timestamps are consistent.
+  - Activity cannot be updated or deleted by normal users.
+  - Role and permission keys are unique.
+  - Access grants must reference active profiles and valid scopes.
+
+38. REPORTING SUPPORT CHECK
+---------------------------
+How many branches are complete?
+  Query workspaces by health or lifecycle_state joined to branches.
+
+How many are at risk?
+  Query workspaces.health = at_risk.
+
+Which are blocked?
+  Query workspaces.health = blocked or workspaces with blocked tasks.
+
+Which installations are upcoming?
+  Query workspaces.installation_date using an index.
+
+Which tasks are overdue?
+  Query tasks where due_at is before now and status is not complete/cancelled.
+
+Which approvals are outstanding?
+  Query approvals.status = pending or changes_requested.
+
+Which files are missing?
+  Compare task_file_requirements to project_files by task/category.
+
+Which branches have no workspace?
+  Left join branches to active primary workspaces.
+
+Which tasks require My Actions?
+  Query:
+    - responsible_person_id = current profile
+    - responsible_group_id matches a group the current user represents
+    - approval decision is required from the current profile/role
+    - open request requires response from the current profile/role
+    - task is visible and status is not complete/cancelled
+
+What happened to this branch?
+  Query project_activity by workspace_id ordered by occurred_at.
+
+The schema supports all required queries without JSONB collection scans.
+
+39. FINAL RELATIONSHIP DIAGRAM
+------------------------------
+
+profiles
+  |-- profile_role_assignments --> roles --> role_permissions --> permissions
+  |-- workspace_access_grants --|
+  |-- branch_contacts (where a contact is also a user, optionally)
+  |-- tasks.responsible_person_id
+  |-- project_updates.author_id
+  |-- project_requests.created_by
+  |-- request_responses.author_id
+  |-- approvals.requested_by
+  |-- approval_decisions.decided_by
+  |-- project_activity.actor_id
+  |-- notifications.recipient_id
+
+branches
+  |-- branch_contacts
+  |-- projects / rebrand workspaces
+
+projects / rebrand workspaces
+  |-- current_stage_id --> workflow_stages
+  |-- current_task_id --> tasks
+  |-- tasks
+  |     |-- stage_id --> workflow_stages
+  |     |-- template_id --> task_templates
+  |     |-- responsible_group_id --> responsibility_groups
+  |     |-- responsible_person_id --> profiles, nullable
+  |     |-- task_file_requirements
+  |     |-- project_files
+  |     |-- project_updates
+  |     |-- project_requests
+  |     |-- approvals
+  |-- project_files --> file_versions
+  |-- project_updates
+  |-- project_requests --> request_responses
+  |-- approvals --> approval_files --> project_files
+  |-- approvals --> approval_decisions
+  |-- project_activity
+  |-- notifications
+
+workflow_stages
+  |-- task_templates
+  |-- tasks
+
+task_templates
+  |-- task_template_file_requirements
+  |-- instantiated tasks
+
+40. FINAL TABLE SUMMARY
+-----------------------
+
+| Table | Purpose | Priority | New / Existing | Notes |
+|---|---|---:|---|---|
+| profiles | Application user identity | Critical | Modify | Keep linked to auth.users |
+| branches | Physical PSG locations | Critical | Modify | Source of truth for branch data |
+| branch_contacts | Branch contacts | Critical | New | Replaces contacts JSONB |
+| projects | Rebrand workspace | Critical | Modify | Retain physical name for compatibility |
+| workflow_stages | Fixed lifecycle | Critical | New | Seeded protected rows |
+| responsibility_groups | Task responsible groups | Critical | New | Separate from auth roles |
+| tasks | Relational work items | Critical | New | No mandatory owner/assignee |
+| task_templates | Reusable task definitions | Critical | New | Versioned at instantiation |
+| task_template_file_requirements | Template file rules | Important | New | Copied to task requirements |
+| task_file_requirements | Actual task file rules | Important | New | Supports missing-file reports |
+| file_categories | Controlled file taxonomy | Important | New | Used by validation/reporting |
+| project_files | Logical file records | Critical | New | Linked to workspace/task/approval |
+| file_versions | File history | Important | New | Required for replacements/audit |
+| project_updates | Human progress updates | Critical | New | Replaces generic comments |
+| project_requests | Response-required communication | Critical | New | Questions/request workflow |
+| request_responses | Request response history | Important | New | Preserves multiple responses |
+| approvals | Formal decisions | Critical | New | Current approval state |
+| approval_files | Approval/file relationship | Important | New | Files under review |
+| approval_decisions | Approval history | Critical | New | Immutable decision records |
+| project_activity | Immutable audit history | Critical | New | WHO/WHAT/WHEN/WHERE/OLD/NEW |
+| notifications | Persistent user notifications | Important | New | Supports future email delivery |
+| roles | Authentication roles | Critical | New or modify | Separate from responsibility groups |
+| permissions | Atomic capabilities | Critical | New | RLS/service authorization source |
+| role_permissions | Default role capabilities | Critical | New | Role defaults |
+| profile_role_assignments | Global/scoped role grants | Critical | New | Branch/workspace scope |
+| workspace_access_grants | Partner/exception access | Critical | New | Limits installer visibility |
+| profile_permission_overrides | Per-user exceptions | Important | New or modify | Keep only if required |
+| auth.users | Authentication identity | Critical | Existing Supabase | Supabase-managed |
+| storage.objects | Physical file storage | Critical | Existing Supabase | Supabase-managed |
+
+41. KEEP, MODIFY, REPLACE, DEPRECATE
+-------------------------------------
+
+KEEP:
+  - profiles as the application profile concept
+  - branches as the physical location entity
+  - projects as a compatibility table name representing workspaces
+  - Supabase Auth
+  - Supabase Storage
+
+MODIFY:
+  - branches: move contacts out of JSONB
+  - projects: add explicit workspace lifecycle, health, stage, and current task
+  - profiles: separate identity from roles and scoped access
+
+REPLACE:
+  - tasks JSONB with tasks
+  - files JSONB with project_files and file_versions
+  - comments JSONB with updates, requests, and request_responses
+  - question objects with project_requests and responses
+  - approvals embedded in comments with approvals and approval_decisions
+  - activity JSONB with project_activity
+  - local notification queue with notifications
+
+DEPRECATE:
+  - project JSONB task collection after verified migration
+  - project JSONB file collection after verified migration
+  - project JSONB comment collection after verified migration
+  - project JSONB activity collection after verified migration
+  - frontend-only duplicate checking
+  - task_assignees concept
+  - generic configurable workflow engine
+
+42. ARCHITECTURE REVIEW
+-----------------------
+
+Unnecessary tables:
+  - task_assignees: conflicts with the approved shared-task model.
+  - generic workflow_definitions: unnecessary for a fixed lifecycle.
+  - generic workflow_transitions: unnecessary initially.
+  - separate comments table: updates and request responses are clearer.
+  - task_dependencies: postpone until a real dependency use case exists.
+
+Missing tables resolved by this design:
+  - responsibility_groups
+  - task_file_requirements
+  - approval_decisions
+  - request_responses
+  - project_activity
+  - notifications
+  - workspace_access_grants
+  - file_versions
+
+Security risks:
+  - Frontend-only role checks.
+  - Installer access accidentally exposing commercial files.
+  - Profiles allowing users to change their own role.
+  - Activity rows being editable.
+  - Storage objects accessible without matching workspace RLS.
+  - Archived workspace access not being removed.
+  - Responsible person being mistaken for permission to access a workspace.
+
+Migration risks:
+  - Existing JSONB statuses use Pending/Open/Busy/Done and require mapping.
+  - Existing task assignee data conflicts with the new optional responsibility model.
+  - Existing projects may duplicate branch names or IDs.
+  - Current task is not reliable in the old model.
+  - Comments mix updates, questions, and approvals.
+  - Files may not have categories or valid Storage objects.
+  - Old activity lacks actor and before/after values.
+  - Live database schema may differ from repository schema.
+
+Remaining business decisions:
+  - Exact permissions for Branch Managers.
+  - Exact permission for PSG Head Office task editing.
+  - Which approval types each role may decide.
+  - Whether optional responsible person is allowed for every task or only selected templates.
+  - Whether all divisions use the exact same task templates.
+  - Whether project health may be manually overridden.
+  - Whether support remains email-based in the first production phase.
+
+43. FINAL RECOMMENDATION
+------------------------
+Use a fixed, relational, branch-first model.
+
+The minimum operational core is:
+
+  branches
+    -> projects/workspaces
+        -> workflow_stages
+        -> tasks
+        -> project_files
+        -> project_updates
+        -> project_requests
+        -> approvals
+        -> project_activity
+        -> notifications
+
+Tasks use a required responsible group and an optional responsible person. No task requires an assignee. The My Actions view is derived from responsible role/person, approvals, requests, due dates, and visible work requiring attention.
+
+Keep the current React, TypeScript, Vite, TanStack Query, Supabase Auth, PostgreSQL, and Storage stack. The major change is the data model and product structure, not the technology stack.
+
+Do not create migrations until this specification and the remaining permission decisions are approved.

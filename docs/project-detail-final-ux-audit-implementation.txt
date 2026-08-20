@@ -1,0 +1,516 @@
+PSG REBRAND - PROJECT DETAIL FINAL UX AUDIT AND IMPLEMENTATION HANDOFF
+=====================================================================
+
+Date: 2026-08-20
+Purpose: Give ChatGPT a complete product/UX brief plus an implementation record for revising the existing PSG Rebrand Project Detail page safely.
+
+IMPORTANT HANDLING RULE
+------------------------
+This is an existing production-oriented application. Do not rebuild the Project Detail page from scratch. The current implementation already contains most required functionality. Revisions should simplify the existing page, improve hierarchy, and preserve data and workflows.
+
+The branch rebrand workspace serves one PSG branch. Francois and Beverley manage the rebrand. PSG users primarily need to understand the current state, expected dates, next action, and latest update.
+
+============================================================
+1. PRIMARY USER OUTCOME
+============================================================
+
+Within approximately 10 seconds, a user should be able to answer:
+
+1. Which branch is this?
+2. What is the current stage?
+3. What is the current status?
+4. How far along is it?
+5. When is it expected to finish?
+6. What happens next?
+7. What was the latest update?
+
+The top of the page must prioritize branch identity, location, status, current stage, workflow representation, dates, What's next, and Latest update. Everything else is secondary.
+
+Do not add more widgets to solve hierarchy problems. Simplify, group, and reduce duplication.
+
+============================================================
+2. EXISTING FUNCTIONALITY THAT MUST REMAIN
+============================================================
+
+The current Project Detail page already supports:
+
+- Branch information
+- Contact information
+- Project status
+- Current stage
+- Target date
+- Installation date
+- Completion date
+- What's next
+- Stage checklist
+- Latest update
+- Project history
+- Updates
+- Questions
+- Comments
+- Files
+- Tasks
+- Editing
+- Deletion
+
+Do not remove data or backend functionality merely because it is not part of the first screen. Reorganize visibility and hierarchy instead.
+
+Do not delete existing:
+
+- Projects
+- Branches
+- Tasks
+- Updates
+- Files
+- Contacts
+- Workflow stages
+
+============================================================
+3. CURRENT TOP-LEVEL INFORMATION HIERARCHY
+============================================================
+
+The current intended Project Detail order is:
+
+1. Branch and location
+2. Status, current stage, and important dates
+3. Branch and contact details
+4. What's next
+5. Stage checklist
+6. Latest update
+7. Internal project history where appropriate
+8. Internal stage/task management where appropriate
+9. Updates, questions, and comments
+10. Files
+
+The current top workspace uses a dark navy/cyan visual system. Numeric project percentage progress and the old project Notes feature were intentionally removed from the active UI. Do not reintroduce either feature.
+
+Workflow/stage representation is the approved replacement for percentage progress.
+
+============================================================
+4. IMPLEMENTED RULES AND GUARDS
+============================================================
+
+A. Unified details editing
+--------------------------
+Implemented in `src/pages/ProjectDetailPage.tsx`.
+
+The top branch/project details area has one read-only presentation and one edit mode. The same edit mode covers:
+
+- Branch name
+- Division
+- Province
+- Town
+- Branch address
+- Contact persons
+- Current project stage
+- Project status
+- Target date
+- Brief requested date
+- Installation date
+- Completion date
+
+The read-only view is displayed by default. The user must click `Edit details` to see inputs. Save returns the section to read-only mode. Cancel closes edit mode without saving.
+
+The save path is unified in `detailsMutation`. It updates branch data through `updateBranch` and project summary data through `updateProjectSummary`, then refreshes the relevant query state.
+
+B. Editor identity restriction
+------------------------------
+The current UI displays the Edit details control only when the signed-in profile name, lowercased and trimmed, is `beverley` or `francois`.
+
+This is an intentional current guard requested by the product owner, but it is not sufficient as a long-term security boundary. It must eventually be replaced with durable role/capability authorization enforced by backend/RLS rules.
+
+Do not weaken Supabase RLS or treat this frontend check as security.
+
+C. Delete protection
+--------------------
+The Delete project control is only visible while Edit details mode is open. It is not visible in read-only mode.
+
+Deletion requires a second confirmation action. Closing edit mode clears the armed confirmation state. The delete mutation navigates away after success and uses the global save feedback surface.
+
+D. PSG-facing simplification
+----------------------------
+The detailed internal Stages section is hidden unless the user is an internal management user. Current internal visibility is based on the existing internal-user calculation and role policies.
+
+PSG-facing users should see project information, workflow/stage communication, latest updates, and permitted files, but not:
+
+- Edit buttons
+- Delete controls
+- Stage administration
+- Reorder controls
+- Internal task management
+- Internal history/administration
+- Internal assignment details
+
+The current Project Detail source hides the detailed Stages section for non-internal users. The top workspace still communicates the workflow through the read-only checklist.
+
+E. Top checklist versus detailed Stages section
+-----------------------------------------------
+The top checklist is intended to be informational for communicating workflow progress.
+
+The detailed Stages section is the internal management surface. It contains:
+
+- Add suggested stage
+- Add custom stage
+- Expand/collapse controls
+- Stage editing
+- Stage deletion
+- Detailed task status changes
+- Reordering
+- Task comments
+- Task files
+- Installation instructions
+
+The top checklist must not duplicate internal management controls. If a future revision adds controls to the top checklist, the detailed section must be reviewed at the same time to avoid two competing edit surfaces.
+
+F. Stage status labels
+----------------------
+The user-facing stage/task statuses are:
+
+- Pending
+- Started
+- Busy
+- Completed
+
+The current relational mapping is:
+
+- Pending -> `not_started`
+- Started -> `waiting`
+- Busy -> `in_progress`
+- Completed -> `complete`
+
+The Started -> `waiting` mapping is a compatibility decision, not ideal domain semantics. If the database supports a true `started` state later, migrate carefully and preserve existing records.
+
+G. Stage suggestions and ordering
+---------------------------------
+The shared stage suggestion catalogue is in `src/constants/portal.ts`.
+
+It includes operational options such as:
+
+- Site Survey
+- Measurements Received
+- Design Brief Confirmed
+- Artwork In Progress
+- Artwork Sent
+- Quotation Received
+- PO Issued
+- Supplier Assigned
+- Materials Ordered
+- Delivery Scheduled
+- Production
+- Installation Scheduled
+- Installation In Progress
+- Installation Issue
+- Rework Required
+- Installed
+- Final Inspection
+- Photos Uploaded
+- Client Signoff
+- Handover Complete
+- Completed
+- Cancelled
+
+Stages already present are filtered from suggestions. A Custom stage option remains available.
+
+H. Communication hierarchy
+--------------------------
+The top workspace keeps Latest update as the compact status snapshot.
+
+Internal users may see Project history. Detailed updates, questions, comments, and task communication remain available below for the workflows that require them.
+
+A future simplification may consolidate these into an Updates area with a View all updates interaction. Do not delete the underlying comments/questions/activity data while changing the presentation.
+
+I. Files
+--------
+File functionality remains available:
+
+- Upload
+- Preview
+- Download
+- Rename
+- Delete
+- Task association
+- Thumbnail/preview loading
+
+Files are intended to remain private and use signed URLs. A future UX revision may group client-facing files into categories such as Artwork, Quotes, Approvals, Site Photos, Installation Photos, and Final Documentation without removing task relationships internally.
+
+J. No numeric percentage progress
+---------------------------------
+The previous numeric project percentage feature was removed from the active UI. The legacy database field may remain for compatibility, but it must not be displayed, edited, exported, or used as the primary user-facing progress mechanism.
+
+Use workflow stages and statuses instead.
+
+K. No project Notes feature
+---------------------------
+The previous project Notes editor/display was removed from the active UI. Do not reintroduce a separate Notes area. Use Updates, Questions, Comments, Project History, or task-specific instructions according to the communication purpose.
+
+L. Save confirmation
+--------------------
+`src/contexts/SaveFeedbackContext.tsx` provides a global success/error toast.
+
+The toast is used by the main save paths, including:
+
+- Project details
+- Branch/contact details
+- Stage creation
+- Stage editing
+- Stage ordering
+- Comments/updates
+- File actions
+- Profile saves
+- User invites
+- Access-control saves
+- Project deletion
+
+Project Detail success feedback is shown immediately after the mutation returns successfully, before cache invalidation completes, so a slow refresh does not make a successful action appear inert.
+
+M. Contrast guard
+------------------
+`src/styles.css` contains a final dark-workspace contrast guard. It exists because older light-panel utility overrides conflicted with the navy workspace theme and produced black text on dark navy surfaces.
+
+Current design rules:
+
+- Normal text should meet WCAG 2.2 AA 4.5:1 contrast.
+- Large text should meet 3:1.
+- Meaningful UI boundaries and control indicators should meet 3:1.
+- Dark panels use light slate/cyan/white text.
+- Destructive red controls retain readable light text.
+- Bright action buttons may use dark text where that gives stronger contrast.
+
+Any future CSS work must preserve these constraints and should be checked in a browser, not only by reading Tailwind class names.
+
+============================================================
+5. CURRENT USER VIEWS
+============================================================
+
+PSG VIEW
+--------
+The PSG-facing Project Detail view should make these immediately obvious:
+
+- Branch
+- Town/province
+- Status
+- Current stage
+- Workflow/stage representation
+- Target completion date
+- Installation date
+- Completion date when applicable
+- What's next
+- Latest update
+- Permitted files
+
+PSG users should not see internal editing or administration controls.
+
+INTERNAL VIEW
+-------------
+Francois and Beverley need access to:
+
+- Edit details
+- Branch/contact editing
+- Project status/date editing
+- Detailed stages/tasks
+- Task assignments
+- Stage status changes
+- Stage reordering
+- File management
+- Questions/requests
+- Project history
+- Delete confirmation
+
+These features should remain available without visually dominating the first screen.
+
+============================================================
+6. ROLE MODEL CURRENTLY IN USE
+============================================================
+
+The domain defines:
+
+- `colourpix_admin`
+- `psg_user`
+- `psg_head_office`
+- `psg_branch_manager`
+- `sign_company`
+
+The permissions implementation is in `src/utils/permissions.ts`.
+
+Colourpix admin generally has the broadest operational access.
+PSG head office has broader viewing/report access but does not automatically receive all workflow editing permissions.
+PSG branch managers are branch-scoped viewers.
+Sign companies are assignment-scoped viewers.
+PSG user is the general PSG-facing role.
+
+The Beverley/Francois name check is still a frontend implementation detail and must be replaced eventually with durable capability/RLS authorization.
+
+============================================================
+7. DO NOT REDESIGN DURING THIS AUDIT
+============================================================
+
+Do not:
+
+- Rebuild Project Detail from scratch
+- Redesign the dashboard
+- Introduce a new colour system
+- Reintroduce numeric percentage progress
+- Reintroduce project Notes
+- Delete existing records
+- Delete existing task/file/comment/question data
+- Weaken RLS
+- Replace the branch/project routing model unless necessary
+- Add more widgets to compensate for poor hierarchy
+
+Focus on hierarchy, grouping, labels, spacing, visibility, and removal of duplicate controls.
+
+============================================================
+8. REQUIRED FUTURE UX TARGET
+============================================================
+
+The first screenful should communicate:
+
+1. Branch
+2. Location
+3. Status
+4. Current stage
+5. Workflow progress
+6. Target/installation dates
+7. What's next
+8. Latest update
+
+A user should be able to answer:
+
+- Which branch is this?
+- What stage is it in?
+- Is it on track?
+- When will it be completed?
+- What happens next?
+- What was the latest update?
+
+without reading the entire page.
+
+============================================================
+9. REQUIRED TESTING AFTER ANY REVISION
+============================================================
+
+Run:
+
+    npm run check
+    npm run build
+
+Test as an internal user:
+
+- Edit details works.
+- Branch/contact fields save.
+- Stage/status/date fields save.
+- Stage addition works.
+- Stage editing works.
+- Stage reordering works.
+- Stage statuses work.
+- Task management works.
+- File management works.
+- Updates work.
+- Delete remains protected.
+- Save/error feedback is visible.
+
+Test as a PSG user:
+
+- Branch is obvious.
+- Location is obvious.
+- Status is obvious.
+- Current stage is obvious.
+- Dates are obvious.
+- What's next is obvious.
+- Latest update is obvious.
+- No Edit details button appears.
+- No Delete control appears.
+- No internal stage/task administration appears.
+- No internal assignment information appears.
+- Files respect permissions.
+- Updates are readable.
+
+Test keyboard operation:
+
+- Focus indicators are visible.
+- Status controls are reachable.
+- Accordions are reachable.
+- File controls are named.
+- Destructive confirmation is understandable.
+- Toast feedback is visible and, ideally, announced to assistive technology.
+
+============================================================
+10. CURRENT IMPLEMENTATION FILE MAP
+============================================================
+
+Primary page:
+
+- `src/pages/ProjectDetailPage.tsx`
+
+Shared visual contrast:
+
+- `src/styles.css`
+
+Feedback/toast:
+
+- `src/contexts/SaveFeedbackContext.tsx`
+
+Stage suggestions:
+
+- `src/constants/portal.ts`
+
+Domain types:
+
+- `src/types/domain.ts`
+
+Project/Stage services:
+
+- `src/services/portalService.ts`
+
+Branch/contact services:
+
+- `src/services/branchService.ts`
+
+Role and permission policies:
+
+- `src/utils/permissions.ts`
+
+Application shell:
+
+- `src/layouts/AppShell.tsx`
+
+Deployment:
+
+- `.github/workflows/deploy-pages.yml`
+
+Current app description:
+
+- `docs/current-app-user-experience-report.md`
+
+============================================================
+11. CHATGPT REVISION PROMPT
+============================================================
+
+You are revising an existing PSG Rebrand application as a senior product designer, accessibility specialist, security reviewer, and operations workflow expert.
+
+Use this handoff as the governing product and implementation context.
+
+Do not rebuild Project Detail from scratch. Inspect the current implementation first. Make the smallest changes that improve information hierarchy, simplify the PSG-facing view, remove duplicate controls, and preserve all underlying data and workflows.
+
+For every proposed change:
+
+1. Identify the exact current screen and code path.
+2. Explain whether the change affects PSG users, internal users, or both.
+3. Preserve existing project, branch, task, file, contact, comment, question, update, history, and workflow data.
+4. Do not reintroduce numeric percentage progress or project Notes.
+5. Do not weaken RLS or treat frontend name checks as backend security.
+6. Preserve the dark navy/cyan/green/amber/red visual system.
+7. Validate `npm run check` and `npm run build`.
+8. Test internal and PSG-facing experiences separately.
+9. Report any uncertainty instead of inventing behavior.
+
+The final user test is:
+
+"Which branch is this?"
+"What stage is it in?"
+"Is it on track?"
+"When will it be completed?"
+"What happens next?"
+"What was the latest update?"
+
+Those answers must be obvious within approximately 10 seconds.

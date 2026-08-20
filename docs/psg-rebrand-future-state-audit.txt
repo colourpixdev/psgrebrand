@@ -1,0 +1,952 @@
+PSG REBRAND FUTURE-STATE PRODUCT, UX, ARCHITECTURE AND DATA AUDIT
+====================================================================
+
+Status: Architecture and product audit only.
+No application code, Supabase schema, migrations, or database records were changed.
+
+1. EXECUTIVE RECOMMENDATION
+---------------------------
+The application should become a branch-first rollout operations system.
+
+The user should think about:
+
+  What is happening at this PSG branch?
+
+They should not need to understand the difference between a branch record and a project record.
+
+Recommended model:
+
+  Branch
+    - Primary Rebrand Workspace
+        - Overview
+        - Workflow / Tasks
+        - Files
+        - Communication
+        - Approvals
+        - Activity / Audit history
+
+The current separate Branch Details and Project Details pages should become one unified Branch Workspace.
+
+The current Projects page should stop being a primary user-facing destination. It can remain as an administrator portfolio view or be absorbed into Branches.
+
+The current task, file, comment, and activity JSONB structure should gradually be replaced with relational tables.
+
+2. RECOMMENDED INFORMATION ARCHITECTURE
+----------------------------------------
+Primary navigation:
+
+  Dashboard
+  Branches
+  Map
+  Reports
+  Administration
+  Profile
+  Support
+
+Administration contains:
+
+  Users
+  Roles and permissions
+  Workflow templates
+  File categories
+  Workspace settings
+  System status
+
+Remove Projects from primary navigation because the branch is the primary operational object and one branch normally has one rebrand project.
+
+Keep About and Legal in the footer or user menu.
+
+Replace the separate Search page with global search in the application header.
+
+Recommended mobile navigation:
+
+  Dashboard
+  Branches
+  Tasks
+  Reports
+  More
+
+For installation partners, mobile navigation should prioritise:
+
+  My work
+  Current tasks
+  Upload evidence
+  Messages
+  Profile
+
+3. PROPOSED SITEMAP
+-------------------
+/login
+/auth/callback
+/
+  Dashboard
+/branches
+  Branch list
+/branches/:branchId
+  Branch Workspace
+    Overview
+    Workflow
+    Files
+    Communication
+    Approvals
+    Activity
+/map
+  Rollout map
+/reports
+  Report centre
+/admin
+  Users
+  Roles and permissions
+  Workflow templates
+  File categories
+  Workspace settings
+/profile
+  Personal profile
+/support
+  Support requests
+/about
+/legal
+
+4. FUTURE-STATE PAGE DEFINITIONS
+--------------------------------
+
+LOGIN
+Purpose: Securely authenticate users into the PSG rollout workspace.
+Primary users: Everyone.
+Layout: PSG/Colourpix branding, email/password, password reset, workspace identity, clear error state, support link.
+Do not show: Technical Supabase language or preview-mode terminology in production.
+Mobile: Single column and large touch targets.
+
+DASHBOARD
+Purpose: Answer "What needs my attention today?"
+Above the fold:
+  - Greeting and current role
+  - Attention summary
+  - Critical operational metrics
+  - My current tasks
+  - Delayed or blocked branches
+
+Recommended sections:
+  - Blocked branches
+  - Overdue tasks
+  - Pending approvals
+  - Unassigned tasks
+  - Branches without an active task
+  - Installations due soon
+  - Total branches
+  - Active
+  - At risk
+  - Blocked
+  - Awaiting approval
+  - Installation scheduled
+  - Completed
+  - My current task and required action
+  - National rollout health
+  - Recent relevant activity
+
+Do not fill the dashboard with statistics that do not lead to an action.
+Mobile: Put My Work and Attention first.
+
+BRANCH LIST
+Purpose: National rollout control centre.
+Display:
+  - Branch name and code
+  - Division and location
+  - Health
+  - Project stage
+  - Current task
+  - Task owner
+  - Next deadline
+  - Installation date
+  - Last activity
+  - Primary action
+
+Filters:
+  - Health
+  - Project stage
+  - Task status
+  - Province
+  - Division
+  - Assigned user
+  - Installation month
+  - Missing information
+  - Missing required files
+
+Use a dense table for administrators and a card view for general users.
+Primary action: Open branch workspace.
+Do not display full task details or file previews in the branch list.
+
+BRANCH WORKSPACE
+This replaces Branch Details and Project Details.
+
+Header always shows:
+  - Branch name
+  - Branch code
+  - Location
+  - Division
+  - Primary contact
+  - Overall health
+  - Project stage
+  - Progress
+  - Installation date
+  - Last updated
+  - Current task
+  - Current task owner
+
+Recommended tabs:
+  1. Overview
+  2. Workflow
+  3. Files
+  4. Communication
+  5. Approvals
+  6. Activity
+
+Overview shows branch identity, health, stage, progress, current task, owner, next action, blockers, dates, assigned people, recent activity, and missing required files.
+
+Workflow shows stage progress, ordered tasks, status, owner, due date, priority, dependencies, required files, comments, and quick updates.
+
+Files shows all project files, task files, category, version, uploader, date, approval status, and actions.
+
+Communication separates general updates, requests, and approval conversations.
+
+Approvals shows decision requests, files under review, decision history, and approve/reject/request-changes actions.
+
+Activity shows immutable system history.
+
+MAP
+Purpose: Geographic rollout view.
+Display project locations, health, stage, filters, and marker popups.
+Improve coordinate quality over time by replacing hard-coded lookups with verified branch coordinates.
+
+REPORTS
+Purpose: Management and operational reporting.
+Report types:
+  - National rollout
+  - Delayed and at-risk branches
+  - Installation schedule
+  - Approval backlog
+  - Tasks by owner
+  - Overdue and blocked tasks
+  - Missing files
+  - Full branch history
+
+USERS
+Purpose: View and manage workspace users.
+Display name, email, role, scope, active state, and assigned work.
+User creation and invitations should be implemented or clearly remain an administrator-only Supabase process.
+
+ADMINISTRATION
+Purpose: Manage users, permissions, workflow templates, file categories, branding, notifications, and technical system status.
+Do not mix user profile settings with technical system settings.
+
+PROFILE
+Purpose: User-specific identity and notification settings.
+Include display name, title, company, avatar, notification preferences, security, branch scope, and workspace scope.
+Replace URL-only avatar/logo entry with file upload.
+
+SUPPORT
+The current mailto approach is acceptable for a prototype. Production should use persisted support requests with email notifications.
+
+ABOUT AND LEGAL
+Keep as secondary footer or user-menu pages, not primary navigation.
+
+5. WORKFLOW AND TASK SYSTEM
+----------------------------
+Separate three concepts.
+
+PROJECT STAGE
+Where the branch is in the overall lifecycle:
+  - Branch confirmed
+  - Brief
+  - Site information
+  - Design
+  - Internal review
+  - PSG approval
+  - Quote
+  - Production
+  - Installation planning
+  - Installation
+  - Final inspection
+  - Complete
+
+TASK STATUS
+Recommended values:
+  - Not started
+  - In progress
+  - Waiting
+  - Blocked
+  - Complete
+  - Cancelled
+
+Definitions:
+  Not started: Work has not begun.
+  In progress: Someone is actively working.
+  Waiting: Waiting for information, approval, another person, or an external event.
+  Blocked: Cannot proceed and requires a specific blocker reason.
+  Complete: Work is finished and accepted.
+  Cancelled: No longer required.
+
+PROJECT HEALTH
+Recommended values:
+  - On track
+  - At risk
+  - Blocked
+  - Complete
+
+Health should use overdue tasks, blocked tasks, missing approvals, missed dates, missing required files, and a manual administrator override.
+
+CURRENT TASK
+Add an explicit projects.current_task_id field. Do not infer it from the first incomplete task.
+
+TASK FIELDS
+  - id
+  - project_id
+  - title
+  - description
+  - stage
+  - status
+  - priority
+  - is_current
+  - sort_order
+  - due_at
+  - started_at
+  - completed_at
+  - created_by
+  - completed_by
+  - blocked_reason
+  - requires_approval
+  - requires_file
+  - created_at
+  - updated_at
+
+OWNERSHIP
+Allow one accountable owner plus multiple participants. One person must own the next action.
+
+TASK CARD
+Show title, stage, status dropdown, owner, due date, priority, current/next indicator, blocker indicator, required-file indicator, comment count, file count, and a quick update input.
+
+6. RECOMMENDED REBRAND LIFECYCLE
+---------------------------------
+1. Branch confirmed
+2. Brief requested
+3. Site information collected
+4. Design / artwork
+5. Internal review
+6. PSG approval
+7. Quote
+8. Quote approval
+9. Production
+10. Installation planning
+11. Installation
+12. Installation evidence
+13. Final inspection
+14. Complete
+
+Each stage must define:
+  - Purpose
+  - Entry criteria
+  - Required information
+  - Responsible role
+  - Required files
+  - Approval requirements
+  - Exit criteria
+  - Possible blockers
+  - Next stage
+
+7. FILE MANAGEMENT
+------------------
+Files should have dedicated relational records rather than only being stored in project JSONB.
+
+Files may be linked to:
+  - Project
+  - Task
+  - Approval
+  - File category
+
+Categories:
+  - Brief
+  - Site information
+  - Artwork
+  - Quote
+  - Approval
+  - Production
+  - Installation
+  - Installation evidence
+  - Final inspection
+  - Other
+
+project_files fields:
+  - id
+  - project_id
+  - task_id
+  - category_id
+  - name
+  - storage_path
+  - mime_type
+  - size_bytes
+  - uploaded_by
+  - uploaded_at
+  - current_version_id
+  - is_required
+  - approval_status
+  - deleted_at
+
+Use file_versions for replacements. Never overwrite an approval or installation file without preserving history.
+
+Upload experience:
+  - Drag and drop on desktop
+  - File picker on mobile
+  - Camera/photo upload for installers
+  - Upload progress
+  - Clear validation errors
+  - Retry failed upload
+  - Category selection
+  - Task association
+  - Duplicate warning
+
+8. COMMUNICATION
+----------------
+Use four clear concepts.
+
+UPDATES
+General progress information.
+
+REQUESTS
+Something requiring another person to respond.
+
+APPROVALS
+A formal decision with a recorded outcome:
+  Requested, In review, Approved, Rejected, Changes requested, Withdrawn.
+
+ACTIVITY
+Automatic, immutable system history. Users should not manually create activity records.
+
+Support mentions, attachments, task links, project links, read/unread states, notification triggers, and approval history.
+
+9. GLOBAL SEARCH
+----------------
+Search across:
+  - Branches
+  - Branch codes
+  - Projects
+  - Tasks
+  - People
+  - Files
+  - Comments
+  - Updates
+  - Activity
+  - Locations
+  - Statuses
+  - Dates
+
+Group results by entity type and support filters by status, stage, assignee, date, province, and file category.
+
+Examples:
+  Johannesburg: Branches, projects, tasks, files, and updates in Johannesburg.
+  PSG012: Branch code, branch workspace, project ID, tasks, and files.
+  quote: Quote-stage work, quote tasks, quote files, approvals, and comments.
+  John: People, contacts, assigned tasks, and authored updates.
+  installation: Installation-stage projects, dates, tasks, and evidence files.
+
+10. REPORTING
+-------------
+MANAGEMENT:
+  - National rollout progress
+  - Completed branches
+  - Delayed branches
+  - At-risk branches
+  - Installation schedule
+  - Approval backlog
+  - Progress by province/division
+
+OPERATIONS:
+  - Tasks by owner
+  - Overdue tasks
+  - Blocked tasks
+  - Waiting tasks
+  - Unassigned tasks
+  - Missing files
+  - Missing information
+  - Upcoming installations
+
+BRANCH:
+  - Branch history
+  - Project summary
+  - Task history
+  - Files
+  - Approvals
+  - Communication
+  - Installation evidence
+
+Use interactive browser reports, CSV for raw data, Excel for operational manipulation, and PDF for management distribution.
+
+11. PERMISSION MODEL
+--------------------
+                         Admin  Head Office  Branch Manager  Installer
+View all branches          Yes       Yes           No            No
+View assigned branch       Yes       Yes           Yes           Assigned only
+Create project             Yes       Optional     No            No
+Edit branch                Yes       Optional     Limited       No
+Create tasks               Yes       Optional     Optional       No
+Assign tasks               Yes       Optional     Limited        No
+Change task status         Yes       Review only  Assigned       Assigned
+Upload files               Yes       Optional     Yes            Yes
+Delete files               Yes       No/limited   No             No
+Add updates                Yes       Yes          Yes            Yes
+Create requests            Yes       Yes          Yes            Yes
+Approve work               Yes       Yes          Defined        No
+View reports               Yes       Yes          Assigned        Assigned
+Manage users               Yes       No           No             No
+Manage permissions         Yes       No           No             No
+
+Frontend permissions are only a usability layer. Supabase RLS/backend policies must enforce all visibility and write rules.
+
+12. RECOMMENDED DATABASE
+------------------------
+Core tables:
+  - workspaces
+  - profiles
+  - branches
+  - branch_contacts
+  - projects
+  - project_tasks
+  - task_assignees
+  - project_files
+  - file_versions
+  - project_updates
+  - project_requests
+  - approvals
+  - project_activity
+  - notifications
+  - support_requests
+  - task_dependencies, only if genuinely required
+
+Relationships:
+
+workspaces
+  -> branches
+      -> projects
+          -> project_tasks
+              -> task_assignees -> profiles
+              -> task_dependencies
+              -> project_files
+          -> project_files -> file_versions
+          -> project_updates
+          -> project_requests
+          -> approvals
+          -> project_activity
+          -> notifications
+
+profiles link to branch contacts, task assignments, updates, approvals, activity, and notifications.
+
+Important constraints:
+  - One primary project per branch
+  - Every task belongs to one project
+  - Every active task has one accountable owner unless explicitly unassigned
+  - Blocked tasks require a blocker reason
+  - Completed tasks require completion metadata
+  - Approval decisions require decision-maker and timestamp
+  - Activity records are immutable
+  - Deleted files are soft-deleted before physical removal
+
+13. ONE BRANCH = ONE PROJECT
+----------------------------
+Enforce the rule in the database, not only in frontend code.
+
+Recommended approach:
+  branches.id -> projects.branch_id
+  Only one project may have is_primary = true for a branch.
+
+If historical projects are needed, archive the old project and explicitly create a new primary project through an administrator workflow.
+
+14. DATA NORMALISATION
+----------------------
+Branch owns:
+  - Name
+  - Code
+  - Location
+  - Address
+  - Contacts
+
+Project owns:
+  - Rebrand workflow
+  - Project dates
+  - Health
+  - Stage
+  - Progress
+  - Project notes
+
+Task owns:
+  - Status
+  - Owner
+  - Due date
+  - Blocker
+  - Completion
+
+File owns:
+  - Metadata
+  - Category
+  - Version
+  - Approval status
+
+Profile owns:
+  - Identity
+  - Role
+  - Permission scope
+
+Avoid copying branch details into project records unless a deliberate historical snapshot is required.
+
+15. NOTIFICATIONS
+-----------------
+Persist notifications in a database table for:
+  - Task assignment
+  - Status change
+  - Overdue task
+  - Blocker
+  - Approval requested/completed
+  - Request received/answered
+  - File upload
+  - Installation approaching
+  - Mention
+  - Health change
+
+Each notification needs recipient, type, project/task, message, read state, created time, and email delivery state.
+
+16. SUPPORT
+-----------
+The current mailto approach is acceptable temporarily.
+
+A production support_requests table should include:
+  - id
+  - requester_id
+  - project_id
+  - category
+  - subject
+  - description
+  - urgency
+  - status
+  - owner_id
+  - response
+  - created_at
+  - updated_at
+  - resolved_at
+
+17. SETTINGS
+------------
+Separate:
+
+WORKSPACE SETTINGS:
+  - Identity
+  - Logos
+  - Workflow stages
+  - Task templates
+  - File categories
+  - Notification rules
+  - Data retention
+
+USER SETTINGS:
+  - Display name
+  - Title
+  - Company
+  - Avatar
+  - Notification preferences
+  - Security
+
+SYSTEM STATUS:
+  - Supabase connection
+  - Migration version
+  - Storage status
+  - Edge Function status
+  - Backup status
+  - Error monitoring
+
+18. MOBILE DESIGN
+-----------------
+Installation partners may primarily use mobile devices.
+
+Mobile must support:
+  - Branch lookup
+  - Current task
+  - Status update
+  - Quick update
+  - Photo upload
+  - Installation evidence
+  - Blocker reporting
+  - Comments
+  - Approval review
+  - Notifications
+
+The task card should expose status, owner, due date, upload evidence, add update, mark blocked, and mark complete without requiring deep navigation.
+
+19. VISUAL DESIGN
+-----------------
+Recommended direction:
+
+  Professional operational workspace with restrained PSG/Colourpix identity.
+
+Use:
+  - Light neutral content background
+  - Dark navigation shell
+  - Dense tables for administrators
+  - Clear status badges
+  - Fewer decorative gradients
+  - Fewer oversized rounded containers
+  - Consistent status colours
+  - Strong text contrast
+  - Clear loading, empty, success, and error states
+
+Recommended status colours:
+  - Not started: neutral gray
+  - In progress: cyan/blue
+  - Waiting: amber
+  - Blocked: red
+  - Complete: green
+  - At risk: orange/red
+
+20. UNNECESSARY COMPLEXITY
+--------------------------
+Remove Projects from primary navigation.
+Merge Branch Details and Project Details.
+Replace the standalone Search page with global search.
+Separate Reports from Dashboard.
+Move About and Legal to secondary navigation.
+Replace hard-coded map coordinates over time.
+Replace JSONB task/file/comment storage gradually.
+Replace local notification queues with persistent notifications.
+Replace URL-only profile image fields with uploads.
+
+21. MISSING FEATURES
+--------------------
+CRITICAL:
+  - Explicit current task
+  - Task due dates
+  - Task owner
+  - Blocked status and reason
+  - Immutable activity audit
+  - One-project-per-branch database rule
+  - Relational task/file model
+  - Reliable RLS
+  - Formal schema migrations
+  - Unified branch/project workspace
+
+IMPORTANT:
+  - Approval workflow
+  - Required files
+  - File categories and versions
+  - Persistent notifications
+  - Global search
+  - Overdue reporting
+  - Installation evidence workflow
+  - Mobile installer workflow
+  - Saved report filters
+
+NICE TO HAVE:
+  - Calendar
+  - Gantt/dependencies
+  - Scheduled reports
+  - Automated email digests
+  - Advanced analytics
+  - External client portal
+
+22. OPERATIONAL SCENARIOS
+--------------------------
+NEW BRANCH:
+  1. Admin creates branch.
+  2. Required location and primary contact are captured.
+  3. System offers Create rebrand workspace.
+  4. Default workflow is generated.
+  5. Initial owner is assigned.
+
+BRANCH WITHOUT PROJECT:
+  Show a clear setup-required state and a Create workspace action. Do not show a misleading duplicate error.
+
+ARTWORK AWAITING APPROVAL:
+  1. Artwork task becomes Waiting.
+  2. Approval request is created.
+  3. Artwork file is attached.
+  4. PSG receives notification.
+  5. Approval decision is recorded.
+  6. Task becomes Complete or Changes requested.
+
+BLOCKED TASK:
+  1. User selects Blocked.
+  2. Blocker reason is required.
+  3. Project health becomes At risk or Blocked.
+  4. Owner and administrators are notified.
+  5. Resolving the blocker returns the task to active work.
+
+INSTALLER EVIDENCE:
+  1. Installer opens My Work.
+  2. Opens assigned installation task.
+  3. Takes photos or selects files.
+  4. Uploads under Installation evidence.
+  5. Reviewer confirms the evidence.
+  6. Task can be completed.
+
+BRANCH MANAGER:
+  They should immediately see current task, responsibility, due date, required response, files awaiting review, and one clear next action.
+
+MANAGEMENT INSTALLATIONS:
+  Open Installation Schedule and show branch, date, installer, readiness, missing requirements, health, and evidence status.
+
+OVERDUE INSTALLATIONS:
+  Filter installation planning/installation stages by overdue date and health.
+
+ACCIDENTAL STATUS CHANGE:
+  Activity records previous status, new status, user, timestamp, and reason. Administrators can restore state without deleting history.
+
+USER LEAVES:
+  Disable the user, list active assigned tasks, choose a replacement owner, reassign in bulk, and preserve historical authorship.
+
+23. MIGRATION STRATEGY
+----------------------
+PHASE 1 - FOUNDATION:
+  - Approve business rules
+  - Define roles and statuses
+  - Design relational schema
+  - Add migrations and RLS
+  - Add audit model
+  - Enforce primary project rule
+
+PHASE 2 - NAVIGATION/UX:
+  - Merge Branch and Project workspace
+  - Remove Projects from primary navigation
+  - Add global search
+  - Rebuild dashboard around attention/work
+  - Preserve old routes temporarily
+
+PHASE 3 - CORE OPERATIONS:
+  - Add relational tasks
+  - Add owners and due dates
+  - Add current task
+  - Add blocked/waiting states
+  - Add relational files/categories
+  - Preserve JSONB during transition
+
+PHASE 4 - COMMUNICATION:
+  - Separate updates, requests, and approvals
+  - Add notifications
+  - Migrate comments carefully
+  - Preserve existing activity history
+
+PHASE 5 - REPORTING:
+  - Add database report views
+  - Add overdue/blocker/installation reports
+  - Add exports
+
+PHASE 6 - ADVANCED:
+  - Dependencies
+  - Calendar
+  - Saved views
+  - Scheduled reports
+  - Mobile installer improvements
+
+Migration risks:
+  - Tasks may lack owners
+  - Files may lack categories
+  - Comments may mix updates and questions
+  - Status values may be inconsistent
+  - Storage files may lack metadata
+  - Metadata may lack actual Storage files
+  - Existing branch/project duplicates may require manual review
+  - Existing permissions may not map cleanly
+
+Do not remove JSONB fields until relational data has been verified.
+
+24. PRIORITIES
+--------------
+MUST CHANGE:
+  1. Merge Branch Details and Project Details.
+  2. Establish branch/project source of truth.
+  3. Enforce one primary project per branch in the database.
+  4. Add explicit current task.
+  5. Add task owner and due date.
+  6. Define task statuses precisely.
+  7. Add blocked status and reason.
+  8. Add immutable activity history.
+  9. Align roles, frontend permissions, and RLS.
+  10. Resolve schema drift through formal migrations.
+
+SHOULD CHANGE:
+  1. Relational tasks/files/comments.
+  2. File categories and versions.
+  3. Approval records.
+  4. Persistent notifications.
+  5. Global search.
+  6. Action-oriented dashboard.
+  7. Mobile installer workflow.
+  8. Overdue and installation reporting.
+  9. Persisted support requests.
+  10. Profile image uploads.
+
+COULD CHANGE:
+  - Calendar
+  - Dependencies
+  - Saved report views
+  - Scheduled reports
+  - Email digests
+  - Advanced analytics
+  - External client access
+
+DO NOT CHANGE:
+  - React/TypeScript/Vite stack
+  - Supabase backend
+  - Supabase Storage
+  - Role-based access control as a concept
+  - Geographic map
+  - Activity history concept
+  - Task-linked files
+  - Task-linked comments
+  - CSV exports
+  - Responsive approach
+
+25. FINAL ARCHITECTURE
+----------------------
+PRODUCT MODEL:
+  Branch-first national rollout control centre.
+
+PRIMARY OBJECT:
+  PSG branch.
+
+WORKSPACE:
+  One primary rebrand workspace per branch.
+
+NAVIGATION:
+  Dashboard, Branches, Map, Reports, Administration, Profile, Support.
+
+WORKFLOW:
+  Branch confirmed -> Brief -> Site information -> Design -> Review -> Approval -> Quote -> Production -> Installation planning -> Installation -> Evidence -> Inspection -> Complete.
+
+TASKS:
+  Relational, owned by one accountable person, optionally assigned to participants, with status, priority, due date, blocker, and current-task state.
+
+FILES:
+  Relational metadata in Supabase, categorised, versioned, permissioned, and linked to projects/tasks/approvals.
+
+COMMUNICATION:
+  Updates, requests, approvals, and immutable activity.
+
+PERMISSIONS:
+  Role-based with per-user overrides, enforced by Supabase RLS/backend policies.
+
+DASHBOARD:
+  Shows blockers, overdue work, approvals, current user actions, upcoming installations, and national health.
+
+BRANCH WORKSPACE:
+  Shows branch identity, health, stage, progress, current task, owner, next action, blockers, important dates, and required files immediately.
+
+TECHNOLOGY:
+  Keep React, TypeScript, Vite, TanStack Query, and Supabase.
+
+IMPLEMENTATION ORDER:
+  1. Approve terminology and business rules.
+  2. Define roles and task statuses.
+  3. Define relational schema.
+  4. Build migration/data mapping strategy.
+  5. Consolidate Branch and Project workspace UX.
+  6. Implement relational tasks and files.
+  7. Implement communication and approvals.
+  8. Implement notifications.
+  9. Rebuild dashboard and reports.
+  10. Improve mobile workflows.
+  11. Remove legacy JSONB and obsolete pages after verification.
