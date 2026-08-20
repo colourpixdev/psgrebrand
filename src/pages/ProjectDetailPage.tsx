@@ -85,7 +85,7 @@ export function ProjectDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { showSuccess } = useSaveFeedback();
+  const { showError, showSuccess } = useSaveFeedback();
   const queryClient = useQueryClient();
   const [commentMessage, setCommentMessage] = useState('');
   const [journalTaskId, setJournalTaskId] = useState('');
@@ -324,6 +324,7 @@ export function ProjectDetailPage() {
       setStageOption('');
       await syncProject(updatedProject, 'Stage added.');
     },
+    onError: (error) => showError(error instanceof Error ? error.message : 'Unable to add stage.'),
   });
 
   const updateTaskMutation = useMutation({

@@ -1706,7 +1706,7 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
   const assignees = input.assignees?.length
     ? input.assignees
     : (input.assigneeName && input.assigneeEmail ? [{ name: input.assigneeName, email: input.assigneeEmail, designation: 'Participant' }] : undefined);
-  if (!assignees?.length) {
+  if (!assignees?.length && !input.stage) {
     throw new Error('Assign every open task to at least one person.');
   }
 
