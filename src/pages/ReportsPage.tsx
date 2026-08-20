@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { FileText, MapPinned, Search, Shield } from 'lucide-react';
+import { FileText, Search } from 'lucide-react';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import { isTaskOutstanding } from '../utils/taskStatus';
-import type { Project, ProjectStatus, Role } from '../types/domain';
+import type { Project, ProjectStatus } from '../types/domain';
 
 type ReportType = 'single-branch-detail' | 'multi-branch-overview' | 'operational-blockers';
 
@@ -21,18 +21,8 @@ const statusLabels: Record<ProjectStatus, string> = {
 };
 
 const reportTypes: Array<{ value: ReportType; label: string; description: string }> = [
-  { value: 'single-branch-detail', label: 'Single branch report', description: 'A complete branch report with all projects, assignees, tasks, files, and journal activity.' },
-  { value: 'multi-branch-overview', label: 'Multi-branch overview', description: 'A wide portfolio report for meetings across all branches and teams.' },
-  { value: 'operational-blockers', label: 'Operational blockers and ownership', description: 'Shows stalled work, missing ownership, quote blockers, and overdue tasks for action planning.' },
+  { value: 'multi-branch-overview', label: 'PSG National Rebrand Rollout Report', description: 'A clear view of every permitted branch, its current stage, progress, status, and target date.' },
 ];
-
-const roleReportGuidance: Record<Role, string[]> = {
-  colourpix_admin: ['Operational blockers and ownership', 'Single branch report', 'Multi-branch overview'],
-  psg_user: ['Single branch report', 'Operational blockers and ownership', 'Multi-branch overview'],
-  psg_head_office: ['Single branch report', 'Operational blockers and ownership', 'Multi-branch overview'],
-  psg_branch_manager: ['Single branch report', 'My assigned tasks view', 'Status follow-up list'],
-  sign_company: ['My installation tasks', 'Operational blockers and ownership', 'Single branch report'],
-};
 
 function uniqueSorted(values: string[]) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -217,10 +207,12 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
 }
 
 export function ReportsPage() {
-  const { user, roleLabel } = useAuth();
+  const { user } = useAuth();
   const [reportType, setReportType] = useState<ReportType>('multi-branch-overview');
   const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
   const [branchName, setBranchName] = useState('all');
+  const [province, setProvince] = useState('all');
+  const [completion, setCompletion] = useState<'all' | 'completed' | 'outstanding'>('all');
   const [query, setQuery] = useState('');
 
   const { data: projects = [], isLoading } = useQuery({
@@ -229,9 +221,9 @@ export function ReportsPage() {
   });
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
   const selectedReport = reportTypes.find((report) => report.value === reportType) ?? reportTypes[0];
-  const guidance = user ? roleReportGuidance[user.role] : ['Single branch report', 'Multi-branch overview', 'Operational blockers and ownership'];
   const normalizedQuery = query.trim().toLowerCase();
   const availableBranches = useMemo(() => uniqueSorted(scopedProjects.map((project) => project.branch)), [scopedProjects]);
+  const availableProvinces = useMemo(() => uniqueSorted(scopedProjects.map((project) => project.province)), [scopedProjects]);
   const branchSuggestions = useMemo(() => {
     if (!normalizedQuery) {
       return [];
@@ -263,12 +255,24 @@ export function ReportsPage() {
       return false;
     }
 
+    if (province !== 'all' && project.province !== province) {
+      return false;
+    }
+
+    if (completion === 'completed' && project.status !== 'completed') {
+      return false;
+    }
+
+    if (completion === 'outstanding' && project.status === 'completed') {
+      return false;
+    }
+
     if (reportType === 'operational-blockers') {
       return isOperationalBlocker(project);
     }
 
     return true;
-  }), [branchName, normalizedQuery, reportType, scopedProjects, status]);
+  }), [branchName, completion, normalizedQuery, province, reportType, scopedProjects, status]);
 
   const displayedProjects = useMemo(() => {
     if (reportType === 'single-branch-detail') {
@@ -293,6 +297,11 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
+      <section className="border-b border-slate-200 pb-5">
+        <h2 className="text-2xl font-semibold text-slate-900">PSG National Rebrand Rollout Report</h2>
+        <p className="mt-2 text-sm text-slate-600">See progress, stage, status and dates across the national branch rollout.</p>
+      </section>
+
       <section className="grid gap-4">
         <div className="grid gap-3 rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft sm:grid-cols-3">
           <div>
@@ -318,18 +327,28 @@ export function ReportsPage() {
 
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft">
         <div className="grid gap-4 lg:grid-cols-3">
-          <label className="grid gap-2 text-sm text-slate-300 lg:col-span-2">
-            Report type
-            <select value={reportType} onChange={(event) => setReportType(event.target.value as ReportType)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-              {reportTypes.map((report) => <option key={report.value} value={report.value}>{report.label}</option>)}
-            </select>
-          </label>
-
           <label className="grid gap-2 text-sm text-slate-300">
             Status
             <select value={status} onChange={(event) => setStatus(event.target.value as ProjectStatus | 'all')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
               <option value="all">All statuses</option>
               {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+
+          <label className="grid gap-2 text-sm text-slate-300">
+            Province
+            <select value={province} onChange={(event) => setProvince(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
+              <option value="all">All provinces</option>
+              {availableProvinces.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+
+          <label className="grid gap-2 text-sm text-slate-300">
+            Completion
+            <select value={completion} onChange={(event) => setCompletion(event.target.value as typeof completion)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
+              <option value="all">All projects</option>
+              <option value="outstanding">Outstanding</option>
+              <option value="completed">Completed</option>
             </select>
           </label>
 
@@ -396,36 +415,32 @@ export function ReportsPage() {
           <table className="w-full min-w-[1050px] text-left text-sm">
             <thead className="bg-white/5 text-xs uppercase tracking-[0.18em] text-slate-400">
               <tr>
-                <th className="px-5 py-4 font-medium">Project</th>
                 <th className="px-5 py-4 font-medium">Branch</th>
-                <th className="px-5 py-4 font-medium">Type</th>
-                <th className="px-5 py-4 font-medium">Location</th>
-                <th className="px-5 py-4 font-medium">Manager</th>
+                <th className="px-5 py-4 font-medium">Province</th>
                 <th className="px-5 py-4 font-medium">Stage</th>
-                <th className="px-5 py-4 font-medium">Status</th>
-                <th className="px-5 py-4 font-medium">Target</th>
                 <th className="px-5 py-4 font-medium">Progress</th>
-                <th className="px-5 py-4 font-medium">Outstanding tasks</th>
+                <th className="px-5 py-4 font-medium">Status</th>
+                <th className="px-5 py-4 font-medium">Target date</th>
+                <th className="px-5 py-4 font-medium">Completion date</th>
+                <th className="px-5 py-4 font-medium">Open</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
               {isLoading ? (
-                <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
+                <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
-                  <td className="px-5 py-4 text-white"><Link to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`} className="inline-flex items-center justify-center rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100 transition hover:bg-emerald-400/25">Open branch record</Link></td>
-                  <td className="px-5 py-4"><Link to="/branches" className="hover:text-sky-100">{project.branch}</Link></td>
-                  <td className="px-5 py-4">{project.projectTypeName}</td>
-                  <td className="px-5 py-4">{project.town}, {project.province}</td>
-                  <td className="px-5 py-4">{project.manager}</td>
+                  <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
+                  <td className="px-5 py-4">{project.province}</td>
                   <td className="px-5 py-4">{project.currentStage}</td>
-                  <td className="px-5 py-4">{statusLabels[project.status]}</td>
-                  <td className="px-5 py-4">{project.targetDate}</td>
                   <td className="px-5 py-4">{project.progress}%</td>
-                  <td className="px-5 py-4">{project.tasks.filter((task) => !task.completed).length}</td>
+                  <td className="px-5 py-4">{statusLabels[project.status]}</td>
+                  <td className="px-5 py-4">{project.targetDate || 'Not set'}</td>
+                  <td className="px-5 py-4">{project.completionDate || 'Not completed'}</td>
+                  <td className="px-5 py-4"><Link to={`/projects/${project.id}`} className="font-medium text-sky-200 hover:text-white">View</Link></td>
                 </tr>
               )) : (
-                <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-400">No projects match the selected filters.</td></tr>
+                <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">No projects match the selected filters.</td></tr>
               )}
             </tbody>
           </table>
