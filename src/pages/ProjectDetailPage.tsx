@@ -95,8 +95,7 @@ export function ProjectDetailPage() {
   const [briefRequestedDateDraft, setBriefRequestedDateDraft] = useState('');
   const [installationDateDraft, setInstallationDateDraft] = useState('');
   const [completionDateDraft, setCompletionDateDraft] = useState('');
-  const [isEditingBranchDetails, setIsEditingBranchDetails] = useState(false);
-  const [isEditingProjectSummary, setIsEditingProjectSummary] = useState(false);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [branchDetailsDraft, setBranchDetailsDraft] = useState({
     name: '',
     division: 'Wealth' as Division,
@@ -201,31 +200,14 @@ export function ProjectDetailPage() {
     },
   });
 
-  const projectSummaryMutation = useMutation({
-    mutationFn: () => updateProjectSummary({
-      projectId: projectId ?? '',
-      actor: user?.name ?? 'Workspace user',
-      currentStage: currentStageDraft,
-      status: statusDraft,
-      targetDate: targetDateDraft,
-      briefRequestedDate: briefRequestedDateDraft,
-      installationDate: installationDateDraft,
-      completionDate: completionDateDraft,
-    }),
-    onSuccess: async (updatedProject) => {
-      setIsEditingProjectSummary(false);
-      await syncProject(updatedProject, 'Project summary fields saved.');
-    },
-  });
-
-  const branchDetailsMutation = useMutation({
+  const detailsMutation = useMutation({
     mutationFn: async () => {
       if (!branch) {
         throw new Error('Branch details are unavailable.');
       }
 
       const contacts = branchDetailsDraft.contacts.filter((contact) => contact.name.trim());
-      return updateBranch(branch.id, {
+      const updatedBranch = await updateBranch(branch.id, {
         name: branchDetailsDraft.name.trim(),
         division: branchDetailsDraft.division,
         province: branchDetailsDraft.province.trim(),
@@ -236,14 +218,25 @@ export function ProjectDetailPage() {
         contactPhone: contacts[0]?.phone?.trim() || null,
         contacts,
       });
+      const updatedProject = await updateProjectSummary({
+        projectId: projectId ?? '',
+        actor: user?.name ?? 'Workspace user',
+        currentStage: currentStageDraft,
+        status: statusDraft,
+        targetDate: targetDateDraft,
+        briefRequestedDate: briefRequestedDateDraft,
+        installationDate: installationDateDraft,
+        completionDate: completionDateDraft,
+      });
+      return { updatedBranch, updatedProject };
     },
-    onSuccess: async (updatedBranch) => {
+    onSuccess: async ({ updatedBranch, updatedProject }) => {
       if (updatedBranch) {
         queryClient.setQueryData(['branch', updatedBranch.id], updatedBranch);
       }
       await queryClient.invalidateQueries({ queryKey: ['branch', branch?.id] });
-      setIsEditingBranchDetails(false);
-      showSuccess('Branch details saved.');
+      setIsEditingDetails(false);
+      await syncProject(updatedProject, 'Project details saved.');
     },
   });
 
@@ -479,7 +472,7 @@ export function ProjectDetailPage() {
   const canDeleteProject = Boolean(rolePolicy?.projectAccess.canDeleteProjects);
   const canCreateAssignedUpdate = canAddComments;
   const canUseConversationComposer = canCreateAssignedUpdate || canAskColourpix;
-  const canEditBranchDetails = ['beverley', 'francois'].includes(user?.name.trim().toLowerCase() ?? '');
+  const canEditDetails = ['beverley', 'francois'].includes(user?.name.trim().toLowerCase() ?? '');
 
   function canCurrentUserCompleteTask(task: TaskItem) {
     if (!canCompleteTasks) {
@@ -594,12 +587,12 @@ export function ProjectDetailPage() {
           <div className="mt-6 border-t border-white/10 pt-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-100">Branch and contact persons</h2>
-              {canEditBranchDetails && !isEditingBranchDetails ? (
-                <button type="button" onClick={() => setIsEditingBranchDetails(true)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">Edit branch details</button>
+              {canEditDetails && !isEditingDetails ? (
+                <button type="button" onClick={() => setIsEditingDetails(true)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">Edit details</button>
               ) : null}
             </div>
 
-            {isEditingBranchDetails && canEditBranchDetails ? (
+            {isEditingDetails && canEditDetails ? (
               <div className="mt-4 grid gap-4 text-sm text-slate-200">
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2">Branch<input value={branchDetailsDraft.name} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, name: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
@@ -608,6 +601,14 @@ export function ProjectDetailPage() {
                   <label className="grid gap-2">Town<input value={branchDetailsDraft.town} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, town: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
                 </div>
                 <label className="grid gap-2">Branch address<textarea value={branchDetailsDraft.physicalAddress} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, physicalAddress: event.target.value }))} rows={2} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                <div className="grid gap-4 border-t border-white/10 pt-4 md:grid-cols-2">
+                  <label className="grid gap-2">Current stage<select value={currentStageDraft} onChange={(event) => setCurrentStageDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none"><option value={currentStageDraft}>{currentStageDraft}</option>{summaryStageOptions.filter((stage) => stage !== currentStageDraft).map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
+                  <label className="grid gap-2">Status<select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none">{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                  <DatePickerInput label="Target date" value={targetDateDraft} onChange={setTargetDateDraft} placeholder="Select target date" />
+                  <DatePickerInput label="Brief requested date" value={briefRequestedDateDraft} onChange={setBriefRequestedDateDraft} placeholder="Select brief requested date" />
+                  <DatePickerInput label="Installation date" value={installationDateDraft} onChange={setInstallationDateDraft} placeholder="Select installation date" />
+                  <DatePickerInput label="Completion date" value={completionDateDraft} onChange={setCompletionDateDraft} placeholder="Select completion date" />
+                </div>
                 <div className="grid gap-3">
                   {branchDetailsDraft.contacts.map((contact, index) => (
                     <div key={`contact-${index}`} className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-3 md:grid-cols-2">
@@ -621,10 +622,10 @@ export function ProjectDetailPage() {
                   <button type="button" onClick={() => setBranchDetailsDraft((current) => ({ ...current, contacts: [...current.contacts, { name: '', designation: 'Contact Person', email: '', phone: '' }] }))} className="w-fit rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Add contact person</button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" disabled={branchDetailsMutation.isPending} onClick={() => branchDetailsMutation.mutate()} className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">{branchDetailsMutation.isPending ? 'Saving...' : 'Save branch details'}</button>
-                  <button type="button" disabled={branchDetailsMutation.isPending} onClick={() => setIsEditingBranchDetails(false)} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
+                  <button type="button" disabled={detailsMutation.isPending} onClick={() => detailsMutation.mutate()} className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">{detailsMutation.isPending ? 'Saving...' : 'Save details'}</button>
+                  <button type="button" disabled={detailsMutation.isPending} onClick={() => setIsEditingDetails(false)} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
                 </div>
-                {branchDetailsMutation.error instanceof Error ? <p className="text-sm text-red-300">{branchDetailsMutation.error.message}</p> : null}
+                {detailsMutation.error instanceof Error ? <p className="text-sm text-red-300">{detailsMutation.error.message}</p> : null}
               </div>
             ) : (
               <div className="mt-4 grid gap-4 text-sm text-white md:grid-cols-2">
@@ -640,11 +641,11 @@ export function ProjectDetailPage() {
           </div>
         ) : null}
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {!isEditingDetails ? <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</p><p className="mt-1 text-lg font-semibold text-white">{selectedProject.currentStage}</p></div>
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Target completion</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.targetDate)}</p></div>
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Installation</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.installationDate)}</p></div>
-        </div>
+        </div> : null}
 
         <div className="mt-6 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
@@ -684,107 +685,15 @@ export function ProjectDetailPage() {
             )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No project history recorded yet.</p>}
           </div>
         </div>
-      </section>
-      <section className={isInternalUser ? 'rounded-[2rem] border border-slate-700/50 bg-slate-900/80 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Project details</p>
-          </div>
-          {canEditProjectSummary && !isEditingProjectSummary ? <button type="button" onClick={() => setIsEditingProjectSummary(true)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">Edit project details</button> : null}
-        </div>
-        <p className="mt-2 text-sm text-slate-400">Project manager: {selectedProject.manager || 'Not assigned'}</p>
-        <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-2 text-sm text-slate-300">
-          {isEditingProjectSummary && canEditProjectSummary ? (
-            <label className="grid gap-2">
-              <span className="text-slate-100">Current Stage</span>
-              <select value={currentStageDraft} onChange={(event) => setCurrentStageDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50">
-                {summaryStageOptions.map((stageName) => <option key={stageName} value={stageName}>{stageName}</option>)}
-              </select>
-            </label>
-          ) : <div className="text-slate-200">Current Status: <span className="text-white">{selectedProject.currentStage}</span></div>}
-
-          {isEditingProjectSummary && canEditProjectSummary ? (
-            <DatePickerInput
-              label="Target Date"
-              value={targetDateDraft}
-              onChange={setTargetDateDraft}
-              placeholder="Select target date"
-            />
-          ) : <div className="text-slate-200">Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>}
-
-          {isEditingProjectSummary && canEditProjectSummary ? (
-            <DatePickerInput
-              label="Brief Requested Date"
-              value={briefRequestedDateDraft}
-              onChange={setBriefRequestedDateDraft}
-              placeholder="Select brief requested date"
-            />
-          ) : <div className="text-slate-200">Brief Requested Date: <span className="text-white">{selectedProject.briefRequestedDate}</span></div>}
-
-          {isEditingProjectSummary && canEditProjectSummary ? (
-            <DatePickerInput
-              label="Installation Date"
-              value={installationDateDraft}
-              onChange={setInstallationDateDraft}
-              placeholder="Select installation date"
-            />
-          ) : <div className="text-slate-200">Installation Date: <span className="text-white">{selectedProject.installationDate}</span></div>}
-
-          {isEditingProjectSummary && canEditProjectSummary ? (
-            <DatePickerInput
-              label="Completion Date"
-              value={completionDateDraft}
-              onChange={setCompletionDateDraft}
-              placeholder="Select completion date"
-            />
-          ) : <div className="text-slate-200">Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>}
-
-          {isEditingProjectSummary && canEditProjectSummary ? (
-            <label className="grid gap-2">
-              <span className="text-slate-100">Status</span>
-              <select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50">
-                {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
-            </label>
-          ) : <div className="text-slate-200">Status: <span className="text-white">{statusLabels[selectedProject.status]}</span></div>}
-
-        </div>
-        {isEditingProjectSummary && canEditProjectSummary ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" disabled={projectSummaryMutation.isPending} onClick={() => projectSummaryMutation.mutate()} className="rounded-2xl bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">
-              {projectSummaryMutation.isPending ? 'Saving summary...' : 'Save summary fields'}
-            </button>
-            <button type="button" disabled={projectSummaryMutation.isPending} onClick={() => setIsEditingProjectSummary(false)} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
-          </div>
-        ) : null}
-        {projectSummaryMutation.error instanceof Error ? <p className="mt-2 text-sm text-red-300">{projectSummaryMutation.error.message}</p> : null}
-
         {canDeleteProject ? (
-          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-red-400/15 pt-5">
-            <button
-              type="button"
-              onClick={() => {
-                if (deleteConfirmationArmed) {
-                  deleteProjectMutation.mutate();
-                  return;
-                }
-
-                setDeleteConfirmationArmed(true);
-              }}
-              disabled={deleteProjectMutation.isPending}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-red-400/35 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
+          <div className="mt-5 border-t border-red-400/15 pt-5">
+            <button type="button" onClick={() => { if (deleteConfirmationArmed) { deleteProjectMutation.mutate(); return; } setDeleteConfirmationArmed(true); }} disabled={deleteProjectMutation.isPending} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-red-400/35 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">
               {deleteProjectMutation.isPending ? 'Deleting project...' : deleteConfirmationArmed ? 'Confirm delete project' : 'Delete project'}
             </button>
-            {deleteConfirmationArmed ? (
-              <button type="button" onClick={() => setDeleteConfirmationArmed(false)} disabled={deleteProjectMutation.isPending} className="min-h-11 text-sm font-semibold text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50">
-                Cancel
-              </button>
-            ) : null}
+            {deleteConfirmationArmed ? <button type="button" onClick={() => setDeleteConfirmationArmed(false)} disabled={deleteProjectMutation.isPending} className="ml-3 min-h-11 text-sm font-semibold text-slate-300 transition hover:text-white">Cancel</button> : null}
           </div>
         ) : null}
       </section>
-
       <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
         <div className="mt-6 border-t border-white/10 pt-0">
           <div className="flex items-center justify-between gap-3 mb-4">

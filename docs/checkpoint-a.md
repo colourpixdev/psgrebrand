@@ -12,6 +12,8 @@ Changes in this checkpoint:
 - Project detail: removed the repeated town/province line from the lower section.
 - Project detail: removed the repeated physical-address line from the lower section. Branch identity, contacts, and address remain in the top branch panel.
 - Project detail: kept the distinct project manager, stage, status, brief-requested date, installation date, completion date, and edit/save workflow.
+- Follow-up consolidation: merged branch details and project workflow fields into one top details card with one `Edit details` button and one `Save details` action.
+- Follow-up consolidation: removed the separate lower project-details card and kept the delete action in the single top card.
 
 Not changed:
 
