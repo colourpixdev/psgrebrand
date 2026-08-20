@@ -96,6 +96,7 @@ export function ProjectDetailPage() {
   const [installationDateDraft, setInstallationDateDraft] = useState('');
   const [completionDateDraft, setCompletionDateDraft] = useState('');
   const [isEditingBranchDetails, setIsEditingBranchDetails] = useState(false);
+  const [isEditingProjectSummary, setIsEditingProjectSummary] = useState(false);
   const [branchDetailsDraft, setBranchDetailsDraft] = useState({
     name: '',
     division: 'Wealth' as Division,
@@ -211,7 +212,10 @@ export function ProjectDetailPage() {
       installationDate: installationDateDraft,
       completionDate: completionDateDraft,
     }),
-    onSuccess: (updatedProject) => syncProject(updatedProject, 'Project summary fields saved.'),
+    onSuccess: async (updatedProject) => {
+      setIsEditingProjectSummary(false);
+      await syncProject(updatedProject, 'Project summary fields saved.');
+    },
   });
 
   const branchDetailsMutation = useMutation({
@@ -531,7 +535,7 @@ export function ProjectDetailPage() {
   const mergedTasks = selectedProject.tasks;
   const stagePlan = getStagePlan(selectedProject);
   const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
-  const canEditNotes = canAdministerProjectDetails;
+  const canEditProjectSummary = ['beverley', 'francois'].includes(user?.name.trim().toLowerCase() ?? '');
   const hasSummaryChange = currentStageDraft.trim() !== selectedProject.currentStage.trim()
     || statusDraft !== selectedProject.status
     || targetDateDraft.trim() !== selectedProject.targetDate.trim()
@@ -682,13 +686,18 @@ export function ProjectDetailPage() {
         </div>
       </section>
       <section className={isInternalUser ? 'rounded-[2rem] border border-slate-700/50 bg-slate-900/80 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
-        <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Branch reference</p>
-        <h2 className="mt-2 text-3xl font-semibold text-white">{selectedProject.branch}</h2>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Branch reference</p>
+            <h2 className="mt-2 text-3xl font-semibold text-white">{selectedProject.branch}</h2>
+          </div>
+          {canEditProjectSummary && !isEditingProjectSummary ? <button type="button" onClick={() => setIsEditingProjectSummary(true)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">Edit project details</button> : null}
+        </div>
         <p className="mt-2 text-sm text-slate-400">
           {selectedProject.town}, {selectedProject.province} · Manager {selectedProject.manager}
         </p>
         <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-2 text-sm text-slate-300">
-          {canEditNotes ? (
+          {isEditingProjectSummary && canEditProjectSummary ? (
             <label className="grid gap-2">
               <span className="text-slate-100">Current Stage</span>
               <select value={currentStageDraft} onChange={(event) => setCurrentStageDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50">
@@ -697,7 +706,7 @@ export function ProjectDetailPage() {
             </label>
           ) : <div className="text-slate-200">Current Status: <span className="text-white">{selectedProject.currentStage}</span></div>}
 
-          {canEditNotes ? (
+          {isEditingProjectSummary && canEditProjectSummary ? (
             <DatePickerInput
               label="Target Date"
               value={targetDateDraft}
@@ -706,7 +715,7 @@ export function ProjectDetailPage() {
             />
           ) : <div className="text-slate-200">Target Date: <span className="text-white">{selectedProject.targetDate}</span></div>}
 
-          {canEditNotes ? (
+          {isEditingProjectSummary && canEditProjectSummary ? (
             <DatePickerInput
               label="Brief Requested Date"
               value={briefRequestedDateDraft}
@@ -715,7 +724,7 @@ export function ProjectDetailPage() {
             />
           ) : <div className="text-slate-200">Brief Requested Date: <span className="text-white">{selectedProject.briefRequestedDate}</span></div>}
 
-          {canEditNotes ? (
+          {isEditingProjectSummary && canEditProjectSummary ? (
             <DatePickerInput
               label="Installation Date"
               value={installationDateDraft}
@@ -724,7 +733,7 @@ export function ProjectDetailPage() {
             />
           ) : <div className="text-slate-200">Installation Date: <span className="text-white">{selectedProject.installationDate}</span></div>}
 
-          {canEditNotes ? (
+          {isEditingProjectSummary && canEditProjectSummary ? (
             <DatePickerInput
               label="Completion Date"
               value={completionDateDraft}
@@ -733,22 +742,23 @@ export function ProjectDetailPage() {
             />
           ) : <div className="text-slate-200">Completion Date: <span className="text-white">{selectedProject.completionDate}</span></div>}
 
-          {canEditNotes ? (
+          {isEditingProjectSummary && canEditProjectSummary ? (
             <label className="grid gap-2">
               <span className="text-slate-100">Status</span>
               <select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50">
                 {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             </label>
-          ) : null}
+          ) : <div className="text-slate-200">Status: <span className="text-white">{statusLabels[selectedProject.status]}</span></div>}
 
           <div className="md:col-span-2 lg:col-span-2 text-slate-200">Physical Address: <span className="text-white">{branch?.physicalAddress || selectedProject.physicalAddress || 'Not captured'}</span></div>
         </div>
-        {canEditNotes ? (
-          <div className="mt-3 flex">
+        {isEditingProjectSummary && canEditProjectSummary ? (
+          <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" disabled={projectSummaryMutation.isPending} onClick={() => projectSummaryMutation.mutate()} className="rounded-2xl bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">
               {projectSummaryMutation.isPending ? 'Saving summary...' : 'Save summary fields'}
             </button>
+            <button type="button" disabled={projectSummaryMutation.isPending} onClick={() => setIsEditingProjectSummary(false)} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
           </div>
         ) : null}
         {projectSummaryMutation.error instanceof Error ? <p className="mt-2 text-sm text-red-300">{projectSummaryMutation.error.message}</p> : null}
