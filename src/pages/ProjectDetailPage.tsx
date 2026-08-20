@@ -662,6 +662,22 @@ export function ProjectDetailPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Latest update</p>
           {latestUpdate ? <><p className="mt-2 text-xs text-slate-400">{formatWorkspaceDate(latestUpdate.date)} · {latestUpdate.author}</p><p className="mt-1 text-sm leading-6 text-slate-200">{latestUpdate.message}</p></> : <p className="mt-2 text-sm text-slate-400">No updates recorded yet.</p>}
         </div>
+
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h4>
+          <div className="mt-4 space-y-3">
+            {projectHistory.length > 0 ? projectHistory.map((item) => (
+              <div key={item.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-medium text-white">{item.title}</p>
+                  <p className="shrink-0 text-xs text-slate-500">{item.date}</p>
+                </div>
+                {item.author ? <p className="mt-1 text-xs text-cyan-200">{item.author}</p> : null}
+                <p className="mt-2 text-sm text-slate-300">{item.detail}</p>
+              </div>
+            )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No project history recorded yet.</p>}
+          </div>
+        </div>
       </section>
       <section className={isInternalUser ? 'rounded-[2rem] border border-slate-700/50 bg-slate-900/80 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
         <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Branch reference</p>
@@ -1213,21 +1229,6 @@ export function ProjectDetailPage() {
           }) : null}
         </div>
 
-        <div className="mt-6 border-t border-white/10 pt-6">
-          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h4>
-          <div className="mt-4 space-y-3">
-            {projectHistory.length > 0 ? projectHistory.map((item) => (
-              <div key={item.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-medium text-white">{item.title}</p>
-                  <p className="shrink-0 text-xs text-slate-500">{item.date}</p>
-                </div>
-                {item.author ? <p className="mt-1 text-xs text-cyan-200">{item.author}</p> : null}
-                <p className="mt-2 text-sm text-slate-300">{item.detail}</p>
-              </div>
-            )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No project history recorded yet.</p>}
-          </div>
-        </div>
       </section>
 
       <section>
