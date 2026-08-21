@@ -594,7 +594,8 @@ export function ProjectDetailPage() {
   const unreadAnswers = projectQuestions.filter((question) => question.status === 'answered' && question.unreadForRequester && isQuestionRequester(question));
   const mergedTasks = selectedProject.tasks;
   const stagePlan = getStagePlan(selectedProject);
-  const currentStageTask = selectedProject.tasks.find((task) => (task.stage ?? task.text).trim() === selectedProject.currentStage.trim() || task.text.trim() === selectedProject.currentStage.trim());
+  const currentStageKey = selectedProject.currentStage.trim().toLowerCase();
+  const currentStageTask = selectedProject.tasks.find((task) => [task.stage, task.text].some((value) => value?.trim().toLowerCase() === currentStageKey));
   const currentStageTaskStatus = currentStageTask ? getTaskStatus(currentStageTask) : null;
   const displayedStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : statusLabels[selectedProject.status];
   const displayedStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : statusTones[selectedProject.status];
