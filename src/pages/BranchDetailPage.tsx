@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileText, Download, Eye } from 'lucide-react';
+import { ProjectFollowButton } from '../components/projects/ProjectFollowButton';
 import { getAllBranches } from '../services/branchService';
 import { addProjectComment, deleteProjectFile, getProjectFileUrl, getProjects, renameProjectFile, updateProjectComment, uploadProjectFile } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
@@ -301,7 +302,10 @@ export function BranchDetailPage() {
               <div className="mb-3">
                 <Link to="/branches" className="text-sm font-semibold text-sky-200 transition hover:text-sky-100">← Back to branches</Link>
               </div>
-              <h2 className="mt-2 text-3xl font-semibold text-white">{branch.name}</h2>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <h2 className="text-3xl font-semibold text-white">{branch.name}</h2>
+                {branchProjects[0] ? <ProjectFollowButton projectId={branchProjects[0].id} userEmail={user?.email} noun="branch" /> : null}
+              </div>
               <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
               <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
               <p className="mt-2 text-sm text-slate-300"><span className="text-slate-500">Signage company:</span> {branch.signageCompany || 'Not captured'}</p>
