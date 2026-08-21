@@ -139,6 +139,7 @@ export function ProjectDetailPage() {
   const [expandedAccordionTaskIds, setExpandedAccordionTaskIds] = useState<string[]>([]);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskText, setEditingTaskText] = useState('');
+  const [taskDueDateDrafts, setTaskDueDateDrafts] = useState<Record<string, string>>({});
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentDraft, setEditingCommentDraft] = useState('');
@@ -425,9 +426,14 @@ export function ProjectDetailPage() {
         actorEmail: user?.email,
       });
     },
-    onSuccess: async (updatedProject) => {
+    onSuccess: async (updatedProject, variables) => {
       setEditingTaskId(null);
       setEditingTaskText('');
+      setTaskDueDateDrafts((current) => {
+        const next = { ...current };
+        delete next[variables.task.id];
+        return next;
+      });
       await syncProject(updatedProject, 'Stage saved.');
     },
   });
@@ -967,11 +973,19 @@ export function ProjectDetailPage() {
                   <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3">
                     <DatePickerInput
                       label="Target completion"
-                      value={task.dueDate ?? ''}
-                      onChange={(value) => updateTaskMutation.mutate({ task, dueDate: value })}
+                      value={taskDueDateDrafts[task.id] ?? task.dueDate ?? ''}
+                      onChange={(value) => setTaskDueDateDrafts((current) => ({ ...current, [task.id]: value }))}
                       placeholder="Select target date"
                       disabled={updateTaskMutation.isPending}
                     />
+                    <button
+                      type="button"
+                      disabled={updateTaskMutation.isPending || (taskDueDateDrafts[task.id] ?? task.dueDate ?? '') === (task.dueDate ?? '')}
+                      onClick={() => updateTaskMutation.mutate({ task, dueDate: taskDueDateDrafts[task.id] ?? task.dueDate ?? '' })}
+                      className="w-fit rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {updateTaskMutation.isPending ? 'Saving...' : 'Save date'}
+                    </button>
                     {taskFiles.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
