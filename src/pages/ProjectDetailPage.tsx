@@ -603,7 +603,8 @@ export function ProjectDetailPage() {
   const mergedTasks = selectedProject.tasks;
   const stagePlan = getStagePlan(selectedProject);
   const currentStageKey = selectedProject.currentStage.trim().toLowerCase();
-  const currentStageTask = selectedProject.tasks.find((task) => [task.stage, task.text].some((value) => value?.trim().toLowerCase() === currentStageKey));
+  const currentStageTask = selectedProject.tasks.find((task) => (task.stage ?? task.text).trim().toLowerCase() === currentStageKey)
+    ?? selectedProject.tasks.find((task) => task.text.trim().toLowerCase() === currentStageKey);
   const currentStageTaskStatus = currentStageTask ? getTaskStatus(currentStageTask) : null;
   const displayedStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : statusLabels[selectedProject.status];
   const displayedStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : statusTones[selectedProject.status];
