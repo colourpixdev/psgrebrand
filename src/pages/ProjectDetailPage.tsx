@@ -106,9 +106,6 @@ export function ProjectDetailPage() {
   const [currentStageDraft, setCurrentStageDraft] = useState<ProjectStage>('New Project');
   const [statusDraft, setStatusDraft] = useState<ProjectStatus>('in_progress');
   const [targetDateDraft, setTargetDateDraft] = useState('');
-  const [briefRequestedDateDraft, setBriefRequestedDateDraft] = useState('');
-  const [installationDateDraft, setInstallationDateDraft] = useState('');
-  const [completionDateDraft, setCompletionDateDraft] = useState('');
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [branchDetailsDraft, setBranchDetailsDraft] = useState({
     name: '',
@@ -155,9 +152,6 @@ export function ProjectDetailPage() {
       setCurrentStageDraft(project.currentStage);
       setStatusDraft(project.status);
       setTargetDateDraft(project.targetDate);
-      setBriefRequestedDateDraft(project.briefRequestedDate);
-      setInstallationDateDraft(project.installationDate);
-      setCompletionDateDraft(project.completionDate);
     }
   }, [project]);
 
@@ -252,9 +246,8 @@ export function ProjectDetailPage() {
         currentStage: currentStageDraft,
         status: statusDraft,
         targetDate: targetDateDraft,
-        briefRequestedDate: briefRequestedDateDraft,
-        installationDate: installationDateDraft,
-        completionDate: completionDateDraft,
+        briefRequestedDate: selectedProject.briefRequestedDate,
+        installationDate: selectedProject.installationDate,
       });
       return { updatedBranch, updatedProject };
     },
@@ -580,15 +573,7 @@ export function ProjectDetailPage() {
   const currentStageFiles = currentStageTask ? selectedProject.files.filter((file) => file.taskId === currentStageTask.id) : [];
   const currentStageComments = currentStageTask ? selectedProject.comments.filter((comment) => comment.taskId === currentStageTask.id) : [];
   const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
-  const canEditProjectSummary = ['beverley', 'francois'].includes(user?.name.trim().toLowerCase() ?? '');
-  const hasSummaryChange = currentStageDraft.trim() !== selectedProject.currentStage.trim()
-    || statusDraft !== selectedProject.status
-    || targetDateDraft.trim() !== selectedProject.targetDate.trim()
-    || briefRequestedDateDraft.trim() !== selectedProject.briefRequestedDate.trim()
-    || installationDateDraft.trim() !== selectedProject.installationDate.trim()
-    || completionDateDraft.trim() !== selectedProject.completionDate.trim();
   const isInternalUser = canAdministerProjectDetails;
-  const currentStageIndex = Math.max(0, stagePlan.findIndex((stage) => stage === selectedProject.currentStage));
   const projectHistory = [
     ...projectComments.map((comment, index) => ({
       id: `comment-${comment.id ?? index}`,
@@ -680,9 +665,6 @@ export function ProjectDetailPage() {
                   <label className="grid gap-2">Current stage<select value={currentStageDraft} onChange={(event) => setCurrentStageDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none"><option value={currentStageDraft}>{currentStageDraft}</option>{summaryStageOptions.filter((stage) => stage !== currentStageDraft).map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
                   <label className="grid gap-2">Status<select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none">{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
                   <DatePickerInput label="Target date" value={targetDateDraft} onChange={setTargetDateDraft} placeholder="Select target date" />
-                  <DatePickerInput label="Brief requested date" value={briefRequestedDateDraft} onChange={setBriefRequestedDateDraft} placeholder="Select brief requested date" />
-                  <DatePickerInput label="Installation date" value={installationDateDraft} onChange={setInstallationDateDraft} placeholder="Select installation date" />
-                  <DatePickerInput label="Completion date" value={completionDateDraft} onChange={setCompletionDateDraft} placeholder="Select completion date" />
                   </div>
                 </section>
                 <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
@@ -731,8 +713,6 @@ export function ProjectDetailPage() {
             <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Stage</p><p className="mt-1 text-lg font-semibold text-white">{stagePlan.length > 0 ? selectedProject.currentStage : 'No stage set'}</p></div>
             <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 text-lg font-semibold text-white">{displayedStatus}</p></div>
             <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Target completion</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.targetDate)}</p></div>
-            <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Installation</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.installationDate)}</p></div>
-            {selectedProject.completionDate ? <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Completed</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.completionDate)}</p></div> : null}
           </div>
           {currentStageTask ? <div className="mt-5 grid gap-4 border-t border-white/10 pt-4 lg:grid-cols-2">
             <div>

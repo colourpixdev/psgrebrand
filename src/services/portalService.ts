@@ -638,7 +638,7 @@ export type UpdateProjectSummaryInput = {
   targetDate: string;
   briefRequestedDate: string;
   installationDate: string;
-  completionDate: string;
+  completionDate?: string;
 };
 
 export type AddProjectCommentInput = {
@@ -1462,7 +1462,10 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
   const targetDate = input.targetDate.trim();
   const briefRequestedDate = input.briefRequestedDate.trim();
   const installationDate = input.installationDate.trim();
-  const completionDate = input.completionDate.trim();
+  const completionDate = input.completionDate?.trim() ?? '';
+  const resolvedCompletionDate = input.status === 'completed'
+    ? completionDate || existingProject.completionDate || new Date().toISOString().slice(0, 10)
+    : '';
   const activity = [
     createActivity('Project summary updated', `${input.actor} updated stage, status, and schedule dates.`),
     ...existingProject.activity,
@@ -1490,7 +1493,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     target_date: targetDate,
     brief_requested_date: briefRequestedDate,
     installation_date: installationDate,
-    completion_date: completionDate,
+    completion_date: resolvedCompletionDate,
     tasks: summaryTasks,
     activity,
     updated_at: new Date().toISOString(),
@@ -2086,6 +2089,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     : existingProject.status === 'completed'
       ? 'in_progress'
       : existingProject.status;
+  const completionDate = allTasksCompleted ? now.slice(0, 10) : '';
   const currentStage = text && (existingTask.stage ?? existingTask.text).trim() === existingProject.currentStage.trim()
     ? text
     : existingProject.currentStage;
@@ -2135,7 +2139,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
 
   const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
-    .update({ current_stage: currentStage, status: projectStatus, tasks, activity, updated_at: now })
+    .update({ current_stage: currentStage, status: projectStatus, completion_date: completionDate, tasks, activity, updated_at: now })
     .eq('id', input.projectId)
     .select('id')
     .maybeSingle();
