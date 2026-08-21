@@ -145,6 +145,7 @@ export function ProjectDetailPage() {
   const [editingActivityKey, setEditingActivityKey] = useState<string | null>(null);
   const [editingActivityDraft, setEditingActivityDraft] = useState('');
   const [deleteConfirmationArmed, setDeleteConfirmationArmed] = useState(false);
+  const [isProjectHistoryExpanded, setIsProjectHistoryExpanded] = useState(false);
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => getProjectById(projectId ?? ''),
@@ -769,7 +770,7 @@ export function ProjectDetailPage() {
           {currentStageTask ? <div className="mt-5 grid gap-4 border-t border-white/10 pt-4 lg:grid-cols-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Files for this stage</p>
-              {currentStageFiles.length > 0 ? <ul className="mt-3 space-y-2 text-sm text-slate-200">{currentStageFiles.map((file) => <li key={`${file.id ?? file.path ?? file.name}-${file.name}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2">{file.name}</li>)}</ul> : <p className="mt-2 text-xs text-slate-500">No files attached to this stage.</p>}
+              {currentStageFiles.length > 0 ? <ul className="mt-3 space-y-2 text-sm text-slate-200">{currentStageFiles.map((file) => <li key={`${file.id ?? file.path ?? file.name}-${file.name}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><span className="truncate font-medium text-white">{file.name}</span><div className="flex flex-wrap items-center gap-2">{file.path ? <button type="button" disabled={previewMutation.isPending} onClick={() => previewMutation.mutate(file)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">Preview</button> : null}<button type="button" disabled={downloadMutation.isPending} onClick={() => downloadMutation.mutate(file)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">Download</button><button type="button" onClick={() => { const nextName = window.prompt('Rename file', file.name)?.trim(); if (nextName && nextName !== file.name) renameFileMutation.mutate({ file, nextName }); }} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10">Rename</button>{canDeleteFiles ? <button type="button" disabled={deleteFileMutation.isPending} onClick={() => deleteFileMutation.mutate(file)} className="rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}</div></div></li>)}</ul> : <p className="mt-2 text-xs text-slate-500">No files attached to this stage.</p>}
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Comments for this stage</p>
@@ -798,8 +799,11 @@ export function ProjectDetailPage() {
         </div>
 
         {isInternalUser && projectHistory.length > 0 ? <div className="mt-4 border-t border-white/10 pt-4">
-          <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h4>
-          <div className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h4>
+            <button type="button" onClick={() => setIsProjectHistoryExpanded((expanded) => !expanded)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">{isProjectHistoryExpanded ? 'Collapse history' : `Show history (${projectHistory.length})`}</button>
+          </div>
+          {isProjectHistoryExpanded ? <div className="mt-4 space-y-3">
             {projectHistory.map((item) => (
               <div key={item.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -815,7 +819,7 @@ export function ProjectDetailPage() {
                 {editingCommentId === item.commentId ? <div className="mt-2 grid gap-2"><textarea value={editingCommentDraft} onChange={(event) => setEditingCommentDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" /><div className="flex gap-2"><button type="button" disabled={!editingCommentDraft.trim() || updateCommentMutation.isPending} onClick={() => updateCommentMutation.mutate({ commentId: item.commentId ?? '', message: editingCommentDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateCommentMutation.isPending ? 'Saving...' : 'Save'}</button><button type="button" onClick={() => { setEditingCommentId(null); setEditingCommentDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button></div></div> : editingActivityKey === item.activityKey ? <div className="mt-2 grid gap-2"><textarea value={editingActivityDraft} onChange={(event) => setEditingActivityDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" /><div className="flex gap-2"><button type="button" disabled={!editingActivityDraft.trim() || updateActivityMutation.isPending} onClick={() => updateActivityMutation.mutate({ date: item.date, title: item.title, detail: item.detail, message: editingActivityDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateActivityMutation.isPending ? 'Saving...' : 'Save'}</button><button type="button" onClick={() => { setEditingActivityKey(null); setEditingActivityDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button></div></div> : <p className="mt-2 text-sm text-slate-300">{item.detail}</p>}
               </div>
             ))}
-          </div>
+          </div> : null}
         </div> : null}
       </section>
       <section className={isInternalUser ? 'space-y-3' : 'hidden'}>
