@@ -845,7 +845,7 @@ export function ProjectDetailPage() {
                   </div>
                 </button>
 
-                <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-3">
+                {isAccordionExpanded && <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-3">
                   <select
                     value={taskStatus}
                     disabled={!canCurrentUserCompleteTask(task) || updateTaskMutation.isPending}
@@ -876,7 +876,7 @@ export function ProjectDetailPage() {
                     </label>
                   ) : null}
                   <span className="text-xs text-slate-500">{taskFiles.length} file{taskFiles.length === 1 ? '' : 's'} attached</span>
-                </div>
+                </div>}
 
                 {/* Accordion Body */}
                 {isAccordionExpanded && (
