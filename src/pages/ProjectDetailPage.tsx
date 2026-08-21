@@ -44,6 +44,20 @@ const statusTones: Record<ProjectStatus, string> = {
   cancelled: 'border-stone-300/30 bg-stone-400/15 text-stone-100',
 };
 
+const stageStatusLabels: Record<NonNullable<TaskItem['status']>, string> = {
+  pending: 'Pending',
+  open: 'Started',
+  busy: 'Busy',
+  done: 'Completed',
+};
+
+const stageStatusTones: Record<NonNullable<TaskItem['status']>, string> = {
+  pending: 'border-slate-300/30 bg-slate-400/15 text-slate-100',
+  open: 'border-sky-300/40 bg-sky-400/15 text-sky-100',
+  busy: 'border-amber-300/40 bg-amber-400/15 text-amber-100',
+  done: 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100',
+};
+
 function formatWorkspaceDate(value: string) {
   if (!value) {
     return 'Not set';
@@ -559,6 +573,10 @@ export function ProjectDetailPage() {
   const unreadAnswers = projectQuestions.filter((question) => question.status === 'answered' && question.unreadForRequester && isQuestionRequester(question));
   const mergedTasks = selectedProject.tasks;
   const stagePlan = getStagePlan(selectedProject);
+  const currentStageTask = selectedProject.tasks.find((task) => (task.stage ?? task.text).trim() === selectedProject.currentStage.trim());
+  const currentStageTaskStatus = currentStageTask ? getTaskStatus(currentStageTask) : null;
+  const displayedStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : statusLabels[selectedProject.status];
+  const displayedStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : statusTones[selectedProject.status];
   const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
   const canEditProjectSummary = ['beverley', 'francois'].includes(user?.name.trim().toLowerCase() ?? '');
   const hasSummaryChange = currentStageDraft.trim() !== selectedProject.currentStage.trim()
@@ -613,7 +631,7 @@ export function ProjectDetailPage() {
             <p className="mt-2 text-base text-slate-300">{branch?.town ?? selectedProject.town}, {branch?.province ?? selectedProject.province}</p>
           </div>
           <div className="flex items-center gap-3">
-            <span className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${statusTones[selectedProject.status]}`}>{statusLabels[selectedProject.status]}</span>
+            <span className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${displayedStatusTone}`}>{displayedStatus}</span>
           </div>
         </div>
 
@@ -710,7 +728,7 @@ export function ProjectDetailPage() {
 
         {!isEditingDetails ? <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</p><p className="mt-1 text-lg font-semibold text-white">{stagePlan.length > 0 ? selectedProject.currentStage : 'No stage set'}</p></div>
-          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 text-lg font-semibold text-white">{statusLabels[selectedProject.status]}</p></div>
+          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 text-lg font-semibold text-white">{displayedStatus}</p></div>
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Target completion</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.targetDate)}</p></div>
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Installation</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.installationDate)}</p></div>
           {selectedProject.completionDate ? <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Completed</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.completionDate)}</p></div> : null}
