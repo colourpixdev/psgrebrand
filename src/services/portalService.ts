@@ -655,6 +655,15 @@ export type UpdateProjectCommentInput = {
   message: string;
 };
 
+export type UpdateProjectActivityInput = {
+  projectId: string;
+  actor: string;
+  date: string;
+  title: string;
+  detail: string;
+  message: string;
+};
+
 export type AskProjectQuestionInput = {
   projectId: string;
   author: string;
@@ -1626,6 +1635,45 @@ export async function updateProjectComment(input: UpdateProjectCommentInput): Pr
 
   if (error || !data) {
     throw error ?? new Error('Unable to update project comment.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function updateProjectActivity(input: UpdateProjectActivityInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const message = input.message.trim();
+  if (!message) {
+    throw new Error('Update cannot be empty.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const activityIndex = existingProject.activity.findIndex((item) => item.date === input.date && item.title === input.title && item.detail === input.detail);
+  if (activityIndex < 0) {
+    throw new Error('System update not found.');
+  }
+
+  const activity = existingProject.activity.map((item, index) => index === activityIndex ? { ...item, detail: message } : item);
+  const { data, error } = await client
+    .from('projects')
+    .update({ activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to update system update.');
   }
 
   return mapProjectRow(data as ProjectRow);

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { DatePickerInput } from '../components/DatePickerInput';
-import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectComment, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectActivity, updateProjectComment, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById, updateBranch } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
@@ -132,6 +132,8 @@ export function ProjectDetailPage() {
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentDraft, setEditingCommentDraft] = useState('');
+  const [editingActivityKey, setEditingActivityKey] = useState<string | null>(null);
+  const [editingActivityDraft, setEditingActivityDraft] = useState('');
   const [deleteConfirmationArmed, setDeleteConfirmationArmed] = useState(false);
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', projectId],
@@ -327,6 +329,22 @@ export function ProjectDetailPage() {
       await syncProject(updatedProject, 'Comment updated.');
     },
     onError: (error) => showError(error instanceof Error ? error.message : 'Unable to update comment.'),
+  });
+
+  const updateActivityMutation = useMutation({
+    mutationFn: ({ date, title, detail, message }: { date: string; title: string; detail: string; message: string }) => updateProjectActivity({
+      projectId: projectId ?? '',
+      actor: user?.name ?? 'Workspace user',
+      date,
+      title,
+      detail,
+      message,
+    }),
+    onSuccess: async (updatedProject) => {
+      setEditingActivityKey(null);
+      setEditingActivityDraft('');
+      await syncProject(updatedProject, 'System update saved.');
+    },
   });
 
   const taskMutation = useMutation({
@@ -574,6 +592,7 @@ export function ProjectDetailPage() {
     ...projectComments.map((comment, index) => ({
       id: `comment-${comment.id ?? index}`,
       commentId: comment.id,
+      activityKey: undefined,
       date: comment.date,
       author: comment.author,
       title: comment.taskId ? 'Stage update' : 'Project update',
@@ -584,6 +603,7 @@ export function ProjectDetailPage() {
       .map((item, index) => ({
       id: `activity-${item.date}-${index}`,
       commentId: undefined,
+      activityKey: `${item.date}|${item.title}|${item.detail}`,
       date: item.date,
       author: '',
       title: item.title,
@@ -718,7 +738,7 @@ export function ProjectDetailPage() {
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Comments for this stage</p>
-              {currentStageComments.length > 0 ? <div className="mt-3 space-y-2">{currentStageComments.map((comment, index) => <div key={`${comment.id ?? comment.date}-${index}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2"><div className="flex items-start justify-between gap-2"><p className="text-xs text-slate-500">{comment.author} · {comment.date}</p>{comment.id && canEditOwnComment(user, comment.author) && editingCommentId !== comment.id ? <button type="button" onClick={() => { setEditingCommentId(comment.id ?? null); setEditingCommentDraft(comment.message); }} className="text-xs font-semibold text-cyan-200 hover:text-white">Edit</button> : null}</div>{editingCommentId === comment.id ? <div className="mt-2 grid gap-2"><textarea value={editingCommentDraft} onChange={(event) => setEditingCommentDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" /><div className="flex gap-2"><button type="button" disabled={!editingCommentDraft.trim() || updateCommentMutation.isPending} onClick={() => updateCommentMutation.mutate({ commentId: comment.id ?? '', message: editingCommentDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateCommentMutation.isPending ? 'Saving...' : 'Save'}</button><button type="button" onClick={() => { setEditingCommentId(null); setEditingCommentDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button></div></div> : <p className="mt-1 text-sm text-slate-200">{comment.message}</p>}</div>)}</div> : <p className="mt-3 text-sm text-slate-500">No stage updates.</p>}
+              {currentStageComments.length > 0 ? <div className="mt-3 space-y-2">{currentStageComments.map((comment, index) => <div key={`${comment.id ?? comment.date}-${index}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2"><div className="flex items-start justify-between gap-2"><p className="text-xs text-slate-500">{comment.author} · {comment.date}</p>{comment.id && canEditOwnComment(user, comment.author) && editingCommentId !== comment.id ? <button type="button" onClick={() => { setEditingCommentId(comment.id ?? null); setEditingCommentDraft(comment.message); }} className="rounded-xl border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 hover:text-white">Edit</button> : null}</div>{editingCommentId === comment.id ? <div className="mt-2 grid gap-2"><textarea value={editingCommentDraft} onChange={(event) => setEditingCommentDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" /><div className="flex gap-2"><button type="button" disabled={!editingCommentDraft.trim() || updateCommentMutation.isPending} onClick={() => updateCommentMutation.mutate({ commentId: comment.id ?? '', message: editingCommentDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateCommentMutation.isPending ? 'Saving...' : 'Save'}</button><button type="button" onClick={() => { setEditingCommentId(null); setEditingCommentDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button></div></div> : <p className="mt-1 text-sm text-slate-200">{comment.message}</p>}</div>)}</div> : <p className="mt-3 text-sm text-slate-500">No stage updates.</p>}
             </div>
           </div> : null}
         </section> : null}
@@ -754,8 +774,10 @@ export function ProjectDetailPage() {
                 <div className="mt-2 flex items-center justify-between gap-3">
                   {item.author ? <p className="text-xs text-cyan-200">{item.author}</p> : <span />}
                   {item.commentId && canEditOwnComment(user, item.author) && editingCommentId !== item.commentId ? <button type="button" onClick={() => { setEditingCommentId(item.commentId ?? null); setEditingCommentDraft(item.detail); }} className="rounded-xl border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 hover:text-white">Edit</button> : null}
+                  {item.activityKey && canEditDetails && editingActivityKey !== item.activityKey ? <button type="button" onClick={() => { setEditingActivityKey(item.activityKey ?? null); setEditingActivityDraft(item.detail); }} className="rounded-xl border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 hover:text-white">Edit</button> : null}
                 </div>
                 {editingCommentId === item.commentId ? <div className="mt-2 grid gap-2"><textarea value={editingCommentDraft} onChange={(event) => setEditingCommentDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" /><div className="flex gap-2"><button type="button" disabled={!editingCommentDraft.trim() || updateCommentMutation.isPending} onClick={() => updateCommentMutation.mutate({ commentId: item.commentId ?? '', message: editingCommentDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateCommentMutation.isPending ? 'Saving...' : 'Save'}</button><button type="button" onClick={() => { setEditingCommentId(null); setEditingCommentDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button></div></div> : <p className="mt-2 text-sm text-slate-300">{item.detail}</p>}
+                {editingCommentId === item.commentId ? <div className="mt-2 grid gap-2"><textarea value={editingCommentDraft} onChange={(event) => setEditingCommentDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" /><div className="flex gap-2"><button type="button" disabled={!editingCommentDraft.trim() || updateCommentMutation.isPending} onClick={() => updateCommentMutation.mutate({ commentId: item.commentId ?? '', message: editingCommentDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateCommentMutation.isPending ? 'Saving...' : 'Save'}</button><button type="button" onClick={() => { setEditingCommentId(null); setEditingCommentDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button></div></div> : editingActivityKey === item.activityKey ? <div className="mt-2 grid gap-2"><textarea value={editingActivityDraft} onChange={(event) => setEditingActivityDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" /><div className="flex gap-2"><button type="button" disabled={!editingActivityDraft.trim() || updateActivityMutation.isPending} onClick={() => updateActivityMutation.mutate({ date: item.date, title: item.title, detail: item.detail, message: editingActivityDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateActivityMutation.isPending ? 'Saving...' : 'Save'}</button><button type="button" onClick={() => { setEditingActivityKey(null); setEditingActivityDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button></div></div> : <p className="mt-2 text-sm text-slate-300">{item.detail}</p>}
               </div>
             ))}
           </div>
