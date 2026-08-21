@@ -305,6 +305,9 @@ export function BranchDetailPage() {
               <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
               <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
               <p className="mt-2 text-sm text-slate-300"><span className="text-slate-500">Signage company:</span> {branch.signageCompany || 'Not captured'}</p>
+              <p className="mt-1 text-sm text-slate-300"><span className="text-slate-500">Supplier contact:</span> {branch.signageContactName || 'Not captured'}</p>
+              <p className="mt-1 text-sm text-slate-300"><span className="text-slate-500">Supplier phone:</span> {branch.signageContactPhone || 'Not captured'}</p>
+              <p className="mt-1 text-sm text-slate-300"><span className="text-slate-500">Supplier email:</span> {branch.signageContactEmail || 'Not captured'}</p>
             </div>
 
             {branchParticipants.length > 0 && (

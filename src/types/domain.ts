@@ -57,6 +57,9 @@ export interface Branch {
   town: string;
   physicalAddress: string;
   signageCompany?: string;
+  signageContactName?: string;
+  signageContactPhone?: string;
+  signageContactEmail?: string;
   latitude: number | null;
   longitude: number | null;
   contactName?: string;
