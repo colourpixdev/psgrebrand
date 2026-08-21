@@ -486,7 +486,7 @@ export function BranchesPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="mb-2 text-4xl font-bold text-white">PSG Branch Workspaces</h1>
-            <p className="text-slate-300">Manage each branch and its rebrand work from one operational workspace.</p>
+            <p className="text-slate-300">Manage each branch and its rebrand work from one operational workspace. Select <span className="font-semibold text-sky-200">Track branch</span> to add it to your dashboard.</p>
           </div>
           {isAdmin && (
             <button
@@ -825,7 +825,7 @@ export function BranchesPage() {
                       <p className="mt-1 text-lg font-semibold text-white">{branch.name}</p>
                       <div className="mt-3 flex flex-wrap items-center gap-3">
                         <Link to={openProjects[0] ? `/projects/${openProjects[0].id}` : `/branches/${branch.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Open workspace</Link>
-                        {openProjects[0] ? <ProjectFollowButton projectId={openProjects[0].id} userEmail={user?.email} /> : null}
+                        {openProjects[0] ? <ProjectFollowButton projectId={openProjects[0].id} userEmail={user?.email} noun="branch" /> : null}
                       </div>
                       <p className="mt-1 text-sm text-slate-400">{branch.town}, {branch.province}</p>
                       <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
