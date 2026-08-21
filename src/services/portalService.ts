@@ -2080,6 +2080,12 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       completedAt: nextCompleted ? task.completedAt ?? now : undefined,
     }
     : task);
+  const allTasksCompleted = tasks.length > 0 && tasks.every((task) => task.completed);
+  const projectStatus = allTasksCompleted
+    ? 'completed'
+    : existingProject.status === 'completed'
+      ? 'in_progress'
+      : existingProject.status;
   const currentStage = text && (existingTask.stage ?? existingTask.text).trim() === existingProject.currentStage.trim()
     ? text
     : existingProject.currentStage;
@@ -2129,7 +2135,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
 
   const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
-    .update({ current_stage: currentStage, tasks, activity, updated_at: now })
+    .update({ current_stage: currentStage, status: projectStatus, tasks, activity, updated_at: now })
     .eq('id', input.projectId)
     .select('id')
     .maybeSingle();
