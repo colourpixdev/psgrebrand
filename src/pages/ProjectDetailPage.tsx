@@ -609,7 +609,10 @@ export function ProjectDetailPage() {
       title: item.title,
       detail: item.detail,
       })),
-  ].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')).slice(0, 12);
+  ]
+    .filter((item, index, items) => items.findIndex((candidate) => candidate.date === item.date && candidate.title === item.title && candidate.author === item.author && candidate.detail === item.detail) === index)
+    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .slice(0, 12);
   const completedStageCount = stagePlan.filter((stage) => selectedProject.tasks.some((task) => (task.stage ?? task.text).trim() === stage && task.completed)).length;
   const branchParticipants = branch?.contacts?.length
     ? branch.contacts
