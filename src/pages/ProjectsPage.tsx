@@ -2,10 +2,9 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { getProjects } from '../services/portalService';
-import { ProjectCreateForm } from '../components/projects/ProjectCreateForm';
 import { ProjectFollowButton } from '../components/projects/ProjectFollowButton';
 import { useAuth } from '../contexts/AuthContext';
-import { can, filterProjectsForUser } from '../utils/permissions';
+import { filterProjectsForUser } from '../utils/permissions';
 import type { ProjectStatus } from '../types/domain';
 
 const statusLabels: Record<ProjectStatus, string> = {
@@ -73,8 +72,6 @@ export function ProjectsPage() {
         <h2 className="text-2xl font-semibold text-slate-900">Projects</h2>
         <p className="mt-2 text-sm text-slate-600">Track each branch rebrand by stage, status and target date.</p>
       </section>
-
-      {can(user, 'create_project') ? <ProjectCreateForm /> : null}
 
       <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">

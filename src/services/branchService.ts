@@ -32,6 +32,7 @@ export interface CreateBranchInput {
   city?: string | null;
   town: string;
   physicalAddress: string;
+  signageCompany?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   contactName?: string | null;
@@ -49,6 +50,7 @@ type BranchRow = {
   city?: string | null;
   town: string;
   physical_address: string;
+  signage_company?: string | null;
   latitude: number | null;
   longitude: number | null;
   contact_name?: string | null;
@@ -73,6 +75,7 @@ function rowToBranch(row: BranchRow): Branch {
     city: row.city ?? undefined,
     town: row.town ?? 'Not captured',
     physicalAddress: row.physical_address ?? '',
+    signageCompany: row.signage_company ?? undefined,
     latitude: typeof row.latitude === 'number' ? row.latitude : null,
     longitude: typeof row.longitude === 'number' ? row.longitude : null,
     contactName: row.contact_name ?? undefined,
@@ -174,6 +177,7 @@ function isMissingBranchColumnError(errorMessage: string | undefined) {
     'contact_name',
     'contact_email',
     'contact_phone',
+    'signage_company',
     'city',
     'contacts',
   ].some((column) => normalizedMessage.includes(column));
@@ -181,11 +185,11 @@ function isMissingBranchColumnError(errorMessage: string | undefined) {
 
 function getMissingBranchColumns(errorMessage: string | undefined) {
   if (!errorMessage) {
-    return [] as Array<'contact_name' | 'contact_email' | 'contact_phone' | 'city' | 'contacts'>;
+    return [] as Array<'contact_name' | 'contact_email' | 'contact_phone' | 'signage_company' | 'city' | 'contacts'>;
   }
 
   const normalizedMessage = errorMessage.toLowerCase();
-  const supportedColumns = ['contact_name', 'contact_email', 'contact_phone', 'city', 'contacts'] as const;
+  const supportedColumns = ['contact_name', 'contact_email', 'contact_phone', 'signage_company', 'city', 'contacts'] as const;
   return supportedColumns.filter((column) => normalizedMessage.includes(column));
 }
 
@@ -209,6 +213,7 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
     city: input.city?.trim() || null,
     town: input.town,
     physical_address: input.physicalAddress,
+    signage_company: input.signageCompany?.trim() || null,
     latitude: input.latitude ?? null,
     longitude: input.longitude ?? null,
     contact_name: syncedContactFields.contactName,
@@ -220,7 +225,7 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
 
 function omitBranchColumns<T extends Record<string, unknown>>(
   payload: T,
-  columns: readonly ('contact_name' | 'contact_email' | 'contact_phone' | 'city' | 'contacts')[],
+  columns: readonly ('contact_name' | 'contact_email' | 'contact_phone' | 'signage_company' | 'city' | 'contacts')[],
 ) {
   const nextPayload: Record<string, unknown> = { ...payload };
   columns.forEach((column) => {
@@ -341,6 +346,7 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
       city: input.city?.trim() || undefined,
       town: input.town,
       physicalAddress: input.physicalAddress,
+      signageCompany: input.signageCompany?.trim() || undefined,
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
       contactName: input.contactName ?? undefined,
@@ -376,6 +382,7 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
       city: input.city?.trim() || undefined,
       town: input.town,
       physicalAddress: input.physicalAddress,
+      signageCompany: input.signageCompany?.trim() || undefined,
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
       contactName: input.contactName ?? undefined,
@@ -490,6 +497,7 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
       city: input.city !== undefined ? input.city ?? undefined : existing.city,
       town: input.town ?? existing.town,
       physicalAddress: input.physicalAddress ?? existing.physicalAddress,
+      signageCompany: input.signageCompany !== undefined ? input.signageCompany?.trim() || undefined : existing.signageCompany,
       latitude: input.latitude !== undefined ? input.latitude : existing.latitude,
       longitude: input.longitude !== undefined ? input.longitude : existing.longitude,
       contactName: syncedContactFields.contactName ?? undefined,
@@ -512,6 +520,7 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
   if (input.city !== undefined) updates.city = input.city;
   if (input.town !== undefined) updates.town = input.town;
   if (input.physicalAddress !== undefined) updates.physical_address = input.physicalAddress;
+  if (input.signageCompany !== undefined) updates.signage_company = input.signageCompany?.trim() || null;
   if (input.latitude !== undefined) updates.latitude = input.latitude;
   if (input.longitude !== undefined) updates.longitude = input.longitude;
   if (input.contactName !== undefined || input.contacts !== undefined) {

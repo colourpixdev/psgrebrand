@@ -2045,6 +2045,9 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       completedAt: nextCompleted ? task.completedAt ?? now : undefined,
     }
     : task);
+  const currentStage = text && (existingTask.stage ?? existingTask.text).trim() === existingProject.currentStage.trim()
+    ? text
+    : existingProject.currentStage;
 
   // Keep the legacy JSON task source in sync while relational workspaces are rolled out.
   const branchId = existingProject.branchId || existingProject.branch;
@@ -2091,7 +2094,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
 
   const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
-    .update({ tasks, activity, updated_at: now })
+    .update({ current_stage: currentStage, tasks, activity, updated_at: now })
     .eq('id', input.projectId)
     .select('id')
     .maybeSingle();
@@ -2191,6 +2194,11 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
 
   const now = new Date().toISOString();
   const tasks = existingProject.tasks.filter((task) => task.id !== input.taskId);
+  const deletedStage = (existingTask.stage ?? existingTask.text).trim();
+  const nextStage = tasks.find((task) => (task.stage ?? task.text).trim()) as TaskItem | undefined;
+  const currentStage = deletedStage === existingProject.currentStage.trim()
+    ? nextStage ? (nextStage.stage ?? nextStage.text).trim() : 'New Project'
+    : existingProject.currentStage;
 
   // Soft-delete the relational task when this project has a relational workspace.
   const branchId = existingProject.branchId || existingProject.branch;
@@ -2223,7 +2231,7 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
 
   const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
-    .update({ tasks, activity, updated_at: now })
+    .update({ current_stage: currentStage, tasks, activity, updated_at: now })
     .eq('id', input.projectId)
     .select('id')
     .maybeSingle();

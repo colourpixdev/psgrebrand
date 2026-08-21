@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { ProjectFollowButton } from '../components/projects/ProjectFollowButton';
 import { isPlatformOwnerEmail } from '../constants/workspaces';
-import { can, filterProjectsForUser } from '../utils/permissions';
+import { filterProjectsForUser } from '../utils/permissions';
 
 const divisions: Division[] = ['Wealth', 'Insure', 'Wealth Insure', 'Asset', 'Trust'];
 
@@ -106,6 +106,7 @@ export function BranchesPage() {
     province: '',
     town: '',
     physicalAddress: '',
+    signageCompany: '',
     latitude: '',
     longitude: '',
     contactName: '',
@@ -120,6 +121,7 @@ export function BranchesPage() {
     province: '',
     town: '',
     physicalAddress: '',
+    signageCompany: '',
     latitude: '',
     longitude: '',
     contactName: '',
@@ -192,6 +194,7 @@ export function BranchesPage() {
         city: null,
         town: formData.town,
         physicalAddress: formData.physicalAddress,
+        signageCompany: formData.signageCompany.trim() || null,
         latitude: formData.latitude ? parseFloat(formData.latitude) : null,
         longitude: formData.longitude ? parseFloat(formData.longitude) : null,
         contactName: formData.contactName.trim() || null,
@@ -214,6 +217,7 @@ export function BranchesPage() {
         province: '',
         town: '',
         physicalAddress: '',
+        signageCompany: '',
         latitude: '',
         longitude: '',
         contactName: '',
@@ -248,6 +252,7 @@ export function BranchesPage() {
       province: branch.province,
       town: branch.town,
       physicalAddress: branch.physicalAddress,
+      signageCompany: branch.signageCompany ?? '',
       latitude: branch.latitude?.toString() ?? '',
       longitude: branch.longitude?.toString() ?? '',
       contactName: primaryContact?.name ?? branch.contactName ?? '',
@@ -268,6 +273,7 @@ export function BranchesPage() {
       province: '',
       town: '',
       physicalAddress: '',
+      signageCompany: '',
       latitude: '',
       longitude: '',
       contactName: '',
@@ -296,6 +302,7 @@ export function BranchesPage() {
         city: null,
         town: editData.town,
         physicalAddress: editData.physicalAddress,
+        signageCompany: editData.signageCompany.trim() || null,
         latitude: editData.latitude ? parseFloat(editData.latitude) : null,
         longitude: editData.longitude ? parseFloat(editData.longitude) : null,
         contactName: editData.contactName.trim() || null,
@@ -362,8 +369,6 @@ export function BranchesPage() {
 
     await executeDelete(pendingDeleteBranch.id);
   }
-
-  const canCreateProjects = can(user, 'create_project');
 
   const openProjectsByBranch = useMemo(() => {
     return projects.reduce<Record<string, Project[]>>((acc, project) => {
@@ -579,6 +584,17 @@ export function BranchesPage() {
               />
             </div>
 
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-medium text-slate-300">Signage company</label>
+              <input
+                type="text"
+                value={formData.signageCompany}
+                onChange={(e) => setFormData({ ...formData, signageCompany: e.target.value })}
+                className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
+                placeholder="Company handling this branch rebrand"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-300">Latitude</label>
@@ -762,6 +778,17 @@ export function BranchesPage() {
                       />
                     </div>
 
+                    <div className="mt-4">
+                      <input
+                        type="text"
+                        value={editData.signageCompany}
+                        onChange={(e) => setEditData({ ...editData, signageCompany: e.target.value })}
+                        placeholder="Signage company handling this rebrand"
+                        aria-label="Signage company"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
+                      />
+                    </div>
+
                     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
                       <input
                         type="text"
@@ -851,11 +878,7 @@ export function BranchesPage() {
                         <span className="inline-flex rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-200 ring-1 ring-white/10">
                           {getOpenProjectsForBranch(branch).length === 1 ? 'Rebrand workspace active' : `${getOpenProjectsForBranch(branch).length} rebrand workspaces active`}
                         </span>
-                      ) : isAdmin && canCreateProjects ? (
-                        <Link to={`/projects?branchId=${encodeURIComponent(branch.id)}`} className="inline-flex rounded-full bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-950 transition hover:bg-emerald-400">
-                          Create rebrand workspace
-                        </Link>
-                      ) : <span className="text-xs text-slate-500">No active workspace</span>}
+                      ) : <span className="text-xs text-slate-500">Create a new branch to start another project</span>}
                     </div>
 
                     {isAdmin ? (

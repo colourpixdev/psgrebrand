@@ -83,7 +83,6 @@ export function BranchDetailPage() {
     || branches.find((item) => item.code === normalizedParam)
     || branches.find((item) => encodeURIComponent(item.id) === normalizedParam)
     || branches.find((item) => typeof item.name === 'string' && item.name.toLowerCase() === decodedParam.toLowerCase());
-  const canCreateProjects = can(user, 'create_project');
   const scopedProjects = filterProjectsForUser(projects, user);
   const rolePolicy = getRolePolicy(user);
   const canDeleteFiles = Boolean(user?.isPlatformOwner) && Boolean(rolePolicy?.files.canDeleteFiles);
@@ -305,6 +304,7 @@ export function BranchDetailPage() {
               <h2 className="mt-2 text-3xl font-semibold text-white">{branch.name}</h2>
               <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
               <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
+              <p className="mt-2 text-sm text-slate-300"><span className="text-slate-500">Signage company:</span> {branch.signageCompany || 'Not captured'}</p>
             </div>
 
             {branchParticipants.length > 0 && (
@@ -345,11 +345,6 @@ export function BranchDetailPage() {
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-lg font-semibold text-white">Branch rebrand updates</h3>
-          <div className="flex flex-wrap gap-2">
-            {canCreateProjects ? (
-              <Link to={`/projects?branchId=${encodeURIComponent(branch.id)}`} className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400">Add project</Link>
-            ) : null}
-          </div>
         </div>
 
         {branchLatestUpdates.length > 0 ? (
