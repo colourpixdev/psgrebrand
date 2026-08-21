@@ -653,7 +653,6 @@ export function ProjectDetailPage() {
         {branch ? (
           <div className="mt-6 border-t border-white/10 pt-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-100">Branch and contact persons</h2>
               {canEditDetails && !isEditingDetails ? (
                 <button type="button" onClick={() => setIsEditingDetails(true)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">Edit details</button>
               ) : null}
@@ -719,6 +718,10 @@ export function ProjectDetailPage() {
                   <div><span className="text-cyan-200">Division:</span> {branch.division}</div>
                   <div><span className="text-cyan-200">Town/Province:</span> {branch.town}, {branch.province}</div>
                   <div><span className="text-cyan-200">Address:</span> {branch.physicalAddress || 'Not captured'}</div>
+                  <div className="grid gap-3 border-t border-white/10 pt-3">
+                    <h4 className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Contact persons</h4>
+                    {branchParticipants.length > 0 ? branchParticipants.map((participant, index) => <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3"><p className="font-medium text-cyan-400">{participant.name}</p><p className="mt-1 text-xs text-slate-300">{participant.designation}</p>{participant.email ? <p className="mt-2 text-xs text-slate-300">{participant.email}</p> : null}{participant.phone ? <p className="mt-1 text-xs text-slate-300">{participant.phone}</p> : null}</div>) : <p className="text-xs text-slate-500">No contact persons added.</p>}
+                  </div>
                 </section>
                 <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Signage supplier</h3>
@@ -726,12 +729,6 @@ export function ProjectDetailPage() {
                   <div><span className="text-cyan-200">Contact:</span> {branch.signageContactName || 'Not captured'}</div>
                   <div><span className="text-cyan-200">Telephone:</span> {branch.signageContactPhone || 'Not captured'}</div>
                   <div><span className="text-cyan-200">Email:</span> {branch.signageContactEmail || 'Not captured'}</div>
-                </section>
-                <section className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4 lg:col-span-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Branch contact persons</h3>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {branchParticipants.length > 0 ? branchParticipants.map((participant, index) => <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3"><p className="font-medium text-cyan-400">{participant.name}</p><p className="mt-1 text-xs text-slate-300">{participant.designation}</p>{participant.email ? <p className="mt-2 text-xs text-slate-300">{participant.email}</p> : null}{participant.phone ? <p className="mt-1 text-xs text-slate-300">{participant.phone}</p> : null}</div>) : <p className="text-slate-300">No branch contact persons have been added yet.</p>}
-                  </div>
                 </section>
               </div>
             )}
@@ -751,7 +748,7 @@ export function ProjectDetailPage() {
           {currentStageTask ? <div className="mt-5 grid gap-4 border-t border-white/10 pt-4 lg:grid-cols-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Files for this stage</p>
-              {currentStageFiles.length > 0 ? <ul className="mt-3 space-y-2 text-sm text-slate-200">{currentStageFiles.map((file) => <li key={`${file.id ?? file.path ?? file.name}-${file.name}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2">{file.name}</li>)}</ul> : <p className="mt-3 text-sm text-slate-500">No files attached.</p>}
+              {currentStageFiles.length > 0 ? <ul className="mt-3 space-y-2 text-sm text-slate-200">{currentStageFiles.map((file) => <li key={`${file.id ?? file.path ?? file.name}-${file.name}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2">{file.name}</li>)}</ul> : <p className="mt-2 text-xs text-slate-500">No files attached to this stage.</p>}
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Comments for this stage</p>
