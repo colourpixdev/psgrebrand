@@ -2029,6 +2029,10 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
   const nextCompleted = nextStatus === 'done';
   const relationalStatus = nextStatus === 'done' ? 'complete' : nextStatus === 'busy' ? 'in_progress' : nextStatus === 'pending' ? 'not_started' : nextStatus === 'open' ? 'waiting' : 'not_started';
   const relationalPriority = 'normal'; // Default priority for updates
+  const completedBy = relationalStatus === 'complete' ? await getCurrentProfileId() : null;
+  if (relationalStatus === 'complete' && !completedBy) {
+    throw new Error('Unable to identify the user completing this stage.');
+  }
 
   const now = new Date().toISOString();
   const tasks = existingProject.tasks.map((task) => task.id === input.taskId
@@ -2052,7 +2056,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     .maybeSingle();
 
   if (workspaceData?.id) {
-    const { error: updateError } = await client
+    const { data: updatedTask, error: updateError } = await client
       .from('project_tasks')
       .update({
         title: text ?? existingTask.text,
@@ -2060,12 +2064,16 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
         priority: relationalPriority,
         updated_at: now,
         completed_at: relationalStatus === 'complete' ? now : null,
+        completed_by: completedBy,
+        waiting_reason: relationalStatus === 'waiting' ? (existingTask.installationRequest || 'Waiting for details') : null,
       })
       .eq('id', input.taskId)
-      .eq('workspace_id', workspaceData.id);
+      .eq('workspace_id', workspaceData.id)
+      .select('id')
+      .maybeSingle();
 
-    if (updateError) {
-      throw new Error('Unable to update project task.');
+    if (updateError || !updatedTask) {
+      throw new Error(updateError?.message ?? 'Unable to update project task. The task may be read-only or no longer exists.');
     }
   }
 
@@ -2081,13 +2089,15 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     ...existingProject.activity,
   ];
 
-  const { error: projectUpdateError } = await client
+  const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
     .update({ tasks, activity, updated_at: now })
-    .eq('id', input.projectId);
+    .eq('id', input.projectId)
+    .select('id')
+    .maybeSingle();
 
-  if (projectUpdateError) {
-    throw new Error('Unable to update project task.');
+  if (projectUpdateError || !updatedProjectRow) {
+    throw new Error(projectUpdateError?.message ?? 'Unable to update project task.');
   }
 
   return getProjectById(input.projectId) as Promise<Project>;
@@ -2192,14 +2202,16 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
     .maybeSingle();
 
   if (workspaceData?.id) {
-    const { error: deleteError } = await client
+    const { data: deletedTask, error: deleteError } = await client
       .from('project_tasks')
-      .update({ deleted_at: now })
+      .update({ deleted_at: now, is_current: false })
       .eq('id', input.taskId)
-      .eq('workspace_id', workspaceData.id);
+      .eq('workspace_id', workspaceData.id)
+      .select('id')
+      .maybeSingle();
 
-    if (deleteError) {
-      throw new Error('Unable to delete project task.');
+    if (deleteError || !deletedTask) {
+      throw new Error(deleteError?.message ?? 'Unable to delete project task. The task may be read-only or no longer exists.');
     }
   }
 
@@ -2209,13 +2221,15 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
     ...existingProject.activity,
   ];
 
-  const { error: projectUpdateError } = await client
+  const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
     .update({ tasks, activity, updated_at: now })
-    .eq('id', input.projectId);
+    .eq('id', input.projectId)
+    .select('id')
+    .maybeSingle();
 
-  if (projectUpdateError) {
-    throw new Error('Unable to delete project task.');
+  if (projectUpdateError || !updatedProjectRow) {
+    throw new Error(projectUpdateError?.message ?? 'Unable to delete project task.');
   }
 
   return getProjectById(input.projectId) as Promise<Project>;
