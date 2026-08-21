@@ -105,18 +105,20 @@ export function FileGrid({
   function renderFileCard(file: ProjectFile) {
     const key = file.path ?? file.name;
     const thumbnailUrl = thumbnails[key];
+    const imageThumbnailUrl = thumbnailUrl && isImageFile(file) ? thumbnailUrl : null;
+    const pdfFile = isPdfFile(file);
 
     return (
       <div key={`${key}-${file.uploadedAt ?? ''}`} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-200">
-        {thumbnailUrl ? (
-          <img src={thumbnailUrl} alt={file.name} className="mb-3 h-32 w-full rounded-xl object-cover" />
+        {imageThumbnailUrl ? (
+          <img src={imageThumbnailUrl} alt={file.name} className="mb-3 h-32 w-full rounded-xl object-cover" />
         ) : (
           <div className="mb-3 flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-white/15 bg-slate-950/70 text-slate-500">
-            <span className="text-xs uppercase tracking-[0.25em]">Preview unavailable</span>
+            <span className="text-xs uppercase tracking-[0.25em]">{pdfFile ? 'PDF file' : 'Preview unavailable'}</span>
           </div>
         )}
         <div className="flex items-start gap-3">
-          {thumbnailUrl ? null : <FileText className="mt-0.5 h-4 w-4 shrink-0 text-sky-200" />}
+          {imageThumbnailUrl ? null : <FileText className="mt-0.5 h-4 w-4 shrink-0 text-sky-200" />}
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium text-white">{file.name}</p>
             <p className="mt-1 text-xs text-slate-500">{formatFileSize(file.size)}</p>
