@@ -6,7 +6,6 @@ import { DatePickerInput } from '../components/DatePickerInput';
 import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectActivity, updateProjectComment, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById, updateBranch } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
-import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { can, canViewProject, canAddTaskComments, canEditOwnComment, getRolePolicy } from '../utils/permissions';
 import { getTaskStatus } from '../utils/taskStatus';
@@ -612,7 +611,7 @@ export function ProjectDetailPage() {
       title: comment.taskId ? 'Stage update' : 'Project update',
       detail: comment.message,
     })),
-    ...filterActivityExcludingUser(selectedProject.activity, user?.name)
+    ...selectedProject.activity
       .filter((item) => item.title !== 'Project Created')
       .map((item, index) => ({
       id: `activity-${item.date}-${index}`,
