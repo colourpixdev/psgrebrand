@@ -1467,6 +1467,22 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     createActivity('Project summary updated', `${input.actor} updated stage, status, and schedule dates.`),
     ...existingProject.activity,
   ];
+  const currentStageTask = existingProject.tasks.find((task) => (task.stage ?? task.text).trim() === currentStage);
+  const nextTaskStatus: TaskItem['status'] = input.status === 'completed' ? 'done' : 'busy';
+  const completedBy = nextTaskStatus === 'done' ? await getCurrentProfileId() : null;
+  if (nextTaskStatus === 'done' && !completedBy) {
+    throw new Error('Unable to identify the user completing this stage.');
+  }
+  const summaryTasks = currentStageTask
+    ? existingProject.tasks.map((task) => task.id === currentStageTask.id
+      ? {
+        ...task,
+        status: nextTaskStatus,
+        completed: nextTaskStatus === 'done',
+        completedAt: nextTaskStatus === 'done' ? task.completedAt ?? new Date().toISOString() : undefined,
+      }
+      : task)
+    : existingProject.tasks;
 
   const summaryPayload = {
     current_stage: currentStage,
@@ -1475,6 +1491,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     brief_requested_date: briefRequestedDate,
     installation_date: installationDate,
     completion_date: completionDate,
+    tasks: summaryTasks,
     activity,
     updated_at: new Date().toISOString(),
   };
@@ -1498,6 +1515,24 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
 
   if (error || !data) {
     throw error ?? new Error('Unable to update project summary.');
+  }
+
+  if (currentStageTask && existingProject.workspaceId) {
+    const now = new Date().toISOString();
+    const { error: taskError } = await client
+      .from('project_tasks')
+      .update({
+        status: nextTaskStatus === 'done' ? 'complete' : 'in_progress',
+        updated_at: now,
+        completed_at: nextTaskStatus === 'done' ? now : null,
+        completed_by: completedBy,
+      })
+      .eq('id', currentStageTask.id)
+      .eq('workspace_id', existingProject.workspaceId);
+
+    if (taskError) {
+      throw taskError;
+    }
   }
 
   return getProjectById(input.projectId) as Promise<Project>;

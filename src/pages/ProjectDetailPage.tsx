@@ -583,13 +583,15 @@ export function ProjectDetailPage() {
       title: comment.taskId ? 'Stage update' : 'Project update',
       detail: comment.message,
     })),
-    ...filterActivityExcludingUser(selectedProject.activity, user?.name).map((item, index) => ({
+    ...filterActivityExcludingUser(selectedProject.activity, user?.name)
+      .filter((item) => item.title !== 'Project Created')
+      .map((item, index) => ({
       id: `activity-${item.date}-${index}`,
       date: item.date,
       author: '',
       title: item.title,
       detail: item.detail,
-    })),
+      })),
   ].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')).slice(0, 12);
   const completedStageCount = stagePlan.filter((stage) => selectedProject.tasks.some((task) => (task.stage ?? task.text).trim() === stage && task.completed)).length;
   const branchParticipants = branch?.contacts?.length
@@ -680,18 +682,27 @@ export function ProjectDetailPage() {
                 {detailsMutation.error instanceof Error ? <p className="text-sm text-red-300">{detailsMutation.error.message}</p> : null}
               </div>
             ) : (
-              <div className="mt-4 grid gap-4 text-sm text-white md:grid-cols-2">
-                <div><span className="text-cyan-200">Branch:</span> {branch.name}</div>
-                <div><span className="text-cyan-200">Division:</span> {branch.division}</div>
-                <div><span className="text-cyan-200">Town/Province:</span> {branch.town}, {branch.province}</div>
-                <div className="md:col-span-2"><span className="text-cyan-200">Branch address:</span> {branch.physicalAddress || 'Not captured'}</div>
-                <div className="md:col-span-2"><span className="text-cyan-200">Signage company:</span> {branch.signageCompany || 'Not captured'}</div>
-                <div><span className="text-cyan-200">Supplier contact:</span> {branch.signageContactName || 'Not captured'}</div>
-                <div><span className="text-cyan-200">Supplier phone:</span> {branch.signageContactPhone || 'Not captured'}</div>
-                <div><span className="text-cyan-200">Supplier email:</span> {branch.signageContactEmail || 'Not captured'}</div>
-                <div className="md:col-span-2 grid gap-3 sm:grid-cols-2">
-                  {branchParticipants.length > 0 ? branchParticipants.map((participant, index) => <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3"><p className="font-medium text-cyan-400">{participant.name}</p><p className="mt-1 text-xs text-slate-300">{participant.designation}</p>{participant.email ? <p className="mt-2 text-xs text-slate-300">{participant.email}</p> : null}{participant.phone ? <p className="mt-1 text-xs text-slate-300">{participant.phone}</p> : null}</div>) : <p className="text-slate-300">No branch contact persons have been added yet.</p>}
-                </div>
+              <div className="mt-4 grid gap-4 text-sm text-white lg:grid-cols-2">
+                <section className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Branch</h3>
+                  <div><span className="text-cyan-200">Name:</span> {branch.name}</div>
+                  <div><span className="text-cyan-200">Division:</span> {branch.division}</div>
+                  <div><span className="text-cyan-200">Town/Province:</span> {branch.town}, {branch.province}</div>
+                  <div><span className="text-cyan-200">Address:</span> {branch.physicalAddress || 'Not captured'}</div>
+                </section>
+                <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Signage supplier</h3>
+                  <div><span className="text-cyan-200">Company:</span> {branch.signageCompany || 'Not captured'}</div>
+                  <div><span className="text-cyan-200">Contact:</span> {branch.signageContactName || 'Not captured'}</div>
+                  <div><span className="text-cyan-200">Telephone:</span> {branch.signageContactPhone || 'Not captured'}</div>
+                  <div><span className="text-cyan-200">Email:</span> {branch.signageContactEmail || 'Not captured'}</div>
+                </section>
+                <section className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4 lg:col-span-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Branch contact persons</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {branchParticipants.length > 0 ? branchParticipants.map((participant, index) => <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3"><p className="font-medium text-cyan-400">{participant.name}</p><p className="mt-1 text-xs text-slate-300">{participant.designation}</p>{participant.email ? <p className="mt-2 text-xs text-slate-300">{participant.email}</p> : null}{participant.phone ? <p className="mt-1 text-xs text-slate-300">{participant.phone}</p> : null}</div>) : <p className="text-slate-300">No branch contact persons have been added yet.</p>}
+                  </div>
+                </section>
               </div>
             )}
           </div>
@@ -729,15 +740,15 @@ export function ProjectDetailPage() {
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+        {latestUpdate ? <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Latest update</p>
-          {latestUpdate ? <><p className="mt-2 text-xs text-slate-400">{formatWorkspaceDate(latestUpdate.date)} · {latestUpdate.author}</p><p className="mt-1 text-sm leading-6 text-slate-200">{latestUpdate.message}</p></> : <p className="mt-2 text-sm text-slate-400">No updates recorded yet.</p>}
-        </div>
+          <p className="mt-2 text-xs text-slate-400">{formatWorkspaceDate(latestUpdate.date)} · {latestUpdate.author}</p><p className="mt-1 text-sm leading-6 text-slate-200">{latestUpdate.message}</p>
+        </div> : null}
 
-        {isInternalUser ? <div className="mt-4 border-t border-white/10 pt-4">
+        {isInternalUser && projectHistory.length > 0 ? <div className="mt-4 border-t border-white/10 pt-4">
           <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h4>
           <div className="mt-4 space-y-3">
-            {projectHistory.length > 0 ? projectHistory.map((item) => (
+            {projectHistory.map((item) => (
               <div key={item.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-sm font-medium text-white">{item.title}</p>
@@ -746,7 +757,7 @@ export function ProjectDetailPage() {
                 {item.author ? <p className="mt-1 text-xs text-cyan-200">{item.author}</p> : null}
                 <p className="mt-2 text-sm text-slate-300">{item.detail}</p>
               </div>
-            )) : <p className="rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-4 text-sm text-slate-400">No project history recorded yet.</p>}
+            ))}
           </div>
         </div> : null}
       </section>
