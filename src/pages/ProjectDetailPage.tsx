@@ -751,8 +751,10 @@ export function ProjectDetailPage() {
                   <p className="text-sm font-medium text-white">{item.title}</p>
                   <p className="shrink-0 text-xs text-slate-500">{item.date}</p>
                 </div>
-                {item.author ? <p className="mt-1 text-xs text-cyan-200">{item.author}</p> : null}
-                {item.commentId && canEditOwnComment(user, item.author) && editingCommentId !== item.commentId ? <button type="button" onClick={() => { setEditingCommentId(item.commentId ?? null); setEditingCommentDraft(item.detail); }} className="mt-2 text-xs font-semibold text-cyan-200 hover:text-white">Edit</button> : null}
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  {item.author ? <p className="text-xs text-cyan-200">{item.author}</p> : <span />}
+                  {item.commentId && canEditOwnComment(user, item.author) && editingCommentId !== item.commentId ? <button type="button" onClick={() => { setEditingCommentId(item.commentId ?? null); setEditingCommentDraft(item.detail); }} className="rounded-xl border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 hover:text-white">Edit</button> : null}
+                </div>
                 {editingCommentId === item.commentId ? <div className="mt-2 grid gap-2"><textarea value={editingCommentDraft} onChange={(event) => setEditingCommentDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" /><div className="flex gap-2"><button type="button" disabled={!editingCommentDraft.trim() || updateCommentMutation.isPending} onClick={() => updateCommentMutation.mutate({ commentId: item.commentId ?? '', message: editingCommentDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateCommentMutation.isPending ? 'Saving...' : 'Save'}</button><button type="button" onClick={() => { setEditingCommentId(null); setEditingCommentDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button></div></div> : <p className="mt-2 text-sm text-slate-300">{item.detail}</p>}
               </div>
             ))}
