@@ -96,6 +96,7 @@ export function FileGrid({
   const [nextFileName, setNextFileName] = useState('');
   const [openFolderIds, setOpenFolderIds] = useState<string[]>([]);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [isDragActive, setIsDragActive] = useState(false);
   const requestedThumbnailKeys = useRef(new Set<string>());
 
   const sortedFiles = [...files].sort((a, b) => {
@@ -201,12 +202,39 @@ export function FileGrid({
     );
   }
 
+  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDragActive(false);
+
+    if (!canUpload || isUploading) {
+      return;
+    }
+
+    Array.from(event.dataTransfer.files).forEach((file) => onUpload?.(file));
+  }
+
   return (
     <div className="rounded-3xl border border-white/10 bg-white/6 p-6 shadow-soft">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div
+        onDragEnter={(event) => {
+          event.preventDefault();
+          if (canUpload && !isUploading) {
+            setIsDragActive(true);
+          }
+        }}
+        onDragOver={(event) => event.preventDefault()}
+        onDragLeave={(event) => {
+          if (event.currentTarget === event.target) {
+            setIsDragActive(false);
+          }
+        }}
+        onDrop={handleDrop}
+        className={`rounded-2xl border border-dashed p-4 transition-colors ${isDragActive ? 'border-sky-300 bg-sky-400/15' : 'border-white/10 bg-slate-950/20'}`}
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-white">Files</h3>
-          <p className="mt-1 text-sm text-slate-400">Upload project files here, or upload directly into a rebrand stage below.</p>
+          <p className="mt-1 text-sm text-slate-400">Drag files here or use the upload button. You can also upload directly into a rebrand stage below.</p>
         </div>
         {canUpload ? (
           <label className="inline-flex cursor-pointer items-center justify-center rounded-2xl bg-sky-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={isUploading}>
@@ -228,6 +256,8 @@ export function FileGrid({
         ) : (
           <p className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">View only</p>
         )}
+        </div>
+        {canUpload ? <p className={`mt-3 text-xs ${isDragActive ? 'text-sky-100' : 'text-slate-500'}`}>{isDragActive ? 'Release to upload' : 'Drop one or more files anywhere in this panel'}</p> : null}
       </div>
 
       {uploadError ? <p className="mt-3 text-sm text-red-300">{uploadError}</p> : null}
