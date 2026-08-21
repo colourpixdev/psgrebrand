@@ -1303,9 +1303,13 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     .eq('is_primary', true)
     .maybeSingle();
   const uploadedBy = await getCurrentProfileId();
-  if (workspaceError || !workspace?.id || !uploadedBy) {
+  if (workspaceError || !workspace?.id) {
     await client.storage.from(projectFilesBucket).remove([path]);
-    throw workspaceError ?? new Error('Workspace or authenticated profile not found.');
+    throw workspaceError ?? new Error('No active workspace was found for this branch.');
+  }
+  if (!uploadedBy) {
+    await client.storage.from(projectFilesBucket).remove([path]);
+    throw new Error('Your authenticated account is not linked to a workspace profile. Sign out and back in, then try again.');
   }
 
   const { data: category } = await client.from('file_categories').select('id').eq('category_key', 'other').maybeSingle();

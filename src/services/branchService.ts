@@ -420,6 +420,40 @@ export async function createBranchProject(input: CreateBranchInput): Promise<{ b
 
   try {
     const project = await createProject(projectInput);
+
+    if (supabase) {
+      const { data: workspace, error: workspaceError } = await supabase
+        .from('rebrand_workspaces')
+        .select('id')
+        .eq('branch_id', branch.id)
+        .eq('is_primary', true)
+        .eq('lifecycle_state', 'active')
+        .maybeSingle();
+
+      if (workspaceError) {
+        throw workspaceError;
+      }
+
+      if (!workspace?.id) {
+        const { error: createWorkspaceError } = await supabase
+          .from('rebrand_workspaces')
+          .insert({
+            branch_id: branch.id,
+            workspace_reference: `WS-${project.id}`,
+            workspace_type: 'rebrand',
+            is_primary: true,
+            lifecycle_state: 'active',
+            health: 'on_track',
+            progress: 0,
+            notes: `Created for branch project ${project.id}.`,
+          });
+
+        if (createWorkspaceError) {
+          throw createWorkspaceError;
+        }
+      }
+    }
+
     return { branch, project };
   } catch (error) {
     try {
