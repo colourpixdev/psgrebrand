@@ -570,12 +570,13 @@ export function ProjectDetailPage() {
   const displayedStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : statusLabels[selectedProject.status];
   const displayedStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : statusTones[selectedProject.status];
   const currentStageFiles = currentStageTask ? selectedProject.files.filter((file) => file.taskId === currentStageTask.id) : [];
-  const currentStageComments = currentStageTask ? selectedProject.comments.filter((comment) => comment.taskId === currentStageTask.id) : [];
+  const currentStageComments = currentStageTask ? projectComments.filter((comment) => comment.taskId === currentStageTask.id) : [];
   const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
   const isInternalUser = canAdministerProjectDetails;
   const projectHistory = [
     ...projectComments.map((comment, index) => ({
       id: `comment-${comment.id ?? index}`,
+      commentId: comment.id,
       date: comment.date,
       author: comment.author,
       title: comment.taskId ? 'Stage update' : 'Project update',
@@ -585,6 +586,7 @@ export function ProjectDetailPage() {
       .filter((item) => item.title !== 'Project Created')
       .map((item, index) => ({
       id: `activity-${item.date}-${index}`,
+      commentId: undefined,
       date: item.date,
       author: '',
       title: item.title,
@@ -720,7 +722,7 @@ export function ProjectDetailPage() {
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Comments for this stage</p>
-              {currentStageComments.length > 0 ? <div className="mt-3 space-y-2">{currentStageComments.map((comment, index) => <div key={`${comment.id ?? comment.date}-${index}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2"><p className="text-xs text-slate-500">{comment.author} · {comment.date}</p><p className="mt-1 text-sm text-slate-200">{comment.message}</p></div>)}</div> : <p className="mt-3 text-sm text-slate-500">No comments for this stage.</p>}
+              {currentStageComments.length > 0 ? <div className="mt-3 space-y-2">{currentStageComments.map((comment, index) => <div key={`${comment.id ?? comment.date}-${index}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2"><div className="flex items-start justify-between gap-2"><p className="text-xs text-slate-500">{comment.author} · {comment.date}</p>{comment.id && canEditOwnComment(user, comment.author) && editingCommentId !== comment.id ? <button type="button" onClick={() => { setEditingCommentId(comment.id ?? null); setEditingCommentDraft(comment.message); }} className="text-xs font-semibold text-cyan-200 hover:text-white">Edit</button> : null}</div>{editingCommentId === comment.id ? <div className="mt-2 grid gap-2"><textarea value={editingCommentDraft} onChange={(event) => setEditingCommentDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" /><div className="flex gap-2"><button type="button" disabled={!editingCommentDraft.trim() || updateCommentMutation.isPending} onClick={() => updateCommentMutation.mutate({ commentId: comment.id ?? '', message: editingCommentDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateCommentMutation.isPending ? 'Saving...' : 'Save'}</button><button type="button" onClick={() => { setEditingCommentId(null); setEditingCommentDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button></div></div> : <p className="mt-1 text-sm text-slate-200">{comment.message}</p>}</div>)}</div> : <p className="mt-3 text-sm text-slate-500">No stage updates.</p>}
             </div>
           </div> : null}
         </section> : null}
@@ -754,7 +756,8 @@ export function ProjectDetailPage() {
                   <p className="shrink-0 text-xs text-slate-500">{item.date}</p>
                 </div>
                 {item.author ? <p className="mt-1 text-xs text-cyan-200">{item.author}</p> : null}
-                <p className="mt-2 text-sm text-slate-300">{item.detail}</p>
+                {item.commentId && canEditOwnComment(user, item.author) && editingCommentId !== item.commentId ? <button type="button" onClick={() => { setEditingCommentId(item.commentId ?? null); setEditingCommentDraft(item.detail); }} className="mt-2 text-xs font-semibold text-cyan-200 hover:text-white">Edit</button> : null}
+                {editingCommentId === item.commentId ? <div className="mt-2 grid gap-2"><textarea value={editingCommentDraft} onChange={(event) => setEditingCommentDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" /><div className="flex gap-2"><button type="button" disabled={!editingCommentDraft.trim() || updateCommentMutation.isPending} onClick={() => updateCommentMutation.mutate({ commentId: item.commentId ?? '', message: editingCommentDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateCommentMutation.isPending ? 'Saving...' : 'Save'}</button><button type="button" onClick={() => { setEditingCommentId(null); setEditingCommentDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button></div></div> : <p className="mt-2 text-sm text-slate-300">{item.detail}</p>}
               </div>
             ))}
           </div>
