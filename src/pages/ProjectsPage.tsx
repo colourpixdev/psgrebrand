@@ -112,7 +112,7 @@ export function ProjectsPage() {
               <option value="completed">Completed</option>
             </select>
           </div>
-          {(query || province !== 'all' || stage !== 'all' || status !== 'all' || completion !== 'all') ? <button type="button" onClick={() => { setQuery(''); setProvince('all'); setStage('all'); setStatus('all'); setCompletion('all'); }} className="text-sm font-medium text-sky-700 hover:text-sky-800">Clear filters</button> : null}
+          {(query || province !== 'all' || stage !== 'all' || status !== 'all' || completion !== 'all') ? <button type="button" onClick={() => { setQuery(''); setProvince('all'); setStage('all'); setStatus('all'); setCompletion('all'); }} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-sky-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800">Clear filters</button> : null}
         </div>
       </section>
 
@@ -129,7 +129,7 @@ export function ProjectsPage() {
                   <td className="px-4 py-4 text-slate-700">{project.currentStage}</td>
                   <td className="px-4 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusTone[project.status]}`}>{statusLabels[project.status]}</span></td>
                   <td className="px-4 py-4 text-slate-700">{formatTargetDate(project.targetDate)}</td>
-                  <td className="px-4 py-4 text-right"><div className="flex items-center justify-end gap-3"><ProjectFollowButton projectId={project.id} userEmail={user?.email} /><Link to={`/projects/${project.id}`} className="font-medium text-sky-700 hover:text-sky-800">Open</Link></div></td>
+                  <td className="px-4 py-4 text-right"><div className="flex items-center justify-end gap-3"><ProjectFollowButton projectId={project.id} userEmail={user?.email} /><Link to={`/projects/${project.id}`} className="inline-flex items-center rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-100 hover:text-sky-800">Open</Link></div></td>
                 </tr>
               ))}
             </tbody>

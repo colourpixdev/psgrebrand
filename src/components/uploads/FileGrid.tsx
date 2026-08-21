@@ -126,18 +126,18 @@ export function FileGrid({
         {file.path ? (
           <div className="mt-3 flex flex-wrap items-center gap-4">
             {canPreviewFile(file) ? (
-              <button type="button" aria-label={`Preview ${file.name}`} onClick={() => onPreview?.(file)} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
+              <button type="button" aria-label={`Preview ${file.name}`} onClick={() => onPreview?.(file)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 hover:text-sky-100">
                 Preview
               </button>
             ) : null}
-            <button type="button" aria-label={`Download ${file.name}`} onClick={() => onDownload?.(file)} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
+            <button type="button" aria-label={`Download ${file.name}`} onClick={() => onDownload?.(file)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 hover:text-sky-100">
               Download
             </button>
-            <button type="button" aria-label={`Rename ${file.name}`} onClick={() => { setRenamingFileKey(key); setNextFileName(file.name); }} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
+            <button type="button" aria-label={`Rename ${file.name}`} onClick={() => { setRenamingFileKey(key); setNextFileName(file.name); }} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 hover:text-sky-100">
               Rename
             </button>
             {canDelete ? (
-              <button type="button" aria-label={`Delete ${file.name}`} onClick={() => onDelete?.(file)} className="text-xs font-semibold text-red-300 transition hover:text-red-200">
+              <button type="button" aria-label={`Delete ${file.name}`} onClick={() => onDelete?.(file)} className="rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500/20 hover:text-red-200">
                 Delete
               </button>
             ) : null}
@@ -145,11 +145,11 @@ export function FileGrid({
         ) : (
           <div className="mt-3 flex flex-wrap items-center gap-4">
             <p className="text-xs text-slate-500">Legacy file name only</p>
-            <button type="button" onClick={() => { setRenamingFileKey(key); setNextFileName(file.name); }} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
+            <button type="button" onClick={() => { setRenamingFileKey(key); setNextFileName(file.name); }} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 hover:text-sky-100">
               Rename
             </button>
             {canDelete ? (
-              <button type="button" onClick={() => onDelete?.(file)} className="text-xs font-semibold text-red-300 transition hover:text-red-200">
+              <button type="button" onClick={() => onDelete?.(file)} className="rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500/20 hover:text-red-200">
                 Delete
               </button>
             ) : null}

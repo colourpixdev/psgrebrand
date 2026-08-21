@@ -424,7 +424,7 @@ export function ReportsPage() {
                   <td className="px-5 py-4">{statusLabels[project.status]}</td>
                   <td className="px-5 py-4">{project.targetDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.completionDate || 'Not completed'}</td>
-                  <td className="px-5 py-4"><Link to={`/projects/${project.id}`} className="font-medium text-sky-200 hover:text-white">View</Link></td>
+                  <td className="px-5 py-4"><Link to={`/projects/${project.id}`} className="inline-flex items-center rounded-xl border border-sky-300/30 bg-sky-400/10 px-3 py-1.5 font-medium text-sky-200 hover:bg-sky-400/20 hover:text-white">View</Link></td>
                 </tr>
               )) : (
                 <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">No projects match the selected filters.</td></tr>

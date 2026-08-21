@@ -19,7 +19,7 @@ export function ProjectFollowButton({ projectId, userEmail, noun = 'project' }: 
         event.stopPropagation();
         setIsFollowed(toggleFollowedProject(userEmail, projectId));
       }}
-      className={`font-medium transition ${isFollowed ? 'text-amber-700 hover:text-amber-800' : 'text-slate-600 hover:text-sky-700'}`}
+      className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${isFollowed ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-slate-300 bg-white text-slate-600 hover:border-sky-300 hover:text-sky-700'}`}
     >
       {isFollowed ? (noun === 'branch' ? 'Tracking branch' : 'Following') : (noun === 'branch' ? 'Track branch' : 'Follow')}
     </button>

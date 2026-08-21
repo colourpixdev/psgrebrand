@@ -322,7 +322,7 @@ export function MapPage() {
                     {project.physicalAddress ? <p className="mt-1 text-xs text-slate-600">{project.physicalAddress}</p> : null}
                     <p className="mt-2 text-xs"><strong>Stage:</strong> {project.currentStage}</p>
                     <p className="text-xs"><strong>Status:</strong> {statusStyles[project.status].label}</p>
-                    <Link className="mt-3 inline-flex rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500" to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`}>
+                    <Link className="mt-3 inline-flex items-center rounded-lg border border-emerald-300/30 bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500" to={`/branches/${encodeURIComponent(project.branchId ?? project.branch)}`}>
                       View project details
                     </Link>
                   </div>
