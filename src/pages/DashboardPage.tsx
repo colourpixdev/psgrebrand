@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { ProjectFollowButton } from '../components/projects/ProjectFollowButton';
 import { getAllBranches } from '../services/branchService';
 import { getProjects } from '../services/portalService';
+import { getFollowChangedEventName, getFollowedProjectIds } from '../services/projectFollowService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
 
@@ -20,6 +22,7 @@ function greeting() {
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const [followedProjectIds, setFollowedProjectIds] = useState<string[]>(() => getFollowedProjectIds(user?.email));
   const {
     data: branches = [],
     isLoading: isLoadingBranches,
@@ -34,6 +37,12 @@ export function DashboardPage() {
   } = useQuery({ queryKey: ['projects'], queryFn: getProjects });
 
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
+  useEffect(() => {
+    const refreshFollowedProjects = () => setFollowedProjectIds(getFollowedProjectIds(user?.email));
+    refreshFollowedProjects();
+    window.addEventListener(getFollowChangedEventName(), refreshFollowedProjects);
+    return () => window.removeEventListener(getFollowChangedEventName(), refreshFollowedProjects);
+  }, [user?.email]);
   const isLoading = isLoadingBranches || isLoadingProjects;
   const loadError = isBranchesError ? branchesError : isProjectsError ? projectsError : null;
   const isInternalManagement = user ? ['colourpix_admin', 'psg_head_office'].includes(user.role) : true;
@@ -62,6 +71,11 @@ export function DashboardPage() {
       .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
       .slice(0, 5);
   }, [scopedProjects]);
+
+  const followedProjects = useMemo(() => {
+    const followed = new Set(followedProjectIds);
+    return scopedProjects.filter((project) => followed.has(project.id));
+  }, [followedProjectIds, scopedProjects]);
 
   const branchList = useMemo(() => {
     const uniqueBranches = [...new Set(scopedProjects.map((project) => project.branch).filter(Boolean))];
@@ -97,6 +111,30 @@ export function DashboardPage() {
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">Loading dashboard...</div>
       ) : (
         <>
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <h3 className="text-lg font-semibold text-slate-900">Followed projects</h3>
+              <span className="text-sm text-slate-500">{followedProjects.length} tracked</span>
+            </div>
+            {followedProjects.length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {followedProjects.map((project) => (
+                  <div key={project.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <Link to={`/projects/${project.id}`} className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-slate-900 hover:text-sky-700">{project.branch}</p>
+                        <p className="mt-1 text-sm text-slate-600">{project.currentStage} · {project.status}</p>
+                      </Link>
+                      <ProjectFollowButton projectId={project.id} userEmail={user?.email} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Follow projects from the Projects page to keep them here.</p>
+            )}
+          </section>
+
           <section className="grid grid-cols-2 gap-3 md:grid-cols-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Total branches</p>
