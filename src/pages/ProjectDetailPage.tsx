@@ -238,6 +238,7 @@ export function ProjectDetailPage() {
       setIsEditingDetails(false);
       await syncProject(updatedProject, 'Project details saved.');
     },
+    onError: (error) => showError(error instanceof Error ? error.message : 'Unable to save project details.'),
   });
 
   const questionMutation = useMutation({

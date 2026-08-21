@@ -1455,21 +1455,33 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     ...existingProject.activity,
   ];
 
-  const { data, error } = await client
+  const summaryPayload = {
+    current_stage: currentStage,
+    status: input.status,
+    target_date: targetDate,
+    brief_requested_date: briefRequestedDate,
+    installation_date: installationDate,
+    completion_date: completionDate,
+    activity,
+    updated_at: new Date().toISOString(),
+  };
+  let { data, error } = await client
     .from('projects')
-    .update({
-      current_stage: currentStage,
-      status: input.status,
-      target_date: targetDate,
-      brief_requested_date: briefRequestedDate,
-      installation_date: installationDate,
-      completion_date: completionDate,
-      activity,
-      updated_at: new Date().toISOString(),
-    })
+    .update(summaryPayload)
     .eq('id', input.projectId)
     .select('*')
     .single();
+
+  if (error && isMissingProjectColumnError(error.message)) {
+    const fallbackResult = await client
+      .from('projects')
+      .update(stripProjectPresentationColumns(summaryPayload))
+      .eq('id', input.projectId)
+      .select('*')
+      .single();
+    data = fallbackResult.data;
+    error = fallbackResult.error;
+  }
 
   if (error || !data) {
     throw error ?? new Error('Unable to update project summary.');
