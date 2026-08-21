@@ -58,7 +58,7 @@ function getStagePlan(project: Project): ProjectStage[] {
     .map((task) => (task.stage ?? task.text).trim())
     .filter((stage): stage is ProjectStage => Boolean(stage));
 
-  return mergedStages.length > 0 ? mergedStages : [project.currentStage];
+  return mergedStages;
 }
 
 function deriveWorkflowFromStagePlan(project: Project, stagePlan: readonly ProjectStage[]) {
@@ -541,7 +541,7 @@ export function ProjectDetailPage() {
   const currentStageIndex = Math.max(0, stagePlan.findIndex((stage) => stage === selectedProject.currentStage));
   const nextStage = selectedProject.status === 'completed'
     ? 'Completed'
-    : selectedProject.currentStage === 'New Project'
+    : stagePlan.length === 0 || selectedProject.currentStage === 'New Project'
       ? 'Information'
       : stagePlan[currentStageIndex + 1] ?? 'Final sign-off';
   const latestUpdate = [...projectComments].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))[0];
@@ -648,7 +648,7 @@ export function ProjectDetailPage() {
         ) : null}
 
         {!isEditingDetails ? <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</p><p className="mt-1 text-lg font-semibold text-white">{selectedProject.currentStage}</p></div>
+          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</p><p className="mt-1 text-lg font-semibold text-white">{stagePlan.length > 0 ? selectedProject.currentStage : 'No stage set'}</p></div>
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 text-lg font-semibold text-white">{statusLabels[selectedProject.status]}</p></div>
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Target completion</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.targetDate)}</p></div>
           <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Installation</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.installationDate)}</p></div>
@@ -664,17 +664,17 @@ export function ProjectDetailPage() {
           <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
             <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Stage checklist</p><span className="text-xs text-slate-400">{completedStageCount} of {stagePlan.length} stages</span></div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {stagePlan.map((stage, index) => {
+              {stagePlan.length > 0 ? stagePlan.map((stage, index) => {
                 const stageTask = selectedProject.tasks.find((task) => (task.stage ?? task.text).trim() === stage);
                 const taskStatus = stageTask ? getTaskStatus(stageTask) : 'pending';
                 const current = stage === selectedProject.currentStage;
                 return (
                   <div key={`${stage}-${index}`} className={`flex flex-wrap items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold ${taskStatus === 'done' ? 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100' : current ? 'border-cyan-300/50 bg-cyan-400/20 text-cyan-100' : 'border-white/10 bg-white/5 text-slate-300'}`}>
-                    <span>{taskStatus === 'done' ? '✓ ' : current ? '● ' : '○ '}{stage}</span>
-                    <span className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px]">{taskStatus === 'pending' ? 'Pending' : taskStatus === 'open' ? 'Started' : taskStatus === 'busy' ? 'Busy' : 'Completed'}</span>
+                    <button type="button" onClick={() => { if (!stageTask) return; setExpandedAccordionTaskIds((currentIds) => currentIds.includes(stageTask.id) ? currentIds.filter((id) => id !== stageTask.id) : [...currentIds, stageTask.id]); setExpandedTaskUpdateTaskIds((currentIds) => currentIds.includes(stageTask.id) ? currentIds.filter((id) => id !== stageTask.id) : [...currentIds, stageTask.id]); }} className="hover:underline">{taskStatus === 'done' ? '✓ ' : current ? '● ' : '○ '}{stage}</button>
+                    {stageTask && canCurrentUserCompleteTask(stageTask) ? <select value={taskStatus} disabled={updateTaskMutation.isPending} onChange={(event) => updateTaskMutation.mutate({ task: stageTask, status: event.target.value as TaskItem['status'] })} aria-label={`Status for ${stage}`} className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px] font-semibold text-white outline-none"><option value="pending">Pending</option><option value="open">Started</option><option value="busy">Busy</option><option value="done">Completed</option></select> : <span className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px]">{taskStatus === 'pending' ? 'Pending' : taskStatus === 'open' ? 'Started' : taskStatus === 'busy' ? 'Busy' : 'Completed'}</span>}
                   </div>
                 );
-              })}
+              }) : <p className="w-full rounded-xl border border-dashed border-white/15 bg-slate-950/40 p-3 text-xs text-slate-400">No stages yet. Add the first stage below to begin tracking this branch.</p>}
             </div>
           </div>
         </div>

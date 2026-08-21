@@ -99,7 +99,7 @@ async function createProjectFromBranch(branch) {
     manager_email: branch.contactEmail ?? branch.contact_email ?? '',
     installer: 'Not captured',
     designer: 'Not captured',
-    current_stage: 'Branch setup',
+    current_stage: 'New Project',
     status: 'in_progress',
     progress: 0,
     target_date: '',
