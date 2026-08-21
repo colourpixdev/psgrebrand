@@ -567,9 +567,7 @@ export function ProjectDetailPage() {
   const canDeleteProject = Boolean(rolePolicy?.projectAccess.canDeleteProjects);
   const canCreateAssignedUpdate = canAddComments;
   const canUseConversationComposer = canCreateAssignedUpdate || canAskColourpix;
-  // Temporary product-owner guard only; this is not durable authorization.
-  // Replace with role/capability checks enforced by backend policy and Supabase RLS.
-  const canEditDetails = ['beverley', 'francois'].includes(user?.name.trim().toLowerCase() ?? '');
+  const canEditDetails = canAdministerProjectDetails;
 
   function canCurrentUserCompleteTask(task: TaskItem) {
     if (!canCompleteTasks) {
