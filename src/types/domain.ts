@@ -60,6 +60,7 @@ export interface Branch {
   signageContactName?: string;
   signageContactPhone?: string;
   signageContactEmail?: string;
+  signageAddress?: string;
   latitude: number | null;
   longitude: number | null;
   contactName?: string;

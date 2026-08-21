@@ -127,6 +127,7 @@ export function ProjectDetailPage() {
     signageContactName: '',
     signageContactPhone: '',
     signageContactEmail: '',
+    signageAddress: '',
     contacts: [] as ContactPerson[],
   });
   const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
@@ -186,6 +187,7 @@ export function ProjectDetailPage() {
       signageContactName: branch.signageContactName ?? '',
       signageContactPhone: branch.signageContactPhone ?? '',
       signageContactEmail: branch.signageContactEmail ?? '',
+      signageAddress: branch.signageAddress ?? '',
       contacts,
     });
   }, [branch]);
@@ -246,6 +248,7 @@ export function ProjectDetailPage() {
         signageContactName: branchDetailsDraft.signageContactName.trim() || null,
         signageContactPhone: branchDetailsDraft.signageContactPhone.trim() || null,
         signageContactEmail: branchDetailsDraft.signageContactEmail.trim() || null,
+        signageAddress: branchDetailsDraft.signageAddress.trim() || null,
         contactName: contacts[0]?.name.trim() || null,
         contactEmail: contacts[0]?.email?.trim() || null,
         contactPhone: contacts[0]?.phone?.trim() || null,
@@ -714,6 +717,7 @@ export function ProjectDetailPage() {
                 <section className="grid gap-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Signage supplier</h3>
                   <label className="grid gap-2">Company<input value={branchDetailsDraft.signageCompany} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, signageCompany: event.target.value }))} placeholder="Company handling this branch rebrand" className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                  <label className="grid gap-2">Address<input value={branchDetailsDraft.signageAddress} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, signageAddress: event.target.value }))} placeholder="Supplier physical address" className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
                   <div className="grid gap-4 md:grid-cols-3">
                     <label className="grid gap-2">Contact person<input value={branchDetailsDraft.signageContactName} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, signageContactName: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
                     <label className="grid gap-2">Telephone<input value={branchDetailsDraft.signageContactPhone} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, signageContactPhone: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
@@ -754,6 +758,7 @@ export function ProjectDetailPage() {
                 <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Signage supplier</h3>
                   <div><span className="text-cyan-200">Company:</span> {branch.signageCompany || 'Not captured'}</div>
+                  <div><span className="text-cyan-200">Address:</span> {branch.signageAddress || 'Not captured'}</div>
                   <div><span className="text-cyan-200">Contact:</span> {branch.signageContactName || 'Not captured'}</div>
                   <div><span className="text-cyan-200">Telephone:</span> {branch.signageContactPhone || 'Not captured'}</div>
                   <div><span className="text-cyan-200">Email:</span> {branch.signageContactEmail || 'Not captured'}</div>

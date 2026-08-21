@@ -110,6 +110,7 @@ export function BranchesPage() {
     signageContactName: '',
     signageContactPhone: '',
     signageContactEmail: '',
+    signageAddress: '',
     latitude: '',
     longitude: '',
     contactName: '',
@@ -128,6 +129,7 @@ export function BranchesPage() {
     signageContactName: '',
     signageContactPhone: '',
     signageContactEmail: '',
+    signageAddress: '',
     latitude: '',
     longitude: '',
     contactName: '',
@@ -204,6 +206,7 @@ export function BranchesPage() {
         signageContactName: formData.signageContactName.trim() || null,
         signageContactPhone: formData.signageContactPhone.trim() || null,
         signageContactEmail: formData.signageContactEmail.trim() || null,
+        signageAddress: formData.signageAddress.trim() || null,
         latitude: formData.latitude ? parseFloat(formData.latitude) : null,
         longitude: formData.longitude ? parseFloat(formData.longitude) : null,
         contactName: formData.contactName.trim() || null,
@@ -230,6 +233,7 @@ export function BranchesPage() {
         signageContactName: '',
         signageContactPhone: '',
         signageContactEmail: '',
+        signageAddress: '',
         latitude: '',
         longitude: '',
         contactName: '',
@@ -268,6 +272,7 @@ export function BranchesPage() {
       signageContactName: branch.signageContactName ?? '',
       signageContactPhone: branch.signageContactPhone ?? '',
       signageContactEmail: branch.signageContactEmail ?? '',
+      signageAddress: branch.signageAddress ?? '',
       latitude: branch.latitude?.toString() ?? '',
       longitude: branch.longitude?.toString() ?? '',
       contactName: primaryContact?.name ?? branch.contactName ?? '',
@@ -292,6 +297,7 @@ export function BranchesPage() {
       signageContactName: '',
       signageContactPhone: '',
       signageContactEmail: '',
+      signageAddress: '',
       latitude: '',
       longitude: '',
       contactName: '',
@@ -324,6 +330,7 @@ export function BranchesPage() {
         signageContactName: editData.signageContactName.trim() || null,
         signageContactPhone: editData.signageContactPhone.trim() || null,
         signageContactEmail: editData.signageContactEmail.trim() || null,
+        signageAddress: editData.signageAddress.trim() || null,
         latitude: editData.latitude ? parseFloat(editData.latitude) : null,
         longitude: editData.longitude ? parseFloat(editData.longitude) : null,
         contactName: editData.contactName.trim() || null,
@@ -616,6 +623,11 @@ export function BranchesPage() {
               />
             </div>
 
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-medium text-slate-300">Signage supplier address</label>
+              <input type="text" value={formData.signageAddress} onChange={(e) => setFormData({ ...formData, signageAddress: e.target.value })} className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50" placeholder="Supplier physical address" />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-300">Latitude</label>
@@ -808,6 +820,10 @@ export function BranchesPage() {
                         aria-label="Signage company"
                         className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
                       />
+                    </div>
+
+                    <div className="mt-4">
+                      <input type="text" value={editData.signageAddress} onChange={(e) => setEditData({ ...editData, signageAddress: e.target.value })} placeholder="Signage supplier address" aria-label="Signage supplier address" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700" />
                     </div>
 
                     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
