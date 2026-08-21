@@ -1929,7 +1929,10 @@ export async function reorderProjectTask(input: ReorderProjectTaskInput): Promis
     throw new Error('Task not found.');
   }
 
-  // Get workspace
+  const now = new Date().toISOString();
+  const tasks = existingProject.tasks.filter((task) => task.id !== input.taskId);
+
+  // Soft-delete the relational task when this project has a relational workspace.
   const branchId = existingProject.branchId || existingProject.branch;
   const { data: workspaceData } = await client
     .from('rebrand_workspaces')
@@ -2176,7 +2179,10 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
     throw new Error('Task not found.');
   }
 
-  // Get workspace
+  const now = new Date().toISOString();
+  const tasks = existingProject.tasks.filter((task) => task.id !== input.taskId);
+
+  // Soft-delete the relational task when this project has a relational workspace.
   const branchId = existingProject.branchId || existingProject.branch;
   const { data: workspaceData } = await client
     .from('rebrand_workspaces')
@@ -2185,19 +2191,16 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
     .eq('is_primary', true)
     .maybeSingle();
 
-  if (!workspaceData?.id) {
-    throw new Error('Workspace not found for project.');
-  }
+  if (workspaceData?.id) {
+    const { error: deleteError } = await client
+      .from('project_tasks')
+      .update({ deleted_at: now })
+      .eq('id', input.taskId)
+      .eq('workspace_id', workspaceData.id);
 
-  // Soft-delete task in relational table
-  const { error: deleteError } = await client
-    .from('project_tasks')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', input.taskId)
-    .eq('workspace_id', workspaceData.id);
-
-  if (deleteError) {
-    throw new Error('Unable to delete project task.');
+    if (deleteError) {
+      throw new Error('Unable to delete project task.');
+    }
   }
 
   // Record activity
@@ -2206,10 +2209,14 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
     ...existingProject.activity,
   ];
 
-  await client
+  const { error: projectUpdateError } = await client
     .from('projects')
-    .update({ activity, updated_at: new Date().toISOString() })
+    .update({ tasks, activity, updated_at: now })
     .eq('id', input.projectId);
+
+  if (projectUpdateError) {
+    throw new Error('Unable to delete project task.');
+  }
 
   return getProjectById(input.projectId) as Promise<Project>;
 }
