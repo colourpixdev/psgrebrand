@@ -126,7 +126,6 @@ export function ProjectDetailPage() {
   const [answerInstallationDate, setAnswerInstallationDate] = useState('');
   const [taskText, setTaskText] = useState('');
   const [expandedAccordionTaskIds, setExpandedAccordionTaskIds] = useState<string[]>([]);
-  const [taskInstallationDrafts, setTaskInstallationDrafts] = useState<Record<string, string>>({});
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskText, setEditingTaskText] = useState('');
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
@@ -261,6 +260,22 @@ export function ProjectDetailPage() {
     onError: (error) => showError(error instanceof Error ? error.message : 'Unable to save project details.'),
   });
 
+  const currentStageMutation = useMutation({
+    mutationFn: (currentStage: ProjectStage) => updateProjectSummary({
+      projectId: projectId ?? '',
+      actor: user?.name ?? 'Workspace user',
+      currentStage,
+      status: selectedProject.status,
+      targetDate: selectedProject.targetDate,
+      briefRequestedDate: selectedProject.briefRequestedDate,
+      installationDate: selectedProject.installationDate,
+    }),
+    onSuccess: async (updatedProject) => {
+      await syncProject(updatedProject, 'Current stage saved.');
+    },
+    onError: (error) => showError(error instanceof Error ? error.message : 'Unable to save current stage.'),
+  });
+
   const questionMutation = useMutation({
     mutationFn: () => askProjectQuestion({
       projectId: projectId ?? '',
@@ -376,7 +391,7 @@ export function ProjectDetailPage() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ task, text, completed, status, installationRequest }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; installationRequest?: string }) => {
+    mutationFn: ({ task, text, completed, status }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status'] }) => {
       const nextText = text?.trim();
       return updateProjectTask({
         projectId: projectId ?? '',
@@ -385,7 +400,6 @@ export function ProjectDetailPage() {
         completed,
         status,
         stage: nextText || undefined,
-        installationRequest,
         actor: user?.name ?? 'Workspace user',
         actorEmail: user?.email,
       });
@@ -730,7 +744,7 @@ export function ProjectDetailPage() {
             {currentStageTask ? <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${displayedStatusTone}`}>{displayedStatus}</span> : null}
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Stage</p><p className="mt-1 text-lg font-semibold text-white">{stagePlan.length > 0 ? selectedProject.currentStage : 'No stage set'}</p></div>
+            <label className="grid gap-1"><span className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</span><select value={selectedProject.currentStage} disabled={stagePlan.length === 0 || currentStageMutation.isPending} onChange={(event) => currentStageMutation.mutate(event.target.value)} className="mt-1 rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-lg font-semibold text-white outline-none focus:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-60" aria-label="Current stage"><option value="" disabled>No stage set</option>{stagePlan.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
             <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 text-lg font-semibold text-white">{displayedStatus}</p></div>
             <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Target completion</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.targetDate)}</p></div>
           </div>
@@ -933,30 +947,6 @@ export function ProjectDetailPage() {
                 )}
                 {editingTaskId !== task.id ? (
                   <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3">
-                    {task.text.toLowerCase().includes('schedule installation') ? (
-                      <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-3">
-                        <label className="grid gap-2 text-xs uppercase tracking-[0.18em] text-cyan-100">
-                          Installation instructions / requests
-                          <textarea
-                            value={taskInstallationDrafts[task.id] ?? task.installationRequest ?? ''}
-                            onChange={(event) => setTaskInstallationDrafts((current) => ({ ...current, [task.id]: event.target.value }))}
-                            rows={3}
-                            placeholder="Add installation instructions, site notes, or requests for this task"
-                            className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-400 focus:border-cyan-300/50"
-                          />
-                        </label>
-                        <div className="mt-2 flex justify-end">
-                          <button
-                            type="button"
-                            disabled={updateTaskMutation.isPending}
-                            onClick={() => updateTaskMutation.mutate({ task, installationRequest: taskInstallationDrafts[task.id] ?? task.installationRequest ?? '' })}
-                            className="rounded-xl bg-cyan-500 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            Save instructions
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
                     {taskFiles.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
@@ -1071,7 +1061,7 @@ export function ProjectDetailPage() {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
+      {false && <section>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-white">Updates</h3>
@@ -1201,7 +1191,7 @@ export function ProjectDetailPage() {
           }) : null}
         </div>
 
-      </section>
+      </section>}
 
       <section>
         <FileGrid

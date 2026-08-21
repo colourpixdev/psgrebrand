@@ -223,7 +223,6 @@ export function FileGrid({
           <p className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">View only</p>
         )}
         </div>
-        {canUpload ? <p className={`mt-3 text-xs ${isDragActive ? 'text-sky-100' : 'text-slate-500'}`}>{isDragActive ? 'Release to upload' : 'Drop one or more files anywhere in this panel'}</p> : null}
       </div>
 
       {uploadError ? <p className="mt-3 text-sm text-red-300">{uploadError}</p> : null}
