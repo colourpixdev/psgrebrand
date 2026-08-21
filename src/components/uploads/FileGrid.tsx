@@ -35,36 +35,6 @@ function isPdfFile(file: ProjectFile) {
   return fileType === 'application/pdf' || fileName.endsWith('.pdf');
 }
 
-function getFileCategory(file: ProjectFile) {
-  const name = file.name.toLowerCase();
-
-  if (/(artwork|design|layout|creative|mockup|proof|brand|logo)/.test(name)) {
-    return 'Artwork';
-  }
-
-  if (/(quote|quotation|estimate|pricing|cost|invoice)/.test(name)) {
-    return 'Quotes';
-  }
-
-  if (/(approval|signed|signoff|approved|client approval|approval sheet)/.test(name)) {
-    return 'Approvals';
-  }
-
-  if (/(site photo|sitephoto|site.*(jpg|jpeg|png|pdf)|before.*photo|progress.*photo|photos?)/.test(name)) {
-    return 'Site Photos';
-  }
-
-  if (/(installation.*(photo|jpg|jpeg|png)|installed.*(photo|jpg|jpeg|png)|after.*photo|install.*photo)/.test(name)) {
-    return 'Installation Photos';
-  }
-
-  if (/(handover|final doc|final documentation|completion|certificate|manual|packaging|closeout|asbuilt|as-built)/.test(name)) {
-    return 'Final Documentation';
-  }
-
-  return 'Other';
-}
-
 export function FileGrid({
   files,
   taskFolders = [],
@@ -105,11 +75,6 @@ export function FileGrid({
   });
 
   const rootFiles = sortedFiles.filter((file) => !file.taskId);
-  const rootFileCategories = ['Artwork', 'Quotes', 'Approvals', 'Site Photos', 'Installation Photos', 'Final Documentation', 'Other'] as const;
-  const categorizedRootFiles = rootFileCategories.reduce((result, category) => ({
-    ...result,
-    [category]: rootFiles.filter((file) => getFileCategory(file) === category),
-  }), {} as Record<(typeof rootFileCategories)[number], ProjectFile[]>);
   const folders = taskFolders
     .map((folder) => ({ ...folder, files: sortedFiles.filter((file) => file.taskId === folder.id) }))
     .filter((folder) => folder.files.length > 0)
@@ -268,17 +233,8 @@ export function FileGrid({
           <span className="text-xs text-slate-500">{rootFiles.length} file{rootFiles.length === 1 ? '' : 's'}</span>
         </div>
         {rootFiles.length > 0 ? (
-          <div className="mt-3 space-y-4">
-            {rootFileCategories
-              .filter((category) => categorizedRootFiles[category].length > 0)
-              .map((category) => (
-                <div key={category} className="rounded-2xl border border-white/10 bg-slate-950/40 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{category}</p>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    {categorizedRootFiles[category].map((file) => renderFileCard(file))}
-                  </div>
-                </div>
-              ))}
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {rootFiles.map((file) => renderFileCard(file))}
           </div>
         ) : (
           <div className="mt-3 rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-5 text-sm text-slate-400">
