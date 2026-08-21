@@ -5,7 +5,6 @@ import { FileGrid } from '../components/uploads/FileGrid';
 import { DatePickerInput } from '../components/DatePickerInput';
 import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectComment, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById, updateBranch } from '../services/branchService';
-import { suggestedStageOptions } from '../constants/portal';
 import { useAuth } from '../contexts/AuthContext';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
@@ -126,7 +125,6 @@ export function ProjectDetailPage() {
   const [answerTargetDate, setAnswerTargetDate] = useState('');
   const [answerInstallationDate, setAnswerInstallationDate] = useState('');
   const [taskText, setTaskText] = useState('');
-  const [stageOption, setStageOption] = useState('');
   const [expandedAccordionTaskIds, setExpandedAccordionTaskIds] = useState<string[]>([]);
   const [taskInstallationDrafts, setTaskInstallationDrafts] = useState<Record<string, string>>({});
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -354,7 +352,6 @@ export function ProjectDetailPage() {
     },
     onSuccess: async (updatedProject) => {
       setTaskText('');
-      setStageOption('');
       await syncProject(updatedProject, 'Stage added.');
     },
     onError: (error) => showError(error instanceof Error ? error.message : 'Unable to add stage.'),
@@ -599,7 +596,6 @@ export function ProjectDetailPage() {
     : branch?.contactName
       ? [{ name: branch.contactName, email: branch.contactEmail, phone: branch.contactPhone, designation: 'Contact Person' }]
       : [];
-  const availableStageOptions = suggestedStageOptions.filter((stage) => !mergedTasks.some((task) => (task.stage ?? task.text).trim().toLowerCase() === stage.toLowerCase()));
 
   return (
     <div className="relative space-y-6">
@@ -763,10 +759,9 @@ export function ProjectDetailPage() {
           </div>
         </div> : null}
       </section>
-      <section className={isInternalUser ? 'rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm' : 'hidden'}>
-        <div className="mt-6 border-t border-white/10 pt-0">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <h3 className="text-lg font-semibold text-white">Stages</h3>
+      <section className={isInternalUser ? 'space-y-3' : 'hidden'}>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+          <h3 className="text-2xl font-semibold text-white">Stages</h3>
             {mergedTasks.length > 0 && (
               <div className="flex gap-2">
                 <button
@@ -785,16 +780,12 @@ export function ProjectDetailPage() {
                 </button>
               </div>
             )}
-          </div>
+        </div>
+        <div className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
           {isInternalUser ? (
             <>
-              <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
-                <select value={stageOption} disabled={!canAddTasks} onChange={(event) => { const value = event.target.value; setStageOption(value); setTaskText(value === '__custom__' ? '' : value); }} className="min-w-0 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60">
-                  <option value="">Choose a suggested stage...</option>
-                  {availableStageOptions.map((stage) => <option key={stage} value={stage}>{stage}</option>)}
-                  <option value="__custom__">Custom stage...</option>
-                </select>
-                <input value={taskText} disabled={!canAddTasks} onChange={(event) => { setTaskText(event.target.value); setStageOption('__custom__'); }} placeholder="Enter a stage name" aria-label="Stage name" className="min-w-0 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
+              <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+                <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder="Enter a stage name" aria-label="Stage name" className="min-w-0 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
                 <button type="button" disabled={!canAddTasks || taskMutation.isPending || !taskText.trim()} onClick={() => taskMutation.mutate()} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
                   Add stage
                 </button>
