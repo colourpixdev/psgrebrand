@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
-import type { Branch, ContactPerson, Division } from '../types/domain';
+import { createProject, type CreateProjectInput } from './portalService';
+import type { Branch, ContactPerson, Division, Project } from '../types/domain';
 
 const branchesStorageKey = 'psg-rebrand:branches';
 
@@ -392,6 +393,42 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
   const savedBranch = rowToBranch(data);
   saveBranchToLocalShadow(savedBranch);
   return savedBranch;
+}
+
+export async function createBranchProject(input: CreateBranchInput): Promise<{ branch: Branch; project: Project }> {
+  const branch = await createBranch(input);
+  if (!branch) {
+    throw new Error('The branch could not be created.');
+  }
+
+  const projectInput: CreateProjectInput = {
+    id: `branch-${branch.id}`,
+    branchId: branch.id,
+    branch: branch.name,
+    branchCode: branch.code,
+    province: branch.province,
+    town: branch.town,
+    physicalAddress: branch.physicalAddress,
+    manager: branch.contactName,
+    managerEmail: branch.contactEmail,
+    projectType: 'signage_rollout',
+    currentStage: 'New Project',
+    status: 'in_progress',
+    progress: 0,
+    selectedTaskIds: [],
+  };
+
+  try {
+    const project = await createProject(projectInput);
+    return { branch, project };
+  } catch (error) {
+    try {
+      await deleteBranch(branch.id);
+    } catch {
+      // Preserve the project creation error if cleanup is blocked by permissions.
+    }
+    throw error;
+  }
 }
 
 export async function updateBranch(id: string, input: Partial<CreateBranchInput>): Promise<Branch | null> {

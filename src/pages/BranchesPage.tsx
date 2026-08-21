@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { getAllBranches, createBranch, updateBranch, deleteBranch, formatBranchName, extractBranchName } from '../services/branchService';
+import { getAllBranches, createBranchProject, updateBranch, deleteBranch, formatBranchName, extractBranchName } from '../services/branchService';
 import { getProjects } from '../services/portalService';
 import type { Branch, ContactPerson, Division, Project } from '../types/domain';
 import { useAuth } from '../contexts/AuthContext';
@@ -184,8 +184,8 @@ export function BranchesPage() {
 
     try {
       setSaving(true);
-      const createdBranch = await createBranch({
-        name: formatBranchName(formData.division, formData.name),
+      const { branch: createdBranch, project: createdProject } = await createBranchProject({
+        name: formData.name.trim(),
         division: formData.division,
         province: formData.province,
         city: null,
@@ -225,8 +225,8 @@ export function BranchesPage() {
       setError(null);
       setSuccessMessage(`Branch \"${formData.name}\" was created successfully.`);
       showSuccess('Branch saved.');
-      if (createdBranch && canCreateProjects) {
-        navigate(`/projects?branchId=${encodeURIComponent(createdBranch.id)}`);
+      if (createdBranch && createdProject) {
+        navigate(`/projects/${encodeURIComponent(createdProject.id)}`);
         return;
       }
       await loadBranches();
