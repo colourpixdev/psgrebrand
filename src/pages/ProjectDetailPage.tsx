@@ -993,7 +993,7 @@ export function ProjectDetailPage() {
                 ) : null}
                 {normalizeRole(user?.role) !== 'psg_user' ? (
                   <div className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100">Updates</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100">Stage updates</p>
                     <div className="mt-2 space-y-2">
                       {taskUpdates.length > 0 ? taskUpdates.map((c, i) => (
                         <div key={`${task.id}-comment-${c.id ?? i}`} className="rounded-2xl bg-slate-950/80 p-3">
@@ -1017,14 +1017,14 @@ export function ProjectDetailPage() {
                       )) : null}
                     </div>
 
-                    {/* Add comment */}
+                    {/* Add stage update */}
                     {canAddTaskComments(user) ? (
                       <div className="mt-3 grid gap-2">
                         <textarea
                           value={taskCommentDrafts[task.id] ?? ''}
                           onChange={(e) => setTaskCommentDrafts((cur) => ({ ...cur, [task.id]: e.target.value }))}
                           rows={2}
-                          placeholder="Leave a comment for this task"
+                          placeholder="Add an update for this stage"
                           className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50"
                         />
                         <div className="flex gap-2">
@@ -1034,9 +1034,8 @@ export function ProjectDetailPage() {
                             onClick={() => taskCommentMutation.mutate({ projectId: projectId ?? '', taskId: task.id, message: taskCommentDrafts[task.id] ?? '' })}
                             className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            {taskCommentMutation.isPending ? 'Posting...' : 'Add comment'}
+                            {taskCommentMutation.isPending ? 'Posting...' : 'Add stage update'}
                           </button>
-                          <p className="text-xs text-slate-400">Comments appear in the project journal and under the task.</p>
                         </div>
                       </div>
                     ) : null}
