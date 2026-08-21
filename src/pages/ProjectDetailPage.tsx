@@ -589,12 +589,6 @@ export function ProjectDetailPage() {
     || completionDateDraft.trim() !== selectedProject.completionDate.trim();
   const isInternalUser = canAdministerProjectDetails;
   const currentStageIndex = Math.max(0, stagePlan.findIndex((stage) => stage === selectedProject.currentStage));
-  const nextStage = selectedProject.status === 'completed'
-    ? 'Completed'
-    : stagePlan.length === 0 || selectedProject.currentStage === 'New Project'
-      ? 'Information'
-      : stagePlan[currentStageIndex + 1] ?? 'Final sign-off';
-  const latestUpdate = [...projectComments].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))[0];
   const projectHistory = [
     ...projectComments.map((comment, index) => ({
       id: `comment-${comment.id ?? index}`,
@@ -752,12 +746,7 @@ export function ProjectDetailPage() {
           </div> : null}
         </section> : null}
 
-        <div className="mt-6 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[1fr_1fr]">
-          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">What's next?</p>
-            <p className="mt-2 text-xl font-semibold text-white">{nextStage}</p>
-            <p className="mt-1 text-sm text-slate-300">{selectedProject.status === 'completed' ? 'This branch rebrand is complete.' : `${selectedProject.currentStage} is the current stage. The next step is ${nextStage}.`}</p>
-          </div>
+        <div className="mt-6 border-t border-white/10 pt-5">
           <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
             <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Stage checklist</p><span className="text-xs text-slate-400">{completedStageCount} of {stagePlan.length} stages</span></div>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -775,11 +764,6 @@ export function ProjectDetailPage() {
             </div>
           </div>
         </div>
-
-        {latestUpdate ? <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Latest update</p>
-          <p className="mt-2 text-xs text-slate-400">{formatWorkspaceDate(latestUpdate.date)} · {latestUpdate.author}</p><p className="mt-1 text-sm leading-6 text-slate-200">{latestUpdate.message}</p>
-        </div> : null}
 
         {isInternalUser && projectHistory.length > 0 ? <div className="mt-4 border-t border-white/10 pt-4">
           <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h4>
