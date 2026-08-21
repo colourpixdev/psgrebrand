@@ -665,6 +665,13 @@ export type UpdateProjectActivityInput = {
   message: string;
 };
 
+export type DeleteProjectActivityInput = {
+  projectId: string;
+  date: string;
+  title: string;
+  detail: string;
+};
+
 export type AskProjectQuestionInput = {
   projectId: string;
   author: string;
@@ -1676,6 +1683,40 @@ export async function updateProjectActivity(input: UpdateProjectActivityInput): 
 
   if (error || !data) {
     throw error ?? new Error('Unable to update system update.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function deleteProjectActivity(input: DeleteProjectActivityInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const activityIndex = existingProject.activity.findIndex((item) => item.date === input.date && item.title === input.title && item.detail === input.detail);
+  if (activityIndex < 0) {
+    throw new Error('System update not found.');
+  }
+
+  const activity = existingProject.activity.filter((_, index) => index !== activityIndex);
+  const { data, error } = await client
+    .from('projects')
+    .update({ activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to delete system update.');
   }
 
   return mapProjectRow(data as ProjectRow);
