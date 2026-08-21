@@ -113,7 +113,7 @@ export function DashboardPage() {
         <>
           <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-2">
-              <h3 className="text-lg font-semibold text-slate-900">Followed projects</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Followed branches</h3>
               <span className="text-sm text-slate-500">{followedProjects.length} tracked</span>
             </div>
             {followedProjects.length > 0 ? (
@@ -131,7 +131,7 @@ export function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Follow projects from the Projects page to keep them here.</p>
+              <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Follow branches from the Branches or Projects page to keep them here.</p>
             )}
           </section>
 

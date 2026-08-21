@@ -5,6 +5,7 @@ import { getProjects } from '../services/portalService';
 import type { Branch, ContactPerson, Division, Project } from '../types/domain';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
+import { ProjectFollowButton } from '../components/projects/ProjectFollowButton';
 import { isPlatformOwnerEmail } from '../constants/workspaces';
 import { can, filterProjectsForUser } from '../utils/permissions';
 
@@ -822,7 +823,10 @@ export function BranchesPage() {
                   <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_1fr_auto] lg:items-start">
                     <div>
                       <p className="mt-1 text-lg font-semibold text-white">{branch.name}</p>
-                      <Link to={getOpenProjectsForBranch(branch)[0] ? `/projects/${getOpenProjectsForBranch(branch)[0].id}` : `/branches/${branch.id}`} className="mt-3 inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Open workspace</Link>
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <Link to={openProjects[0] ? `/projects/${openProjects[0].id}` : `/branches/${branch.id}`} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25">Open workspace</Link>
+                        {openProjects[0] ? <ProjectFollowButton projectId={openProjects[0].id} userEmail={user?.email} /> : null}
+                      </div>
                       <p className="mt-1 text-sm text-slate-400">{branch.town}, {branch.province}</p>
                       <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
                     </div>
