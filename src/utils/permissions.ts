@@ -428,8 +428,12 @@ export function canViewProject(user: UserRecord | null | undefined, project: Pro
       .filter(Boolean)
       .some((email) => email?.trim().toLowerCase() === normalizedUserEmail)
   );
+  const matchesWorkspace = user.canAccessAllWorkspaces
+    || user.workspaceIds?.includes('*')
+    || user.workspaceIds?.includes(project.workspaceId)
+    || user.workspaceIds?.includes(project.branchId);
 
-  return matchesManager || matchesBranch || matchesAssignee;
+  return matchesManager || matchesBranch || matchesAssignee || Boolean(matchesWorkspace);
 }
 
 export function filterProjectsForUser(projects: Project[], user: UserRecord | null | undefined) {
