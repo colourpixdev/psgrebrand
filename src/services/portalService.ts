@@ -1500,7 +1500,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     throw error ?? new Error('Unable to update project summary.');
   }
 
-  return mapProjectRow(data as ProjectRow);
+  return getProjectById(input.projectId) as Promise<Project>;
 }
 
 export async function addProjectComment(input: AddProjectCommentInput): Promise<Project> {
