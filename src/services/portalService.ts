@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectTemplateId, Role, TaskAssignee, TaskItem, UserRecord } from '../types/domain';
+import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectTemplateId, Role, TaskAssignee, TaskItem, TaskStatus, UserRecord } from '../types/domain';
 import { defaultWorkspace, rolloutAppEmail } from '../constants/workspaces';
 import { defaultProjectTemplate, getProjectTemplate } from '../constants/projectTemplates';
 import { createTaskFromPool } from '../constants/taskPool';
@@ -829,6 +829,39 @@ function summarizeAssignees(assignees?: TaskAssignee[]) {
   return assignees.map((assignee) => assignee.name).join(', ');
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function mapLegacyTasks(rows: unknown[] | null | undefined): TaskItem[] {
+  return (rows ?? []).filter(isRecord).map((row, index) => {
+    const status: TaskStatus = row.status === 'pending' || row.status === 'open' || row.status === 'busy' || row.status === 'done'
+      ? row.status
+      : row.completed === true ? 'done' : 'open';
+    return {
+      id: typeof row.id === 'string' ? row.id : `legacy-task-${index}`,
+      text: typeof row.text === 'string' ? row.text : '',
+      completed: row.completed === true,
+      status,
+      stage: typeof row.stage === 'string' ? row.stage : typeof row.text === 'string' ? row.text : undefined,
+      dueDate: typeof row.dueDate === 'string' ? row.dueDate : undefined,
+      completedAt: typeof row.completedAt === 'string' ? row.completedAt : undefined,
+    };
+  }).filter((task) => task.text.trim().length > 0);
+}
+
+function mapLegacyFiles(rows: unknown[] | null | undefined): ProjectFile[] {
+  return (rows ?? []).filter(isRecord).map((row, index) => ({
+    id: typeof row.id === 'string' ? row.id : `legacy-file-${index}`,
+    name: typeof row.name === 'string' ? row.name : '',
+    path: typeof row.path === 'string' ? row.path : undefined,
+    size: typeof row.size === 'number' ? row.size : undefined,
+    type: typeof row.type === 'string' ? row.type : undefined,
+    uploadedAt: typeof row.uploadedAt === 'string' ? row.uploadedAt : undefined,
+    taskId: typeof row.taskId === 'string' ? row.taskId : undefined,
+  })).filter((file) => file.name.trim().length > 0);
+}
+
 function mapProjectRow(row: ProjectRow): Project {
   const template = getProjectTemplate(row.project_type ?? undefined);
   const mappedBranchId = typeof row.branch_id === 'string' && row.branch_id.trim().length > 0
@@ -872,8 +905,8 @@ function mapProjectRow(row: ProjectRow): Project {
     progress: typeof row.progress === 'number' ? row.progress : 0,
     branchManagerViewOnly: Boolean(row.branch_manager_view_only),
     notes: row.notes ?? '',
-    files: [],
-    tasks: [],
+    files: mapLegacyFiles(row.files),
+    tasks: mapLegacyTasks(row.tasks),
     comments: Array.isArray(row.comments)
       ? row.comments.map((comment, index) => ({
         ...comment,
@@ -1074,10 +1107,14 @@ export async function getProjectById(projectId: string): Promise<Project | undef
     if (workspaceData?.id) {
       project = { ...project, workspaceId: workspaceData.id };
       const relationalTasks = await getWorkspaceTasks(workspaceData.id);
-      project = { ...project, tasks: relationalTasks };
+      if (relationalTasks.length > 0) {
+        project = { ...project, tasks: relationalTasks };
+      }
 
       const relationalFiles = await getWorkspaceFiles(workspaceData.id);
-      project = { ...project, files: relationalFiles };
+      if (relationalFiles.length > 0) {
+        project = { ...project, files: relationalFiles };
+      }
     }
   }
 
