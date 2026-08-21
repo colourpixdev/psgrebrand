@@ -131,7 +131,6 @@ export function ProjectDetailPage() {
   const [taskInstallationDrafts, setTaskInstallationDrafts] = useState<Record<string, string>>({});
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskText, setEditingTaskText] = useState('');
-  const [expandedTaskUpdateTaskIds, setExpandedTaskUpdateTaskIds] = useState<string[]>([]);
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentDraft, setEditingCommentDraft] = useState('');
@@ -736,7 +735,7 @@ export function ProjectDetailPage() {
                 const current = stage === selectedProject.currentStage;
                 return (
                   <div key={`${stage}-${index}`} className={`flex flex-wrap items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold ${taskStatus === 'done' ? 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100' : current ? 'border-cyan-300/50 bg-cyan-400/20 text-cyan-100' : 'border-white/10 bg-white/5 text-slate-300'}`}>
-                    <button type="button" onClick={() => { if (!stageTask) return; setExpandedAccordionTaskIds((currentIds) => currentIds.includes(stageTask.id) ? currentIds.filter((id) => id !== stageTask.id) : [...currentIds, stageTask.id]); setExpandedTaskUpdateTaskIds((currentIds) => currentIds.includes(stageTask.id) ? currentIds.filter((id) => id !== stageTask.id) : [...currentIds, stageTask.id]); }} className="hover:underline">{taskStatus === 'done' ? '✓ ' : current ? '● ' : '○ '}{stage}</button>
+                    <button type="button" onClick={() => { if (!stageTask) return; setExpandedAccordionTaskIds((currentIds) => currentIds.includes(stageTask.id) ? currentIds.filter((id) => id !== stageTask.id) : [...currentIds, stageTask.id]); }} className="hover:underline">{taskStatus === 'done' ? '✓ ' : current ? '● ' : '○ '}{stage}</button>
                     {stageTask && canCurrentUserCompleteTask(stageTask) ? <select value={taskStatus} disabled={updateTaskMutation.isPending} onChange={(event) => updateTaskMutation.mutate({ task: stageTask, status: event.target.value as TaskItem['status'] })} aria-label={`Status for ${stage}`} className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px] font-semibold text-white outline-none"><option value="pending">Pending</option><option value="open">Started</option><option value="busy">Busy</option><option value="done">Completed</option></select> : <span className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px]">{taskStatus === 'pending' ? 'Pending' : taskStatus === 'open' ? 'Started' : taskStatus === 'busy' ? 'Busy' : 'Completed'}</span>}
                   </div>
                 );
@@ -806,7 +805,6 @@ export function ProjectDetailPage() {
               const taskUpdates = projectComments
                 .filter((comment) => comment.taskId === task.id)
                 .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
-              const isTaskUpdatesOpen = expandedTaskUpdateTaskIds.includes(task.id);
               const taskFiles = selectedProject.files.filter((file) => file.taskId === task.id);
               const statusStyles: Record<'pending' | 'open' | 'busy' | 'done', string> = {
                 pending: 'border-slate-400/20 bg-slate-700/20 text-slate-200 hover:bg-slate-700/30',
@@ -837,10 +835,6 @@ export function ProjectDetailPage() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0 text-xs text-slate-500">
                       <span className="rounded-full bg-white/5 px-2 py-1">{statusLabels[taskStatus]}</span>
-                      <span>·</span>
-                      <span>{taskUpdates.length} comment{taskUpdates.length === 1 ? '' : 's'}</span>
-                      <span>·</span>
-                      <span>{taskFiles.length} file{taskFiles.length === 1 ? '' : 's'}</span>
                     </div>
                   </div>
                 </button>
@@ -875,7 +869,6 @@ export function ProjectDetailPage() {
                       />
                     </label>
                   ) : null}
-                  <span className="text-xs text-slate-500">{taskFiles.length} file{taskFiles.length === 1 ? '' : 's'} attached</span>
                 </div>}
 
                 {/* Accordion Body */}
@@ -894,9 +887,6 @@ export function ProjectDetailPage() {
                     <div className="flex min-w-0 flex-1 items-start gap-3">
                       <span className="min-w-0">
                         <span className={taskStatus === 'done' ? 'block text-slate-500 line-through' : 'block text-slate-200'}>{task.text}</span>
-                        <span className="mt-1 block text-xs text-slate-500">
-                          Stage in the branch rebrand workflow
-                        </span>
                       </span>
                     </div>
                     <div className="flex shrink-0 flex-wrap gap-2">
@@ -918,23 +908,11 @@ export function ProjectDetailPage() {
                       </button>
                       {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); }} className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600">Edit stage</button> : null}
                       {canDeleteTasks ? <button type="button" disabled={deleteTaskMutation.isPending} onClick={() => deleteTaskMutation.mutate(task)} className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
-                      <button
-                        type="button"
-                        onClick={() => setExpandedTaskUpdateTaskIds((current) => current.includes(task.id) ? current.filter((id) => id !== task.id) : [...current, task.id])}
-                        className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20"
-                      >
-                        {isTaskUpdatesOpen ? 'Hide updates' : 'View updates'}{taskUpdates.length > 0 ? ` (${taskUpdates.length})` : ''}
-                      </button>
                     </div>
                   </div>
                 )}
                 {editingTaskId !== task.id ? (
                   <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-xs text-slate-500">
-                        {taskFiles.length} file{taskFiles.length === 1 ? '' : 's'} attached to this task
-                      </span>
-                    </div>
                     {task.text.toLowerCase().includes('schedule installation') ? (
                       <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-3">
                         <label className="grid gap-2 text-xs uppercase tracking-[0.18em] text-cyan-100">
@@ -1010,14 +988,12 @@ export function ProjectDetailPage() {
                           ))}
                         </ul>
                       </div>
-                    ) : (
-                      <p className="text-xs text-slate-500">No files attached to this task yet.</p>
-                    )}
+                    ) : null}
                   </div>
                 ) : null}
                 {normalizeRole(user?.role) !== 'psg_user' ? (
                   <div className="mt-4">
-                    <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100">Updates</p>
                     <div className="mt-2 space-y-2">
                       {taskUpdates.length > 0 ? taskUpdates.map((c, i) => (
                         <div key={`${task.id}-comment-${c.id ?? i}`} className="rounded-2xl bg-slate-950/80 p-3">
@@ -1038,7 +1014,7 @@ export function ProjectDetailPage() {
                             </div>
                           ) : <p className="mt-1 text-slate-300">{c.message}</p>}
                         </div>
-                      )) : <p className="text-slate-400">No comments yet.</p>}
+                      )) : null}
                     </div>
 
                     {/* Add comment */}
@@ -1064,26 +1040,6 @@ export function ProjectDetailPage() {
                         </div>
                       </div>
                     ) : null}
-                  </div>
-                ) : null}
-                {editingTaskId !== task.id && isTaskUpdatesOpen ? (
-                  <div className="mt-3 border-t border-white/10 pt-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100">Stage updates</p>
-                    {taskUpdates.length > 0 ? (
-                      <div className="mt-2 space-y-2">
-                        {taskUpdates.map((update, index) => (
-                          <div key={`${update.date}-${update.author}-${index}`} className="rounded-xl border border-white/10 bg-slate-950/55 p-3">
-                            <div className="flex items-center justify-between gap-2 text-xs">
-                              <p className="font-semibold text-white">{update.author}</p>
-                              <p className="text-slate-500">{update.date}</p>
-                            </div>
-                            <p className="mt-1 text-sm text-slate-300">{update.message}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-xs text-slate-500">No updates have been added to this task yet.</p>
-                    )}
                   </div>
                 ) : null}
                   </div>
