@@ -281,8 +281,8 @@ export function BranchDetailPage() {
     return <div className="rounded-[2rem] border border-white/10 bg-white/6 p-6 text-sm text-slate-300 shadow-soft">Branch not found.</div>;
   }
 
-  const branchParticipants = branch.contacts?.length
-    ? branch.contacts
+  const branchParticipants = branch.contacts?.filter((contact) => contact.name?.trim() || contact.email?.trim() || contact.phone?.trim()).length
+    ? branch.contacts.filter((contact) => contact.name?.trim() || contact.email?.trim() || contact.phone?.trim())
     : branch.contactName
       ? [{
         name: branch.contactName,

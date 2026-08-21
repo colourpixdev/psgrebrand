@@ -594,7 +594,7 @@ export function ProjectDetailPage() {
   const unreadAnswers = projectQuestions.filter((question) => question.status === 'answered' && question.unreadForRequester && isQuestionRequester(question));
   const mergedTasks = selectedProject.tasks;
   const stagePlan = getStagePlan(selectedProject);
-  const currentStageTask = selectedProject.tasks.find((task) => (task.stage ?? task.text).trim() === selectedProject.currentStage.trim());
+  const currentStageTask = selectedProject.tasks.find((task) => (task.stage ?? task.text).trim() === selectedProject.currentStage.trim() || task.text.trim() === selectedProject.currentStage.trim());
   const currentStageTaskStatus = currentStageTask ? getTaskStatus(currentStageTask) : null;
   const displayedStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : statusLabels[selectedProject.status];
   const displayedStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : statusTones[selectedProject.status];
@@ -628,8 +628,8 @@ export function ProjectDetailPage() {
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
     .slice(0, 12);
   const completedStageCount = stagePlan.filter((stage) => selectedProject.tasks.some((task) => (task.stage ?? task.text).trim() === stage && task.completed)).length;
-  const branchParticipants = branch?.contacts?.length
-    ? branch.contacts
+  const branchParticipants = branch?.contacts?.filter((contact) => contact.name?.trim() || contact.email?.trim() || contact.phone?.trim()).length
+    ? branch.contacts.filter((contact) => contact.name?.trim() || contact.email?.trim() || contact.phone?.trim())
     : branch?.contactName
       ? [{ name: branch.contactName, email: branch.contactEmail, phone: branch.contactPhone, designation: 'Contact Person' }]
       : [];
@@ -917,12 +917,7 @@ export function ProjectDetailPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex min-w-0 flex-1 items-start gap-3">
-                      <span className="min-w-0">
-                        <span className={taskStatus === 'done' ? 'block text-slate-500 line-through' : 'block text-slate-200'}>{task.text}</span>
-                      </span>
-                    </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-end">
                     <div className="flex shrink-0 flex-wrap gap-2">
                       <button
                         type="button"
