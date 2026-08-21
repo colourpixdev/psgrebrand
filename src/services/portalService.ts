@@ -82,7 +82,7 @@ function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
     text: taskRow.title || '<Untitled Task>',
     completed,
     status: status === 'not_started' ? 'pending' : status === 'in_progress' ? 'busy' : status === 'complete' ? 'done' : 'open',
-    stage: undefined,
+    stage: taskRow.title || undefined,
     dueDate: taskRow.due_date ?? undefined,
     assigneeName: undefined,
     assigneeEmail: undefined,
@@ -1898,7 +1898,7 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
 
   const task = input.task.trim();
   if (!task) {
-    throw new Error('Task cannot be empty.');
+    throw new Error('Stage cannot be empty.');
   }
 
   await hydrateAuthSession();
@@ -2025,7 +2025,7 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
 
   // Record activity
   const activity = [
-    createActivity('Task added', `${input.actor} added task: ${task} (${summarizeAssignees(assignees)}).`),
+    createActivity('Stage added', `${input.actor} added stage: ${task} (${summarizeAssignees(assignees)}).`),
     ...existingProject.activity,
   ];
 
@@ -2176,11 +2176,17 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     }
     : task);
   const allTasksCompleted = tasks.length > 0 && tasks.every((task) => task.completed);
-  const projectStatus = allTasksCompleted
+  const projectStatus = nextStatus === 'done' || allTasksCompleted
     ? 'completed'
-    : existingProject.status === 'completed'
-      ? 'in_progress'
-      : existingProject.status;
+    : nextStatus === 'pending'
+      ? 'pending'
+      : nextStatus === 'open'
+        ? 'open'
+        : nextStatus === 'busy'
+          ? 'busy'
+          : existingProject.status === 'completed'
+            ? 'in_progress'
+            : existingProject.status;
   const completionDate = allTasksCompleted ? now.slice(0, 10) : '';
   const currentStage = text && (existingTask.stage ?? existingTask.text).trim() === existingProject.currentStage.trim()
     ? text
@@ -2223,8 +2229,8 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
   const activityVerb = relationalStatus === 'complete' ? 'completed' : relationalStatus === 'in_progress' ? 'marked in progress on' : relationalStatus === 'waiting' ? 'started' : relationalStatus === 'not_started' ? 'reopened' : 'updated';
   const activity = [
     createActivity(
-      activityTitle,
-      `${input.actor} ${activityVerb} task: ${text ?? existingTask.text}`,
+      activityTitle.replace('Task', 'Stage'),
+      `${input.actor} ${activityVerb} stage: ${text ?? existingTask.text}`,
       relationalStatus === 'complete' ? 'success' : 'info',
     ),
     ...existingProject.activity,
@@ -2232,7 +2238,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
 
   const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
-    .update({ current_stage: currentStage, status: projectStatus, completion_date: completionDate, tasks, activity, updated_at: now })
+    .update({ current_stage: currentStage, status: projectStatus, completion_date: completionDate, activity, updated_at: now })
     .eq('id', input.projectId)
     .select('id')
     .maybeSingle();
@@ -2363,13 +2369,13 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
 
   // Record activity
   const activity = [
-    createActivity('Task deleted', `${input.actor} deleted task: ${existingTask.text}`, 'warning'),
+    createActivity('Stage deleted', `${input.actor} deleted stage: ${existingTask.text}`, 'warning'),
     ...existingProject.activity,
   ];
 
   const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
-    .update({ current_stage: currentStage, tasks, activity, updated_at: now })
+    .update({ current_stage: currentStage, activity, updated_at: now })
     .eq('id', input.projectId)
     .select('id')
     .maybeSingle();

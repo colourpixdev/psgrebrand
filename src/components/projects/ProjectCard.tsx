@@ -3,6 +3,8 @@ import { isTaskOutstanding } from '../../utils/taskStatus';
 import type { Project, UserRecord } from '../../types/domain';
 
 const statusTone: Record<Project['status'], string> = {
+  pending: 'bg-slate-200 text-slate-700 ring-slate-300',
+  open: 'bg-sky-100 text-sky-800 ring-sky-200',
   completed: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
   busy: 'bg-sky-100 text-sky-800 ring-sky-200',
   in_progress: 'bg-sky-100 text-sky-800 ring-sky-200',

@@ -13,6 +13,8 @@ import type { CommentItem, ContactPerson, Division, Project, ProjectFile, Projec
 import { normalizeRole } from '../types/domain';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'open', label: 'Started' },
   { value: 'busy', label: 'Busy' },
   { value: 'in_progress', label: 'In progress' },
   { value: 'awaiting_approval', label: 'Awaiting approval' },
@@ -23,6 +25,8 @@ const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
 ];
 
 const statusLabels: Record<ProjectStatus, string> = {
+  pending: 'Pending',
+  open: 'Started',
   completed: 'Completed',
   busy: 'In progress',
   in_progress: 'In progress',
@@ -33,6 +37,8 @@ const statusLabels: Record<ProjectStatus, string> = {
 };
 
 const statusTones: Record<ProjectStatus, string> = {
+  pending: 'border-slate-300/30 bg-slate-400/15 text-slate-100',
+  open: 'border-sky-300/40 bg-sky-400/15 text-sky-100',
   completed: 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100',
   busy: 'border-sky-300/40 bg-sky-400/15 text-sky-100',
   in_progress: 'border-sky-300/40 bg-sky-400/15 text-sky-100',
@@ -55,6 +61,12 @@ const stageStatusTones: Record<NonNullable<TaskItem['status']>, string> = {
   busy: 'border-amber-300/40 bg-amber-400/15 text-amber-100',
   done: 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100',
 };
+
+function findStageTask(tasks: TaskItem[], stage: string) {
+  const stageKey = stage.trim().toLowerCase();
+  return tasks.find((task) => (task.stage ?? task.text).trim().toLowerCase() === stageKey)
+    ?? tasks.find((task) => task.text.trim().toLowerCase() === stageKey);
+}
 
 function formatWorkspaceDate(value: string) {
   if (!value) {
@@ -427,7 +439,7 @@ export function ProjectDetailPage() {
       actor: user?.name ?? 'Workspace user',
     }),
     onSuccess: async (updatedProject) => {
-      await syncProject(updatedProject, 'Task order saved.');
+      await syncProject(updatedProject, 'Stage order saved.');
     },
   });
 
@@ -444,7 +456,7 @@ export function ProjectDetailPage() {
     onSuccess: async (updatedProject) => {
       setEditingTaskId(null);
       setEditingTaskText('');
-      await syncProject(updatedProject, 'Task deleted.');
+      await syncProject(updatedProject, 'Stage deleted.');
     },
   });
 
@@ -603,8 +615,7 @@ export function ProjectDetailPage() {
   const mergedTasks = selectedProject.tasks;
   const stagePlan = getStagePlan(selectedProject);
   const currentStageKey = selectedProject.currentStage.trim().toLowerCase();
-  const currentStageTask = selectedProject.tasks.find((task) => (task.stage ?? task.text).trim().toLowerCase() === currentStageKey)
-    ?? selectedProject.tasks.find((task) => task.text.trim().toLowerCase() === currentStageKey);
+  const currentStageTask = findStageTask(selectedProject.tasks, selectedProject.currentStage);
   const currentStageTaskStatus = currentStageTask ? getTaskStatus(currentStageTask) : null;
   const displayedStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : statusLabels[selectedProject.status];
   const displayedStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : statusTones[selectedProject.status];
@@ -772,7 +783,7 @@ export function ProjectDetailPage() {
             <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Stage checklist</p><span className="text-xs text-slate-400">{completedStageCount} of {stagePlan.length} stages</span></div>
             <div className="mt-3 flex flex-wrap gap-2">
               {stagePlan.length > 0 ? stagePlan.map((stage, index) => {
-                const stageTask = selectedProject.tasks.find((task) => (task.stage ?? task.text).trim() === stage);
+                const stageTask = findStageTask(selectedProject.tasks, stage);
                 const taskStatus = stageTask ? getTaskStatus(stageTask) : 'pending';
                 const current = stage === selectedProject.currentStage;
                 return (

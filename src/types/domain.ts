@@ -30,7 +30,7 @@ export type ProjectTemplateId = 'signage_rollout' | 'general_rollout' | 'service
 // Free text: projects can add/remove their own timeline stages, so this is no longer a fixed set.
 export type ProjectStage = string;
 
-export type ProjectStatus = 'completed' | 'busy' | 'in_progress' | 'awaiting_approval' | 'delayed' | 'on_hold' | 'cancelled';
+export type ProjectStatus = 'pending' | 'open' | 'completed' | 'busy' | 'in_progress' | 'awaiting_approval' | 'delayed' | 'on_hold' | 'cancelled';
 
 export type Division = 'Wealth' | 'Insure' | 'Wealth Insure' | 'Asset' | 'Trust';
 

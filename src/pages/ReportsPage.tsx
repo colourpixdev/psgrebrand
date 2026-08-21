@@ -11,6 +11,8 @@ import type { Project, ProjectStatus } from '../types/domain';
 type ReportType = 'single-branch-detail' | 'multi-branch-overview' | 'operational-blockers';
 
 const statusLabels: Record<ProjectStatus, string> = {
+  pending: 'Pending',
+  open: 'Started',
   completed: 'Completed',
   busy: 'Busy',
   in_progress: 'In progress',
