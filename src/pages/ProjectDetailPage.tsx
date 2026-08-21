@@ -577,6 +577,8 @@ export function ProjectDetailPage() {
   const currentStageTaskStatus = currentStageTask ? getTaskStatus(currentStageTask) : null;
   const displayedStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : statusLabels[selectedProject.status];
   const displayedStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : statusTones[selectedProject.status];
+  const currentStageFiles = currentStageTask ? selectedProject.files.filter((file) => file.taskId === currentStageTask.id) : [];
+  const currentStageComments = currentStageTask ? selectedProject.comments.filter((comment) => comment.taskId === currentStageTask.id) : [];
   const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
   const canEditProjectSummary = ['beverley', 'francois'].includes(user?.name.trim().toLowerCase() ?? '');
   const hasSummaryChange = currentStageDraft.trim() !== selectedProject.currentStage.trim()
@@ -726,13 +728,29 @@ export function ProjectDetailPage() {
           </div>
         ) : null}
 
-        {!isEditingDetails ? <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</p><p className="mt-1 text-lg font-semibold text-white">{stagePlan.length > 0 ? selectedProject.currentStage : 'No stage set'}</p></div>
-          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 text-lg font-semibold text-white">{displayedStatus}</p></div>
-          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Target completion</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.targetDate)}</p></div>
-          <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Installation</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.installationDate)}</p></div>
-          {selectedProject.completionDate ? <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Completed</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.completionDate)}</p></div> : null}
-        </div> : null}
+        {!isEditingDetails ? <section className="mt-6 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Current stage</h2>
+            {currentStageTask ? <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${displayedStatusTone}`}>{displayedStatus}</span> : null}
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Stage</p><p className="mt-1 text-lg font-semibold text-white">{stagePlan.length > 0 ? selectedProject.currentStage : 'No stage set'}</p></div>
+            <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 text-lg font-semibold text-white">{displayedStatus}</p></div>
+            <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Target completion</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.targetDate)}</p></div>
+            <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Installation</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.installationDate)}</p></div>
+            {selectedProject.completionDate ? <div><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Completed</p><p className="mt-1 text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.completionDate)}</p></div> : null}
+          </div>
+          {currentStageTask ? <div className="mt-5 grid gap-4 border-t border-white/10 pt-4 lg:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Files for this stage</p>
+              {currentStageFiles.length > 0 ? <ul className="mt-3 space-y-2 text-sm text-slate-200">{currentStageFiles.map((file) => <li key={`${file.id ?? file.path ?? file.name}-${file.name}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2">{file.name}</li>)}</ul> : <p className="mt-3 text-sm text-slate-500">No files attached.</p>}
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Comments for this stage</p>
+              {currentStageComments.length > 0 ? <div className="mt-3 space-y-2">{currentStageComments.map((comment, index) => <div key={`${comment.id ?? comment.date}-${index}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2"><p className="text-xs text-slate-500">{comment.author} · {comment.date}</p><p className="mt-1 text-sm text-slate-200">{comment.message}</p></div>)}</div> : <p className="mt-3 text-sm text-slate-500">No comments for this stage.</p>}
+            </div>
+          </div> : null}
+        </section> : null}
 
         <div className="mt-6 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[1fr_1fr]">
           <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
