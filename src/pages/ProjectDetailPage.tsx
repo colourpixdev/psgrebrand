@@ -731,7 +731,7 @@ export function ProjectDetailPage() {
                   {availableStageOptions.map((stage) => <option key={stage} value={stage}>{stage}</option>)}
                   <option value="__custom__">Custom stage...</option>
                 </select>
-                {stageOption === '__custom__' ? <input value={taskText} disabled={!canAddTasks} onChange={(event) => setTaskText(event.target.value)} placeholder="Enter a custom stage" className="min-w-0 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" /> : <div className="hidden lg:block" />}
+                <input value={taskText} disabled={!canAddTasks} onChange={(event) => { setTaskText(event.target.value); setStageOption('__custom__'); }} placeholder="Enter a stage name" aria-label="Stage name" className="min-w-0 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50 disabled:cursor-not-allowed disabled:opacity-60" />
                 <button type="button" disabled={!canAddTasks || taskMutation.isPending || !taskText.trim()} onClick={() => taskMutation.mutate()} className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
                   Add stage
                 </button>
