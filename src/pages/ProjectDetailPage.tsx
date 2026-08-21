@@ -390,7 +390,7 @@ export function ProjectDetailPage() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ task, text, completed, status }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status'] }) => {
+    mutationFn: ({ task, text, completed, status, dueDate }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; dueDate?: string }) => {
       const nextText = text?.trim();
       return updateProjectTask({
         projectId: projectId ?? '',
@@ -398,6 +398,7 @@ export function ProjectDetailPage() {
         text: nextText,
         completed,
         status,
+        dueDate,
         stage: nextText || undefined,
         actor: user?.name ?? 'Workspace user',
         actorEmail: user?.email,
@@ -938,6 +939,13 @@ export function ProjectDetailPage() {
                 )}
                 {editingTaskId !== task.id ? (
                   <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3">
+                    <DatePickerInput
+                      label="Target completion"
+                      value={task.dueDate ?? ''}
+                      onChange={(value) => updateTaskMutation.mutate({ task, dueDate: value })}
+                      placeholder="Select target date"
+                      disabled={updateTaskMutation.isPending}
+                    />
                     {taskFiles.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>

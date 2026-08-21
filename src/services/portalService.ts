@@ -83,6 +83,7 @@ function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
     completed,
     status: status === 'not_started' ? 'pending' : status === 'in_progress' ? 'busy' : status === 'complete' ? 'done' : 'open',
     stage: undefined,
+    dueDate: taskRow.due_date ?? undefined,
     assigneeName: undefined,
     assigneeEmail: undefined,
     assignees: undefined,
@@ -707,6 +708,7 @@ export type UpdateProjectTaskInput = {
   text?: string;
   completed?: boolean;
   status?: TaskItem['status'];
+  dueDate?: string;
   stage?: Project['currentStage'];
   assigneeName?: string;
   assigneeEmail?: string;
@@ -2128,6 +2130,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       stage: text ?? task.stage,
       status: nextStatus ?? task.status,
       completed: nextCompleted,
+      dueDate: input.dueDate !== undefined ? input.dueDate || undefined : task.dueDate,
       completedAt: nextCompleted ? task.completedAt ?? now : undefined,
     }
     : task);
@@ -2158,6 +2161,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
         title: text ?? existingTask.text,
         status: relationalStatus,
         priority: relationalPriority,
+        due_date: input.dueDate !== undefined ? input.dueDate || null : existingTask.dueDate ?? null,
         updated_at: now,
         completed_at: relationalStatus === 'complete' ? now : null,
         completed_by: completedBy,

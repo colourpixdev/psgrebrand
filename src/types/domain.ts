@@ -127,6 +127,7 @@ export interface TaskItem {
   assigneeName?: string;
   assigneeEmail?: string;
   assignees?: TaskAssignee[];
+  dueDate?: string;
   installationRequest?: string;
   createdAt?: string;
   completedAt?: string;
