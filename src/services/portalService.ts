@@ -1717,7 +1717,7 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
     const branchId = existingProject.branchId || existingProject.branch;
     const { data: workspaceData } = await client
       .from('rebrand_workspaces')
-      .select('id')
+      .select('id, current_stage_id')
       .eq('branch_id', branchId)
       .eq('is_primary', true)
       .maybeSingle();
@@ -1745,6 +1745,44 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
     }
   }
 
+  const { data: workspace, error: workspaceError } = await client
+    .from('rebrand_workspaces')
+    .select('id, current_stage_id')
+    .eq('id', workspaceId)
+    .single();
+  if (workspaceError || !workspace) {
+    throw new Error(workspaceError?.message ?? 'Workspace for task was not found.');
+  }
+
+  const { data: fallbackStage, error: stageError } = workspace.current_stage_id
+    ? { data: null, error: null }
+    : await client
+      .from('workflow_stages')
+      .select('id')
+      .eq('active', true)
+      .order('stage_number', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+  const stageId = workspace.current_stage_id ?? fallbackStage?.id;
+  if (stageError || !stageId) {
+    throw new Error(stageError?.message ?? 'No active workflow stage is available for this task.');
+  }
+
+  const { data: responsibilityGroup, error: responsibilityGroupError } = await client
+    .from('responsibility_groups')
+    .select('id')
+    .eq('group_key', 'colourpix')
+    .eq('active', true)
+    .maybeSingle();
+  if (responsibilityGroupError || !responsibilityGroup?.id) {
+    throw new Error(responsibilityGroupError?.message ?? 'Colourpix responsibility group is missing.');
+  }
+
+  const profileId = await getCurrentProfileId();
+  if (!profileId) {
+    throw new Error('Authenticated profile was not found.');
+  }
+
   // Get next sort_order
   const { data: lastTask } = await client
     .from('project_tasks')
@@ -1762,20 +1800,22 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
     .from('project_tasks')
     .insert({
       workspace_id: workspaceId,
+      stage_id: stageId,
       title: task,
       description: '',
       status: 'not_started',
       priority: 'normal',
       sort_order: nextSortOrder,
+      responsible_group_id: responsibilityGroup.id,
       required_action: '',
       is_current: false,
-      created_by: (await client.auth.getUser())?.data?.user?.id,
+      created_by: profileId,
     })
     .select('*')
     .single();
 
   if (taskError || !newTask) {
-    throw new Error('Failed to add project task.');
+    throw new Error(taskError?.message ?? 'Failed to add project task.');
   }
 
   // Record activity
