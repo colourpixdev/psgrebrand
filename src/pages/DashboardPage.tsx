@@ -128,7 +128,6 @@ export function DashboardPage() {
             <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-2">
                 <h3 className="text-lg font-semibold text-slate-900">{isInternalManagement ? 'My attention' : 'Recently updated'}</h3>
-                <Link to="/projects" className="text-sm font-medium text-sky-700 hover:text-sky-800">View all</Link>
               </div>
 
               {isInternalManagement ? (
