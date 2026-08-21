@@ -3,13 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { DatePickerInput } from '../components/DatePickerInput';
-import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectComment, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById, updateBranch } from '../services/branchService';
 import { suggestedStageOptions } from '../constants/portal';
 import { useAuth } from '../contexts/AuthContext';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
-import { can, canViewProject, canAddTaskComments, getRolePolicy } from '../utils/permissions';
+import { can, canViewProject, canAddTaskComments, canEditOwnComment, getRolePolicy } from '../utils/permissions';
 import { getTaskStatus } from '../utils/taskStatus';
 import type { CommentItem, ContactPerson, Division, Project, ProjectFile, ProjectStatus, ProjectStage, TaskItem } from '../types/domain';
 import { normalizeRole } from '../types/domain';
@@ -118,6 +118,8 @@ export function ProjectDetailPage() {
   const [editingTaskText, setEditingTaskText] = useState('');
   const [expandedTaskUpdateTaskIds, setExpandedTaskUpdateTaskIds] = useState<string[]>([]);
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentDraft, setEditingCommentDraft] = useState('');
   const [deleteConfirmationArmed, setDeleteConfirmationArmed] = useState(false);
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', projectId],
@@ -294,6 +296,21 @@ export function ProjectDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       showSuccess('Comment added.');
     },
+  });
+
+  const updateCommentMutation = useMutation({
+    mutationFn: ({ commentId, message }: { commentId: string; message: string }) => updateProjectComment({
+      projectId: projectId ?? '',
+      commentId,
+      author: user?.name ?? 'Workspace user',
+      message,
+    }),
+    onSuccess: async (updatedProject) => {
+      setEditingCommentId(null);
+      setEditingCommentDraft('');
+      await syncProject(updatedProject, 'Comment updated.');
+    },
+    onError: (error) => showError(error instanceof Error ? error.message : 'Unable to update comment.'),
   });
 
   const taskMutation = useMutation({
@@ -960,10 +977,23 @@ export function ProjectDetailPage() {
                     <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Comments</p>
                     <div className="mt-2 space-y-2">
                       {taskUpdates.length > 0 ? taskUpdates.map((c, i) => (
-                        <div key={`${task.id}-comment-${i}`} className="rounded-2xl bg-slate-950/80 p-3">
+                        <div key={`${task.id}-comment-${c.id ?? i}`} className="rounded-2xl bg-slate-950/80 p-3">
                           <p className="text-xs text-slate-400">{c.date}</p>
-                          <p className="mt-1 font-medium text-white">{c.author}</p>
-                          <p className="mt-1 text-slate-300">{c.message}</p>
+                          <div className="mt-1 flex items-start justify-between gap-2">
+                            <p className="font-medium text-white">{c.author}</p>
+                            {c.id && canEditOwnComment(user, c.author) && editingCommentId !== c.id ? (
+                              <button type="button" onClick={() => { setEditingCommentId(c.id ?? null); setEditingCommentDraft(c.message); }} className="text-xs font-semibold text-cyan-200 hover:text-white">Edit</button>
+                            ) : null}
+                          </div>
+                          {editingCommentId === c.id ? (
+                            <div className="mt-2 grid gap-2">
+                              <textarea value={editingCommentDraft} onChange={(event) => setEditingCommentDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" />
+                              <div className="flex gap-2">
+                                <button type="button" disabled={!editingCommentDraft.trim() || updateCommentMutation.isPending} onClick={() => updateCommentMutation.mutate({ commentId: c.id ?? '', message: editingCommentDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateCommentMutation.isPending ? 'Saving...' : 'Save'}</button>
+                                <button type="button" onClick={() => { setEditingCommentId(null); setEditingCommentDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button>
+                              </div>
+                            </div>
+                          ) : <p className="mt-1 text-slate-300">{c.message}</p>}
                         </div>
                       )) : <p className="text-slate-400">No comments yet.</p>}
                     </div>

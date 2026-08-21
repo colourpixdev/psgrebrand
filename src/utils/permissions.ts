@@ -362,6 +362,14 @@ export function canAddTaskComments(user: UserRecord | null | undefined) {
   return can(user, 'add_comments');
 }
 
+export function canEditOwnComment(user: UserRecord | null | undefined, author: string) {
+  if (!user || !getRolePolicy(user)?.communication.canEditOwnComments) {
+    return false;
+  }
+
+  return user.name.trim().toLowerCase() === author.trim().toLowerCase();
+}
+
 export function canManageAccessControls(user: UserRecord | null | undefined) {
   if (!user) {
     return false;

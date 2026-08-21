@@ -648,6 +648,13 @@ export type AddProjectCommentInput = {
   taskId?: string;
 };
 
+export type UpdateProjectCommentInput = {
+  projectId: string;
+  commentId: string;
+  author: string;
+  message: string;
+};
+
 export type AskProjectQuestionInput = {
   projectId: string;
   author: string;
@@ -775,6 +782,7 @@ function createStructuredComment(project: Project, author: string, message: stri
   const trimmed = message.trim();
 
   const comment: CommentItem = {
+    id: `comment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: 'comment',
     date: todayLabel(),
     author,
@@ -848,7 +856,12 @@ function mapProjectRow(row: ProjectRow): Project {
     notes: row.notes ?? '',
     files: [],
     tasks: [],
-    comments: Array.isArray(row.comments) ? row.comments : [],
+    comments: Array.isArray(row.comments)
+      ? row.comments.map((comment, index) => ({
+        ...comment,
+        id: comment.id ?? `legacy-comment-${index}`,
+      }))
+      : [],
     activity: Array.isArray(row.activity) ? row.activity : [],
   };
 }
@@ -1533,6 +1546,53 @@ export async function addProjectComment(input: AddProjectCommentInput): Promise<
   return updatedProject;
 }
 
+export async function updateProjectComment(input: UpdateProjectCommentInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const message = input.message.trim();
+  if (!message) {
+    throw new Error('Comment cannot be empty.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const commentIndex = existingProject.comments.findIndex((comment) => comment.id === input.commentId);
+  const existingComment = commentIndex >= 0 ? existingProject.comments[commentIndex] : undefined;
+  if (!existingComment) {
+    throw new Error('Comment not found.');
+  }
+  if (existingComment.author.trim().toLowerCase() !== input.author.trim().toLowerCase()) {
+    throw new Error('You can only edit comments you created.');
+  }
+
+  const comments = existingProject.comments.map((comment, index) => index === commentIndex ? { ...comment, message } : comment);
+  const activity = existingProject.activity.map((item) => ({
+    ...item,
+    detail: item.detail.includes(existingComment.message) ? item.detail.replace(existingComment.message, message) : item.detail,
+  }));
+  const { data, error } = await client
+    .from('projects')
+    .update({ comments, activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to update project comment.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
 export async function askProjectQuestion(input: AskProjectQuestionInput): Promise<Project> {
   const client = supabase;
 
@@ -1961,7 +2021,25 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     throw new Error('Task cannot be empty.');
   }
 
-  // Get workspace
+  // Map status from frontend format to relational format
+  const nextStatus = input.status ?? (input.completed !== undefined ? (input.completed ? 'done' : 'open') : undefined);
+  const nextCompleted = nextStatus === 'done';
+  const relationalStatus = nextStatus === 'done' ? 'complete' : nextStatus === 'busy' ? 'in_progress' : nextStatus === 'pending' ? 'not_started' : nextStatus === 'open' ? 'waiting' : 'not_started';
+  const relationalPriority = 'normal'; // Default priority for updates
+
+  const now = new Date().toISOString();
+  const tasks = existingProject.tasks.map((task) => task.id === input.taskId
+    ? {
+      ...task,
+      text: text ?? task.text,
+      stage: text ?? task.stage,
+      status: nextStatus ?? task.status,
+      completed: nextCompleted,
+      completedAt: nextCompleted ? task.completedAt ?? now : undefined,
+    }
+    : task);
+
+  // Keep the legacy JSON task source in sync while relational workspaces are rolled out.
   const branchId = existingProject.branchId || existingProject.branch;
   const { data: workspaceData } = await client
     .from('rebrand_workspaces')
@@ -1970,30 +2048,22 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     .eq('is_primary', true)
     .maybeSingle();
 
-  if (!workspaceData?.id) {
-    throw new Error('Workspace not found for project.');
-  }
+  if (workspaceData?.id) {
+    const { error: updateError } = await client
+      .from('project_tasks')
+      .update({
+        title: text ?? existingTask.text,
+        status: relationalStatus,
+        priority: relationalPriority,
+        updated_at: now,
+        completed_at: relationalStatus === 'complete' ? now : null,
+      })
+      .eq('id', input.taskId)
+      .eq('workspace_id', workspaceData.id);
 
-  // Map status from frontend format to relational format
-  const nextStatus = input.status ?? (input.completed !== undefined ? (input.completed ? 'done' : 'open') : undefined);
-  const relationalStatus = nextStatus === 'done' ? 'complete' : nextStatus === 'busy' ? 'in_progress' : nextStatus === 'pending' ? 'not_started' : nextStatus === 'open' ? 'waiting' : 'not_started';
-  const relationalPriority = 'normal'; // Default priority for updates
-
-  // Update task in relational table
-  const { error: updateError } = await client
-    .from('project_tasks')
-    .update({
-      title: text ?? existingTask.text,
-      status: relationalStatus,
-      priority: relationalPriority,
-      updated_at: new Date().toISOString(),
-      completed_at: relationalStatus === 'complete' ? new Date().toISOString() : null,
-    })
-    .eq('id', input.taskId)
-    .eq('workspace_id', workspaceData.id);
-
-  if (updateError) {
-    throw new Error('Unable to update project task.');
+    if (updateError) {
+      throw new Error('Unable to update project task.');
+    }
   }
 
   // Record activity
@@ -2008,10 +2078,14 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     ...existingProject.activity,
   ];
 
-  await client
+  const { error: projectUpdateError } = await client
     .from('projects')
-    .update({ activity, updated_at: new Date().toISOString() })
+    .update({ tasks, activity, updated_at: now })
     .eq('id', input.projectId);
+
+  if (projectUpdateError) {
+    throw new Error('Unable to update project task.');
+  }
 
   return getProjectById(input.projectId) as Promise<Project>;
 }

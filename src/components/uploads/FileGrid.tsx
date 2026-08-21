@@ -64,7 +64,6 @@ export function FileGrid({
 }) {
   const [renamingFileKey, setRenamingFileKey] = useState<string | null>(null);
   const [nextFileName, setNextFileName] = useState('');
-  const [openFolderIds, setOpenFolderIds] = useState<string[]>([]);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const [isDragActive, setIsDragActive] = useState(false);
   const requestedThumbnailKeys = useRef(new Set<string>());
@@ -248,49 +247,21 @@ export function FileGrid({
       {folders.length > 0 ? (
         <div className="mt-4">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Stage files</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Files by stage</p>
             <span className="text-xs text-slate-500">{folders.length} folder{folders.length === 1 ? '' : 's'}</span>
           </div>
           <div className="space-y-3">
             {folders.map((folder) => {
-              const isOpen = openFolderIds.includes(folder.id);
-
               return (
                 <div key={folder.id} className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
                   <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setOpenFolderIds((current) => (isOpen ? current.filter((id) => id !== folder.id) : [...current, folder.id]))}
-                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                    >
-                      <FileText className="h-4 w-4 shrink-0 text-amber-200" />
-                      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{folder.label}</span>
-                      <span className="shrink-0 text-xs text-slate-400">{folder.files.length} file{folder.files.length === 1 ? '' : 's'}</span>
-                    </button>
-                    {canUpload ? (
-                      <label className="inline-flex cursor-pointer items-center rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={isUploading}>
-                        {isUploading ? 'Uploading...' : 'Upload to stage'}
-                        <input
-                          type="file"
-                          disabled={isUploading}
-                          accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
-                          className="sr-only"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            event.target.value = '';
-                            if (file) {
-                              onUpload?.(file, folder.id);
-                            }
-                          }}
-                        />
-                      </label>
-                    ) : null}
+                    <FileText className="h-4 w-4 shrink-0 text-amber-200" />
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">Stage: {folder.label}</span>
+                    <span className="shrink-0 text-xs text-slate-400">{folder.files.length} file{folder.files.length === 1 ? '' : 's'}</span>
                   </div>
-                  {isOpen ? (
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      {folder.files.map((file) => renderFileCard(file))}
-                    </div>
-                  ) : null}
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {folder.files.map((file) => renderFileCard(file))}
+                  </div>
                 </div>
               );
             })}
