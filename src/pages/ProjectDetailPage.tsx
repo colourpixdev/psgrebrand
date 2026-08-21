@@ -102,6 +102,7 @@ export function ProjectDetailPage() {
     province: '',
     town: '',
     physicalAddress: '',
+    signageCompany: '',
     contacts: [] as ContactPerson[],
   });
   const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
@@ -159,6 +160,7 @@ export function ProjectDetailPage() {
       province: branch.province,
       town: branch.town,
       physicalAddress: branch.physicalAddress,
+      signageCompany: branch.signageCompany ?? '',
       contacts,
     });
   }, [branch]);
@@ -215,6 +217,7 @@ export function ProjectDetailPage() {
         province: branchDetailsDraft.province.trim(),
         town: branchDetailsDraft.town.trim(),
         physicalAddress: branchDetailsDraft.physicalAddress.trim(),
+        signageCompany: branchDetailsDraft.signageCompany.trim() || null,
         contactName: contacts[0]?.name.trim() || null,
         contactEmail: contacts[0]?.email?.trim() || null,
         contactPhone: contacts[0]?.phone?.trim() || null,
@@ -621,6 +624,7 @@ export function ProjectDetailPage() {
                   <label className="grid gap-2">Town<input value={branchDetailsDraft.town} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, town: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
                 </div>
                 <label className="grid gap-2">Branch address<textarea value={branchDetailsDraft.physicalAddress} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, physicalAddress: event.target.value }))} rows={2} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                <label className="grid gap-2">Signage company<input value={branchDetailsDraft.signageCompany} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, signageCompany: event.target.value }))} placeholder="Company handling this branch rebrand" className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
                 <div className="grid gap-4 border-t border-white/10 pt-4 md:grid-cols-2">
                   <label className="grid gap-2">Current stage<select value={currentStageDraft} onChange={(event) => setCurrentStageDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none"><option value={currentStageDraft}>{currentStageDraft}</option>{summaryStageOptions.filter((stage) => stage !== currentStageDraft).map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
                   <label className="grid gap-2">Status<select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none">{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
@@ -657,6 +661,7 @@ export function ProjectDetailPage() {
                 <div><span className="text-cyan-200">Division:</span> {branch.division}</div>
                 <div><span className="text-cyan-200">Town/Province:</span> {branch.town}, {branch.province}</div>
                 <div className="md:col-span-2"><span className="text-cyan-200">Branch address:</span> {branch.physicalAddress || 'Not captured'}</div>
+                <div className="md:col-span-2"><span className="text-cyan-200">Signage company:</span> {branch.signageCompany || 'Not captured'}</div>
                 <div className="md:col-span-2 grid gap-3 sm:grid-cols-2">
                   {branchParticipants.length > 0 ? branchParticipants.map((participant, index) => <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3"><p className="font-medium text-cyan-400">{participant.name}</p><p className="mt-1 text-xs text-slate-300">{participant.designation}</p>{participant.email ? <p className="mt-2 text-xs text-slate-300">{participant.email}</p> : null}{participant.phone ? <p className="mt-1 text-xs text-slate-300">{participant.phone}</p> : null}</div>) : <p className="text-slate-300">No branch contact persons have been added yet.</p>}
                 </div>
