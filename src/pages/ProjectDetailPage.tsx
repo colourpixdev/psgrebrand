@@ -676,6 +676,10 @@ export function ProjectDetailPage() {
   const currentStageTaskStatus = currentStageTask ? getTaskStatus(currentStageTask) : null;
   const displayedStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : statusLabels[selectedProject.status];
   const displayedStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : statusTones[selectedProject.status];
+  const currentStageAssigneeNames = currentStageTask?.assignees?.map((assignee) => assignee.name).filter(Boolean) ?? [];
+  const currentStageAssigneeDisplay = currentStageAssigneeNames.length > 0
+    ? currentStageAssigneeNames.join(', ')
+    : currentStageTask?.assigneeName?.trim() || 'Unassigned';
   const currentStageFiles = currentStageTask ? selectedProject.files.filter((file) => file.taskId === currentStageTask.id) : [];
   const currentStageComments = currentStageTask ? projectComments.filter((comment) => comment.taskId === currentStageTask.id) : [];
   const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
@@ -827,9 +831,10 @@ export function ProjectDetailPage() {
             <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Current stage</h2>
             {currentStageTask ? <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${displayedStatusTone}`}>{displayedStatus}</span> : null}
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_minmax(160px,1fr)]">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_minmax(150px,1fr)_minmax(170px,1fr)]">
             <label className="grid min-w-0 gap-1"><span className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</span><select value={selectedProject.currentStage} disabled={!canChangeStage || stagePlan.length === 0 || currentStageMutation.isPending} onChange={(event) => currentStageMutation.mutate(event.target.value)} className="mt-1 w-full min-w-0 max-w-full truncate rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-lg font-semibold text-white outline-none focus:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-60" aria-label="Current stage"><option value="" disabled>No stage set</option>{stagePlan.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
             <div className="min-w-0"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 truncate text-lg font-semibold text-white">{displayedStatus}</p></div>
+            <div className="min-w-0"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Assignee</p><p className="mt-1 truncate text-lg font-semibold text-white">{currentStageAssigneeDisplay === 'Unassigned' ? 'Assignee: Unassigned' : `Assignee: ${currentStageAssigneeDisplay}`}</p></div>
             <div className="min-w-0"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Stage dates</p><p className="mt-1 truncate text-lg font-semibold text-white">Started: {formatWorkspaceDate(currentStageTask?.startedDate ?? '')}</p><p className="mt-1 truncate text-lg font-semibold text-white">Target completion: {formatWorkspaceDate(currentStageTask?.dueDate ?? '')}</p></div>
           </div>
           {currentStageTask ? <div className="mt-5 grid gap-4 border-t border-white/10 pt-4 lg:grid-cols-2">
@@ -864,9 +869,9 @@ export function ProjectDetailPage() {
         </div>
 
         {user && projectHistory.length > 0 ? <div className="mt-4 border-t border-white/10 pt-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h4>
-            <button type="button" onClick={() => setIsProjectHistoryExpanded((expanded) => !expanded)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">{isProjectHistoryExpanded ? 'Collapse history' : `Show history (${projectHistory.length})`}</button>
+            <button type="button" onClick={() => setIsProjectHistoryExpanded((expanded) => !expanded)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">{isProjectHistoryExpanded ? 'Hide' : 'Show'}</button>
           </div>
           {isProjectHistoryExpanded ? <div className="mt-4 space-y-3">
             {projectHistory.map((item) => (
