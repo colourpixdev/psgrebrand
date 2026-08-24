@@ -362,6 +362,14 @@ export function canAddTaskComments(user: UserRecord | null | undefined) {
   return can(user, 'add_comments');
 }
 
+export function canRenameFiles(user: UserRecord | null | undefined) {
+  if (!user) {
+    return false;
+  }
+
+  return !normalizeRole(user.role).startsWith('psg_');
+}
+
 export function canEditOwnComment(user: UserRecord | null | undefined, author: string) {
   if (!user || !getRolePolicy(user)?.communication.canEditOwnComments) {
     return false;

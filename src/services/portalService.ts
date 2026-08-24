@@ -59,6 +59,7 @@ type ProjectTaskRow = {
   status: 'not_started' | 'in_progress' | 'complete' | 'waiting' | 'blocked';
   priority: 'normal' | 'important' | 'urgent';
   sort_order: number;
+  started_date?: string | null;
   due_date?: string | null;
   responsible_group_id?: string | null;
   responsible_person_id?: string | null;
@@ -87,6 +88,7 @@ function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
     assigneeName: undefined,
     assigneeEmail: undefined,
     assignees: undefined,
+    startedDate: taskRow.started_date ?? undefined,
     installationRequest: isWaiting ? (taskRow.waiting_reason || 'Waiting for details') : isBlocked ? (taskRow.blocker_reason || 'Blocked') : undefined,
     createdAt: taskRow.created_at,
     completedAt: status === 'complete' ? taskRow.updated_at : undefined,
@@ -640,6 +642,8 @@ export type UpdateProjectSummaryInput = {
   briefRequestedDate: string;
   installationDate: string;
   completionDate?: string;
+  manager?: string;
+  managerEmail?: string;
 };
 
 export type AddProjectCommentInput = {
@@ -720,6 +724,7 @@ export type UpdateProjectTaskInput = {
   assigneeName?: string;
   assigneeEmail?: string;
   assignees?: TaskAssignee[];
+  startedDate?: string;
   installationRequest?: string;
   actor: string;
   actorEmail?: string;
@@ -844,6 +849,7 @@ function mapLegacyTasks(rows: unknown[] | null | undefined): TaskItem[] {
       completed: row.completed === true,
       status,
       stage: typeof row.stage === 'string' ? row.stage : typeof row.text === 'string' ? row.text : undefined,
+      startedDate: typeof row.startedDate === 'string' ? row.startedDate : undefined,
       dueDate: typeof row.dueDate === 'string' ? row.dueDate : undefined,
       completedAt: typeof row.completedAt === 'string' ? row.completedAt : undefined,
     };
@@ -1549,6 +1555,8 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     brief_requested_date: briefRequestedDate,
     installation_date: installationDate,
     completion_date: resolvedCompletionDate,
+    manager: input.manager?.trim() ?? existingProject.manager,
+    manager_email: input.managerEmail?.trim() ?? existingProject.managerEmail,
     tasks: summaryTasks,
     activity,
     updated_at: new Date().toISOString(),
@@ -2191,7 +2199,12 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
   }
 
   // Map status from frontend format to relational format
-  const nextStatus = input.status ?? (input.completed !== undefined ? (input.completed ? 'done' : 'open') : undefined);
+  const nextStatus = input.status ?? (input.completed !== undefined
+    ? (input.completed ? 'done' : 'open')
+    : existingTask.status ?? (existingTask.completed ? 'done' : 'open'));
+  const startedDate = input.startedDate !== undefined
+    ? input.startedDate || undefined
+    : existingTask.startedDate ?? (nextStatus === 'open' || nextStatus === 'busy' ? new Date().toISOString().slice(0, 10) : undefined);
   const nextCompleted = nextStatus === 'done';
   const relationalStatus = nextStatus === 'done' ? 'complete' : nextStatus === 'busy' ? 'in_progress' : nextStatus === 'pending' ? 'not_started' : nextStatus === 'open' ? 'waiting' : 'not_started';
   const relationalPriority = 'normal'; // Default priority for updates
@@ -2208,6 +2221,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       stage: text ?? task.stage,
       status: nextStatus ?? task.status,
       completed: nextCompleted,
+      startedDate,
       dueDate: input.dueDate !== undefined ? input.dueDate || undefined : task.dueDate,
       completedAt: nextCompleted ? task.completedAt ?? now : undefined,
     }
@@ -2224,7 +2238,6 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
           : existingProject.status === 'completed'
             ? 'in_progress'
             : existingProject.status;
-  const completionDate = allTasksCompleted ? now.slice(0, 10) : '';
   const currentStage = text && (existingTask.stage ?? existingTask.text).trim() === existingProject.currentStage.trim()
     ? text
     : existingProject.currentStage;
@@ -2239,22 +2252,35 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     .maybeSingle();
 
   if (workspaceData?.id) {
-    const { data: updatedTask, error: updateError } = await client
+    const taskUpdate = {
+      title: text ?? existingTask.text,
+      status: relationalStatus,
+      priority: relationalPriority,
+      started_date: startedDate ?? null,
+      due_date: input.dueDate !== undefined ? input.dueDate || null : existingTask.dueDate ?? null,
+      updated_at: now,
+      completed_at: relationalStatus === 'complete' ? now : null,
+      completed_by: completedBy,
+      waiting_reason: relationalStatus === 'waiting' ? (existingTask.installationRequest || 'Waiting for details') : null,
+    };
+    let { data: updatedTask, error: updateError } = await client
       .from('project_tasks')
-      .update({
-        title: text ?? existingTask.text,
-        status: relationalStatus,
-        priority: relationalPriority,
-        due_date: input.dueDate !== undefined ? input.dueDate || null : existingTask.dueDate ?? null,
-        updated_at: now,
-        completed_at: relationalStatus === 'complete' ? now : null,
-        completed_by: completedBy,
-        waiting_reason: relationalStatus === 'waiting' ? (existingTask.installationRequest || 'Waiting for details') : null,
-      })
+      .update(taskUpdate)
       .eq('id', input.taskId)
       .eq('workspace_id', workspaceData.id)
       .select('id')
       .maybeSingle();
+
+    if (updateError?.message.includes('started_date')) {
+      const { started_date: _startedDate, ...legacyTaskUpdate } = taskUpdate;
+      ({ data: updatedTask, error: updateError } = await client
+        .from('project_tasks')
+        .update(legacyTaskUpdate)
+        .eq('id', input.taskId)
+        .eq('workspace_id', workspaceData.id)
+        .select('id')
+        .maybeSingle());
+    }
 
     if (updateError || !updatedTask) {
       throw new Error(updateError?.message ?? 'Unable to update project task. The task may be read-only or no longer exists.');
@@ -2273,9 +2299,20 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     ...existingProject.activity,
   ];
 
+  const projectUpdate: {
+    current_stage: string;
+    status: Project['status'];
+    activity: ActivityItem[];
+    updated_at: string;
+    completion_date?: string;
+  } = { current_stage: currentStage, status: projectStatus, activity, updated_at: now };
+  if (allTasksCompleted) {
+    projectUpdate.completion_date = now.slice(0, 10);
+  }
+
   const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
-    .update({ current_stage: currentStage, status: projectStatus, completion_date: completionDate, activity, updated_at: now })
+    .update(projectUpdate)
     .eq('id', input.projectId)
     .select('id')
     .maybeSingle();

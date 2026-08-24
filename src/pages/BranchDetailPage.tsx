@@ -7,7 +7,7 @@ import { getAllBranches } from '../services/branchService';
 import { addProjectComment, deleteProjectFile, getProjectFileUrl, getProjects, renameProjectFile, updateProjectComment, uploadProjectFile } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
-import { can, canEditOwnComment, filterProjectsForUser, getRolePolicy } from '../utils/permissions';
+import { can, canEditOwnComment, canRenameFiles, filterProjectsForUser, getRolePolicy } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { getTaskStatus, isTaskOutstanding } from '../utils/taskStatus';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
@@ -87,6 +87,7 @@ export function BranchDetailPage() {
   const scopedProjects = filterProjectsForUser(projects, user);
   const rolePolicy = getRolePolicy(user);
   const canDeleteFiles = Boolean(user?.isPlatformOwner) && Boolean(rolePolicy?.files.canDeleteFiles);
+  const canRenameProjectFiles = canRenameFiles(user);
   const branchProjects = useMemo(() => {
     if (!branch) {
       return [];
@@ -565,16 +566,18 @@ export function BranchDetailPage() {
                                         <button type="button" onClick={() => downloadMutation.mutate(file)} className="text-xs font-semibold text-sky-200 transition hover:text-sky-100">
                                           <Download className="mr-1 inline h-3.5 w-3.5" /> Download
                                         </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setRenamingFileKey(key);
-                                            setRenameDraft(file.name);
-                                          }}
-                                          className="text-xs font-semibold text-sky-200 transition hover:text-sky-100"
-                                        >
-                                          Rename
-                                        </button>
+                                        {canRenameProjectFiles ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setRenamingFileKey(key);
+                                              setRenameDraft(file.name);
+                                            }}
+                                            className="text-xs font-semibold text-sky-200 transition hover:text-sky-100"
+                                          >
+                                            Rename
+                                          </button>
+                                        ) : null}
                                         {canDeleteFiles ? (
                                           <button
                                             type="button"
@@ -590,7 +593,7 @@ export function BranchDetailPage() {
                                           </button>
                                         ) : null}
                                       </div>
-                                      {renamingFileKey === key ? (
+                                      {canRenameProjectFiles && renamingFileKey === key ? (
                                         <div className="mt-3 grid gap-2">
                                           <input
                                             value={renameDraft}

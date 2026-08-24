@@ -7,7 +7,8 @@ import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQue
 import { getBranchById, updateBranch } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
-import { can, canViewProject, canAddTaskComments, canEditOwnComment, getRolePolicy } from '../utils/permissions';
+import { getUsers } from '../services/userService';
+import { can, canViewProject, canAddTaskComments, canEditOwnComment, canRenameFiles, getRolePolicy } from '../utils/permissions';
 import { getTaskStatus } from '../utils/taskStatus';
 import type { CommentItem, ContactPerson, Division, Project, ProjectFile, ProjectStatus, ProjectStage, TaskItem } from '../types/domain';
 import { normalizeRole } from '../types/domain';
@@ -116,6 +117,7 @@ export function ProjectDetailPage() {
   const [currentStageDraft, setCurrentStageDraft] = useState<ProjectStage>('New Project');
   const [statusDraft, setStatusDraft] = useState<ProjectStatus>('in_progress');
   const [targetDateDraft, setTargetDateDraft] = useState('');
+  const [marketingCoordinatorEmailDraft, setMarketingCoordinatorEmailDraft] = useState('');
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [branchDetailsDraft, setBranchDetailsDraft] = useState({
     name: '',
@@ -141,6 +143,7 @@ export function ProjectDetailPage() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskText, setEditingTaskText] = useState('');
   const [taskDueDateDrafts, setTaskDueDateDrafts] = useState<Record<string, string>>({});
+  const [taskStartedDateDrafts, setTaskStartedDateDrafts] = useState<Record<string, string>>({});
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentDraft, setEditingCommentDraft] = useState('');
@@ -153,6 +156,10 @@ export function ProjectDetailPage() {
     queryFn: () => getProjectById(projectId ?? ''),
     enabled: Boolean(projectId),
   });
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: getUsers,
+  });
   const { data: branch } = useQuery({
     queryKey: ['branch', project?.branchId],
     queryFn: () => getBranchById(project?.branchId ?? ''),
@@ -164,6 +171,7 @@ export function ProjectDetailPage() {
       setCurrentStageDraft(project.currentStage);
       setStatusDraft(project.status);
       setTargetDateDraft(project.targetDate);
+      setMarketingCoordinatorEmailDraft(project.managerEmail);
     }
   }, [project]);
 
@@ -262,6 +270,8 @@ export function ProjectDetailPage() {
         targetDate: targetDateDraft,
         briefRequestedDate: selectedProject.briefRequestedDate,
         installationDate: selectedProject.installationDate,
+        manager: users.find((item) => item.email.toLowerCase() === marketingCoordinatorEmailDraft.toLowerCase())?.name ?? selectedProject.manager,
+        managerEmail: marketingCoordinatorEmailDraft,
       });
       return { updatedBranch, updatedProject };
     },
@@ -415,7 +425,7 @@ export function ProjectDetailPage() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ task, text, completed, status, dueDate }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; dueDate?: string }) => {
+    mutationFn: ({ task, text, completed, status, startedDate, dueDate }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; startedDate?: string; dueDate?: string }) => {
       const nextText = text?.trim();
       return updateProjectTask({
         projectId: projectId ?? '',
@@ -423,6 +433,7 @@ export function ProjectDetailPage() {
         text: nextText,
         completed,
         status,
+        startedDate,
         dueDate,
         stage: nextText || undefined,
         actor: user?.name ?? 'Workspace user',
@@ -437,8 +448,26 @@ export function ProjectDetailPage() {
         delete next[variables.task.id];
         return next;
       });
-      await syncProject(updatedProject, 'Stage saved.');
+      setTaskStartedDateDrafts((current) => {
+        const next = { ...current };
+        delete next[variables.task.id];
+        return next;
+      });
+      const syncedProject = {
+        ...updatedProject,
+        tasks: updatedProject.tasks.map((task) => task.id === variables.task.id
+          ? {
+            ...task,
+            status: variables.status ?? task.status,
+            completed: variables.status === 'done' ? true : variables.status === undefined ? task.completed : false,
+            startedDate: variables.startedDate ?? task.startedDate,
+            dueDate: variables.dueDate ?? task.dueDate,
+          }
+          : task),
+      };
+      await syncProject(syncedProject, 'Stage saved.');
     },
+    onError: (error) => showError(error instanceof Error ? error.message : 'Unable to save stage.'),
   });
 
   const reorderTaskMutation = useMutation({
@@ -553,9 +582,11 @@ export function ProjectDetailPage() {
   ));
   const canUploadFiles = canAdministerProjectDetails && Boolean(rolePolicy?.files.canUploadFiles);
   const canDeleteFiles = canAdministerProjectDetails && Boolean(rolePolicy?.files.canDeleteFiles);
+  const canRenameProjectFiles = canAdministerProjectDetails && canRenameFiles(user);
   const canAddComments = canAddTaskComments(user);
   const canAskColourpix = Boolean(rolePolicy?.communication.canAskQuestions);
   const canAnswerColourpixQuestions = canAdministerProjectDetails && Boolean(rolePolicy?.communication.canAnswerQuestions);
+  const canChangeStage = Boolean(rolePolicy?.workflow.canChangeStage);
   const canAddTasks = Boolean(rolePolicy?.tasks.canCreateTasks);
   const canCompleteTasks = Boolean(rolePolicy?.tasks.canCompleteTasks);
   const isBranchContact = Boolean(branch && user && (
@@ -710,6 +741,7 @@ export function ProjectDetailPage() {
                       </div>
                     ))}
                     <button type="button" onClick={() => setBranchDetailsDraft((current) => ({ ...current, contacts: [...current.contacts, { name: '', designation: 'Contact Person', email: '', phone: '' }] }))} className="w-fit rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">Add contact person</button>
+                    <label className="grid gap-2 border-t border-white/10 pt-4">Marketing coordinator<select value={marketingCoordinatorEmailDraft} onChange={(event) => setMarketingCoordinatorEmailDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none"><option value="">Unassigned</option>{users.filter((item) => item.role === 'psg_user' || item.role === 'psg_head_office' || item.role === 'psg_branch_manager').map((item) => <option key={item.email} value={item.email}>{item.name} · {item.email}</option>)}</select></label>
                   </div>
                 </section>
                 <section className="grid gap-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
@@ -772,9 +804,9 @@ export function ProjectDetailPage() {
             {currentStageTask ? <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${displayedStatusTone}`}>{displayedStatus}</span> : null}
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_minmax(160px,1fr)]">
-            <label className="grid min-w-0 gap-1"><span className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</span><select value={selectedProject.currentStage} disabled={stagePlan.length === 0 || currentStageMutation.isPending} onChange={(event) => currentStageMutation.mutate(event.target.value)} className="mt-1 w-full min-w-0 max-w-full truncate rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-lg font-semibold text-white outline-none focus:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-60" aria-label="Current stage"><option value="" disabled>No stage set</option>{stagePlan.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
+            <label className="grid min-w-0 gap-1"><span className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</span><select value={selectedProject.currentStage} disabled={!canChangeStage || stagePlan.length === 0 || currentStageMutation.isPending} onChange={(event) => currentStageMutation.mutate(event.target.value)} className="mt-1 w-full min-w-0 max-w-full truncate rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-lg font-semibold text-white outline-none focus:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-60" aria-label="Current stage"><option value="" disabled>No stage set</option>{stagePlan.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
             <div className="min-w-0"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 truncate text-lg font-semibold text-white">{displayedStatus}</p></div>
-            <div className="min-w-0"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Target completion</p><p className="mt-1 truncate text-lg font-semibold text-white">{formatWorkspaceDate(selectedProject.targetDate)}</p></div>
+            <div className="min-w-0"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Stage dates</p><p className="mt-1 truncate text-lg font-semibold text-white">Started: {formatWorkspaceDate(currentStageTask?.startedDate ?? '')}</p><p className="mt-1 truncate text-lg font-semibold text-white">Target completion: {formatWorkspaceDate(currentStageTask?.dueDate ?? '')}</p></div>
           </div>
           {currentStageTask ? <div className="mt-5 grid gap-4 border-t border-white/10 pt-4 lg:grid-cols-2">
             <div>
@@ -807,7 +839,7 @@ export function ProjectDetailPage() {
           </div>
         </div>
 
-        {isInternalUser && projectHistory.length > 0 ? <div className="mt-4 border-t border-white/10 pt-4">
+        {user && projectHistory.length > 0 ? <div className="mt-4 border-t border-white/10 pt-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h4>
             <button type="button" onClick={() => setIsProjectHistoryExpanded((expanded) => !expanded)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">{isProjectHistoryExpanded ? 'Collapse history' : `Show history (${projectHistory.length})`}</button>
@@ -899,8 +931,9 @@ export function ProjectDetailPage() {
                       <span className="shrink-0 text-slate-400">{isAccordionExpanded ? '▼' : '▶'}</span>
                       <span className={`truncate ${taskStatus === 'done' ? 'text-slate-500 line-through' : 'text-slate-200 font-medium'}`}>{task.text}</span>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0 text-xs text-slate-500">
+                    <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 text-xs text-slate-500">
                       <span className="rounded-full bg-white/5 px-2 py-1">{statusLabels[taskStatus]}</span>
+                      <span>Started: {task.startedDate || 'Not set'} · Target: {task.dueDate || 'Not set'}</span>
                     </div>
                   </div>
                 </button>
@@ -918,7 +951,24 @@ export function ProjectDetailPage() {
                     ))}
                   </select>
                   {canUploadFiles ? (
-                    <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 aria-disabled:pointer-events-none aria-disabled:opacity-50" aria-disabled={uploadMutation.isPending}>
+                    <label
+                      className="inline-flex min-w-[110px] cursor-pointer items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-4 py-1.5 text-xs font-semibold uppercase text-cyan-100 transition hover:bg-cyan-400/20 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+                      aria-disabled={uploadMutation.isPending}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (!uploadMutation.isPending) {
+                          const file = event.dataTransfer.files[0];
+                          if (file) {
+                            uploadMutation.mutate({ file, taskId: task.id });
+                          }
+                        }
+                      }}
+                    >
                       {uploadMutation.isPending && uploadMutation.variables?.taskId === task.id ? 'Uploading...' : 'Upload file'}
                       <input
                         type="file"
@@ -974,17 +1024,26 @@ export function ProjectDetailPage() {
                 )}
                 {editingTaskId !== task.id ? (
                   <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3">
-                    <DatePickerInput
-                      label="Target completion"
-                      value={taskDueDateDrafts[task.id] ?? task.dueDate ?? ''}
-                      onChange={(value) => setTaskDueDateDrafts((current) => ({ ...current, [task.id]: value }))}
-                      placeholder="Select target date"
-                      disabled={updateTaskMutation.isPending}
-                    />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <DatePickerInput
+                        label="Started date"
+                        value={taskStartedDateDrafts[task.id] ?? task.startedDate ?? ''}
+                        onChange={(value) => setTaskStartedDateDrafts((current) => ({ ...current, [task.id]: value }))}
+                        placeholder="Select started date"
+                        disabled={updateTaskMutation.isPending}
+                      />
+                      <DatePickerInput
+                        label="Target completion"
+                        value={taskDueDateDrafts[task.id] ?? task.dueDate ?? ''}
+                        onChange={(value) => setTaskDueDateDrafts((current) => ({ ...current, [task.id]: value }))}
+                        placeholder="Select target date"
+                        disabled={updateTaskMutation.isPending}
+                      />
+                    </div>
                     <button
                       type="button"
-                      disabled={updateTaskMutation.isPending || (taskDueDateDrafts[task.id] ?? task.dueDate ?? '') === (task.dueDate ?? '')}
-                      onClick={() => updateTaskMutation.mutate({ task, dueDate: taskDueDateDrafts[task.id] ?? task.dueDate ?? '' })}
+                      disabled={updateTaskMutation.isPending || ((taskStartedDateDrafts[task.id] ?? task.startedDate ?? '') === (task.startedDate ?? '') && (taskDueDateDrafts[task.id] ?? task.dueDate ?? '') === (task.dueDate ?? ''))}
+                      onClick={() => updateTaskMutation.mutate({ task, startedDate: taskStartedDateDrafts[task.id] ?? task.startedDate ?? '', dueDate: taskDueDateDrafts[task.id] ?? task.dueDate ?? '' })}
                       className="w-fit rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {updateTaskMutation.isPending ? 'Saving...' : 'Save date'}
@@ -1243,6 +1302,7 @@ export function ProjectDetailPage() {
           uploadError={fileError instanceof Error ? fileError.message : null}
           canUpload={canUploadFiles}
           canDelete={canDeleteFiles}
+          canRename={canRenameProjectFiles}
           onUpload={(file, taskId) => uploadMutation.mutate({ file, taskId })}
           onPreview={(file: ProjectFile) => previewMutation.mutate(file)}
           onDownload={(file: ProjectFile) => downloadMutation.mutate(file)}

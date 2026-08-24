@@ -54,7 +54,7 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
           </div>
         </header>
 
-        <aside className="hidden border-b border-white/10 bg-slate-950/70 p-5 backdrop-blur lg:block lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r">
+        <aside className="hidden border-b border-white/10 bg-slate-950/70 p-5 backdrop-blur lg:sticky lg:top-0 lg:block lg:h-screen lg:w-72 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
           <div className="mb-8 flex items-center gap-3">
             <RolloutLogo />
             <div>
