@@ -31,7 +31,8 @@
     "check:rls": "node scripts/check-rls-scope.mjs",
     "check:voice-storage": "node scripts/check-voice-storage.mjs",
     "reset:passwords": "node scripts/reset-auth-passwords.mjs",
-    "remove:users": "node scripts/remove-requested-users.mjs"
+    "remove:users": "node scripts/remove-requested-users.mjs",
+    "add:psg-users": "node scripts/add-psg-users.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
