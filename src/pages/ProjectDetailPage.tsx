@@ -69,6 +69,19 @@ function findStageTask(tasks: TaskItem[], stage: string) {
     ?? tasks.find((task) => task.text.trim().toLowerCase() === stageKey);
 }
 
+function findCurrentStageTask(project: Project) {
+  const matchingTask = findStageTask(project.tasks, project.currentStage);
+  if (matchingTask) {
+    return matchingTask;
+  }
+
+  if (project.status === 'completed') {
+    return project.tasks[project.tasks.length - 1];
+  }
+
+  return project.tasks.find((task) => !task.completed);
+}
+
 function formatWorkspaceDate(value: string) {
   if (!value) {
     return 'Not set';
@@ -705,7 +718,7 @@ export function ProjectDetailPage() {
   const mergedTasks = selectedProject.tasks;
   const stagePlan = getStagePlan(selectedProject);
   const currentStageKey = selectedProject.currentStage.trim().toLowerCase();
-  const currentStageTask = findStageTask(selectedProject.tasks, selectedProject.currentStage);
+  const currentStageTask = findCurrentStageTask(selectedProject);
   const currentStageTaskStatus = currentStageTask ? getTaskStatus(currentStageTask) : null;
   const displayedStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : statusLabels[selectedProject.status];
   const displayedStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : statusTones[selectedProject.status];
