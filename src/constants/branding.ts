@@ -12,7 +12,7 @@
   copyright: '(c) 2026 PSG Rebrand',
 } as const;
 
-export const psgPrimaryLogoUrl = `${import.meta.env.BASE_URL}brand/psg-flower-cyan.svg`;
+export const psgPrimaryLogoUrl = `${import.meta.env.BASE_URL}PSG%20favicon.png`;
 
 export const userAgreementPoints = [
   'Project activity is recorded.',
