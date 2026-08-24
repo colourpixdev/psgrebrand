@@ -1073,7 +1073,12 @@ export async function getProjects(): Promise<Project[]> {
           });
 
           const tasksByBranch = new Map<string, TaskItem[]>();
-          workspaces.forEach((ws) => tasksByBranch.set(ws.branch_id, tasksByWorkspace.get(ws.id) ?? []));
+          workspaces.forEach((ws) => {
+            const relationalTasks = tasksByWorkspace.get(ws.id);
+            if (relationalTasks && relationalTasks.length > 0) {
+              tasksByBranch.set(ws.branch_id, relationalTasks);
+            }
+          });
 
           return hydrateProjectFiles(projects.map((project) => ({
             ...project,
