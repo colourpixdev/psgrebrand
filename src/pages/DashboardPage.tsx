@@ -7,6 +7,7 @@ import { getProjects } from '../services/portalService';
 import { getFollowChangedEventName, getFollowedProjectIds } from '../services/projectFollowService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
+import type { Project } from '../types/domain';
 
 
 function greeting() {
@@ -18,6 +19,12 @@ function greeting() {
     return 'Good afternoon';
   }
   return 'Good evening';
+}
+
+function getAssignedAttentionStage(project: Project, userEmail: string | undefined) {
+  return userEmail
+    ? project.tasks.find((task) => task.status !== 'done' && !task.completed && [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)].some((email) => email?.trim().toLowerCase() === userEmail))
+    : undefined;
 }
 
 export function DashboardPage() {
@@ -62,7 +69,7 @@ export function DashboardPage() {
   const attentionProjects = useMemo(() => {
     const userEmail = user?.email?.trim().toLowerCase();
     return scopedProjects
-      .filter((project) => project.status === 'delayed' || project.status === 'on_hold' || project.currentStage === 'Awaiting Approval' || Boolean(userEmail && project.tasks.some((task) => task.status !== 'done' && !task.completed && [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)].some((email) => email?.trim().toLowerCase() === userEmail))))
+      .filter((project) => Boolean(getAssignedAttentionStage(project, userEmail)))
       .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
       .slice(0, 5);
   }, [scopedProjects, user]);
@@ -176,7 +183,7 @@ export function DashboardPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-medium text-slate-900">{project.branch}</p>
-                          <p className="mt-1 text-sm text-slate-600">{project.projectTypeName || 'Rebrand project'} · {project.currentStage}</p>
+                          <p className="mt-1 text-sm text-slate-600">{getAssignedAttentionStage(project, user?.email?.trim().toLowerCase())?.text} · {project.currentStage}</p>
                         </div>
                         <span className="rounded-full bg-amber-100 px-2 py-1 text-[0.65rem] font-medium uppercase tracking-[0.12em] text-amber-700">
                           {project.status === 'delayed' || project.status === 'on_hold' ? 'At risk' : 'Action needed'}

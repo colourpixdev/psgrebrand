@@ -1058,7 +1058,7 @@ export async function getProjects(): Promise<Project[]> {
           const workspaceIds = workspaces.map((w) => w.id);
           const { data: allTasks } = await client
             .from('project_tasks')
-            .select('*')
+            .select('*, responsible_person:profiles!project_tasks_responsible_person_id_fkey(name, email, profile_title)')
             .in('workspace_id', workspaceIds)
             .is('deleted_at', null)
             .order('sort_order', { ascending: true });
