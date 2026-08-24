@@ -2327,24 +2327,13 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       responsible_person_id: assignedProfileId,
       waiting_reason: relationalStatus === 'waiting' ? (existingTask.installationRequest || 'Waiting for details') : null,
     };
-    let { data: updatedTask, error: updateError } = await client
+    const { data: updatedTask, error: updateError } = await client
       .from('project_tasks')
       .update(taskUpdate)
       .eq('id', input.taskId)
       .eq('workspace_id', workspaceData.id)
       .select('id')
       .maybeSingle();
-
-    if (updateError?.message.includes('started_date')) {
-      const { started_date: _startedDate, ...legacyTaskUpdate } = taskUpdate;
-      ({ data: updatedTask, error: updateError } = await client
-        .from('project_tasks')
-        .update(legacyTaskUpdate)
-        .eq('id', input.taskId)
-        .eq('workspace_id', workspaceData.id)
-        .select('id')
-        .maybeSingle());
-    }
 
     if (updateError || !updatedTask) {
       throw new Error(updateError?.message ?? 'Unable to update project task. The task may be read-only or no longer exists.');

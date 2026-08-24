@@ -78,6 +78,13 @@ function formatWorkspaceDate(value: string) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function isImageFile(file: ProjectFile) {
+  const fileType = file.type ?? '';
+  const fileName = file.name.toLowerCase();
+
+  return fileType.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg|bmp|tif|tiff)$/.test(fileName);
+}
+
 function getStagePlan(project: Project): ProjectStage[] {
   const mergedStages = project.tasks
     .map((task) => (task.stage ?? task.text).trim())
@@ -149,6 +156,7 @@ export function ProjectDetailPage() {
   const [taskDueDateDrafts, setTaskDueDateDrafts] = useState<Record<string, string>>({});
   const [taskStartedDateDrafts, setTaskStartedDateDrafts] = useState<Record<string, string>>({});
   const [taskDateSaveMessage, setTaskDateSaveMessage] = useState<string | null>(null);
+  const [stageImageUrls, setStageImageUrls] = useState<Record<string, string>>({});
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentDraft, setEditingCommentDraft] = useState('');
@@ -220,6 +228,24 @@ export function ProjectDetailPage() {
       setExpandedAccordionTaskIds((current) => current.filter((taskId) => project.tasks.some((task) => task.id === taskId)));
     }
   }, [project?.tasks]);
+
+  useEffect(() => {
+    if (!project?.files) {
+      return;
+    }
+
+    project.files.forEach((file) => {
+      if (!file.path || !isImageFile(file) || stageImageUrls[file.path]) {
+        return;
+      }
+
+      void getProjectFileUrl(file).then((url) => {
+        if (url) {
+          setStageImageUrls((current) => ({ ...current, [file.path as string]: url }));
+        }
+      }).catch(() => undefined);
+    });
+  }, [project?.files, stageImageUrls]);
 
   const syncProject = (updatedProject: Project, successMessage?: string) => {
     queryClient.setQueryData(['project', projectId], updatedProject);
@@ -847,7 +873,7 @@ export function ProjectDetailPage() {
           {currentStageTask ? <div className="mt-5 grid gap-4 border-t border-white/10 pt-4 lg:grid-cols-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Files for this stage</p>
-              {currentStageFiles.length > 0 ? <ul className="mt-3 space-y-2 text-sm text-slate-200">{currentStageFiles.map((file) => <li key={`${file.id ?? file.path ?? file.name}-${file.name}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><span className="truncate font-medium text-white">{file.name}</span><div className="flex flex-wrap items-center gap-2">{file.path ? <button type="button" disabled={previewMutation.isPending} onClick={() => previewMutation.mutate(file)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">Preview</button> : null}<button type="button" disabled={downloadMutation.isPending} onClick={() => downloadMutation.mutate(file)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">Download</button><button type="button" onClick={() => { const nextName = window.prompt('Rename file', file.name)?.trim(); if (nextName && nextName !== file.name) renameFileMutation.mutate({ file, nextName }); }} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10">Rename</button>{canDeleteFiles ? <button type="button" disabled={deleteFileMutation.isPending} onClick={() => deleteFileMutation.mutate(file)} className="rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}</div></div></li>)}</ul> : <p className="mt-2 text-xs text-slate-500">No files attached to this stage.</p>}
+              {currentStageFiles.length > 0 ? <ul className="mt-3 space-y-2 text-sm text-slate-200">{currentStageFiles.map((file) => <li key={`${file.id ?? file.path ?? file.name}-${file.name}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2">{file.path && stageImageUrls[file.path] ? <img src={stageImageUrls[file.path]} alt={file.name} className="mb-2 max-h-48 w-full rounded-lg object-contain" /> : null}<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><span className="truncate font-medium text-white">{file.name}</span><div className="flex flex-wrap items-center gap-2">{file.path ? <button type="button" disabled={previewMutation.isPending} onClick={() => previewMutation.mutate(file)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">Preview</button> : null}<button type="button" disabled={downloadMutation.isPending} onClick={() => downloadMutation.mutate(file)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">Download</button><button type="button" onClick={() => { const nextName = window.prompt('Rename file', file.name)?.trim(); if (nextName && nextName !== file.name) renameFileMutation.mutate({ file, nextName }); }} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10">Rename</button>{canDeleteFiles ? <button type="button" disabled={deleteFileMutation.isPending} onClick={() => deleteFileMutation.mutate(file)} className="rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}</div></div></li>)}</ul> : <p className="mt-2 text-xs text-slate-500">No files attached to this stage.</p>}
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Comments for this stage</p>
@@ -1119,6 +1145,7 @@ export function ProjectDetailPage() {
                         <ul className="space-y-2 text-sm text-slate-300">
                           {taskFiles.map((file) => (
                             <li key={`${task.id}-${file.path ?? file.name}`} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                              {file.path && stageImageUrls[file.path] ? <img src={stageImageUrls[file.path]} alt={file.name} className="mb-2 max-h-48 w-full rounded-lg object-contain sm:mb-0 sm:w-40" /> : null}
                               <span className="truncate font-medium text-white">{file.name}</span>
                               <div className="flex flex-wrap items-center gap-2">
                                 {file.path && canViewProject(user, selectedProject) ? (
