@@ -1555,6 +1555,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
       : task)
     : existingProject.tasks;
 
+  const now = new Date().toISOString();
   const summaryPayload = {
     current_stage: currentStage,
     status: input.status,
@@ -1566,7 +1567,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     manager_email: input.managerEmail?.trim() ?? existingProject.managerEmail,
     tasks: summaryTasks,
     activity,
-    updated_at: new Date().toISOString(),
+    updated_at: now,
   };
   let { data, error } = await client
     .from('projects')
@@ -1608,7 +1609,20 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     }
   }
 
-  return getProjectById(input.projectId) as Promise<Project>;
+  return {
+    ...existingProject,
+    currentStage,
+    status: input.status,
+    targetDate,
+    briefRequestedDate,
+    installationDate,
+    completionDate: resolvedCompletionDate,
+    manager: input.manager?.trim() ?? existingProject.manager,
+    managerEmail: input.managerEmail?.trim() ?? existingProject.managerEmail,
+    tasks: summaryTasks,
+    activity,
+    updatedAt: now,
+  };
 }
 
 export async function addProjectComment(input: AddProjectCommentInput): Promise<Project> {
@@ -1644,7 +1658,7 @@ export async function addProjectComment(input: AddProjectCommentInput): Promise<
 
   const updatedProject = mapProjectRow(data as ProjectRow);
 
-  await notifyProjectChange({
+  void notifyProjectChange({
     project: updatedProject,
     actor: input.author,
     message: structured.comment.message,
@@ -2076,6 +2090,7 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
   }
 
   // Record activity
+  const now = new Date().toISOString();
   const activity = [
     createActivity('Stage added', `${input.actor} added stage: ${task} (${summarizeAssignees(assignees)}).`),
     ...existingProject.activity,
@@ -2084,11 +2099,16 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
   // Update project activity log
   await client
     .from('projects')
-    .update({ activity, updated_at: new Date().toISOString() })
+    .update({ activity, updated_at: now })
     .eq('id', input.projectId);
 
-  // Return updated project
-  return getProjectById(input.projectId) as Promise<Project>;
+  return {
+    ...existingProject,
+    workspaceId,
+    tasks: [...existingProject.tasks, convertRelationalTaskToTaskItem(newTask as ProjectTaskRow)],
+    activity,
+    updatedAt: now,
+  };
 }
 
 export async function reorderProjectTask(input: ReorderProjectTaskInput): Promise<Project> {
@@ -2111,7 +2131,6 @@ export async function reorderProjectTask(input: ReorderProjectTaskInput): Promis
   }
 
   const now = new Date().toISOString();
-  const tasks = existingProject.tasks.filter((task) => task.id !== input.taskId);
 
   // Soft-delete the relational task when this project has a relational workspace.
   const branchId = existingProject.branchId || existingProject.branch;
@@ -2152,6 +2171,9 @@ export async function reorderProjectTask(input: ReorderProjectTaskInput): Promis
   const currentTask = tasksInOrder[currentIndex];
   const nextTask = tasksInOrder[nextIndex];
   const tempSortOrder = currentTask.sort_order;
+  const taskSortOrders = new Map(tasksInOrder.map((task) => [task.id, task.sort_order]));
+  taskSortOrders.set(currentTask.id, nextTask.sort_order);
+  taskSortOrders.set(nextTask.id, tempSortOrder);
 
   await client
     .from('project_tasks')
@@ -2175,10 +2197,17 @@ export async function reorderProjectTask(input: ReorderProjectTaskInput): Promis
 
   await client
     .from('projects')
-    .update({ activity, updated_at: new Date().toISOString() })
+    .update({ activity, updated_at: now })
     .eq('id', input.projectId);
 
-  return getProjectById(input.projectId) as Promise<Project>;
+  return {
+    ...existingProject,
+    tasks: [...existingProject.tasks].sort((leftTask, rightTask) =>
+      (taskSortOrders.get(leftTask.id) ?? Number.MAX_SAFE_INTEGER) -
+      (taskSortOrders.get(rightTask.id) ?? Number.MAX_SAFE_INTEGER)),
+    activity,
+    updatedAt: now,
+  };
 }
 
 export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<Project> {
@@ -2340,7 +2369,15 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     throw new Error(projectUpdateError?.message ?? 'Unable to update project task.');
   }
 
-  return getProjectById(input.projectId) as Promise<Project>;
+  return {
+    ...existingProject,
+    tasks,
+    currentStage,
+    status: projectStatus,
+    activity,
+    updatedAt: now,
+    completionDate: allTasksCompleted ? now.slice(0, 10) : existingProject.completionDate,
+  };
 }
 
 export async function upsertProjectStageTask(input: UpsertProjectStageTaskInput): Promise<Project> {
@@ -2477,7 +2514,13 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
     throw new Error(projectUpdateError?.message ?? 'Unable to delete project task.');
   }
 
-  return getProjectById(input.projectId) as Promise<Project>;
+  return {
+    ...existingProject,
+    tasks,
+    currentStage,
+    activity,
+    updatedAt: now,
+  };
 }
 
 export async function renameProjectFile(input: RenameProjectFileInput): Promise<Project> {

@@ -220,17 +220,17 @@ export function ProjectDetailPage() {
     }
   }, [project?.tasks]);
 
-  const syncProject = async (updatedProject: Project, successMessage?: string) => {
+  const syncProject = (updatedProject: Project, successMessage?: string) => {
     queryClient.setQueryData(['project', projectId], updatedProject);
 
     if (successMessage) {
       showSuccess(successMessage);
     }
 
-    await Promise.all([
+    void Promise.all([
       queryClient.invalidateQueries({ queryKey: ['projects'] }),
       queryClient.invalidateQueries({ queryKey: ['portal-summary'] }),
-    ]);
+    ]).catch(() => undefined);
   };
 
   const taskUpdateMutation = useMutation({
@@ -254,37 +254,39 @@ export function ProjectDetailPage() {
       }
 
       const contacts = branchDetailsDraft.contacts.filter((contact) => contact.name.trim());
-      const updatedBranch = await updateBranch(branch.id, {
-        name: branchDetailsDraft.name.trim(),
-        code: branchDetailsDraft.code.trim() || null,
-        division: branchDetailsDraft.division,
-        province: branchDetailsDraft.province.trim(),
-        city: branchDetailsDraft.city.trim() || null,
-        town: branchDetailsDraft.town.trim(),
-        physicalAddress: branchDetailsDraft.physicalAddress.trim(),
-        latitude: branchDetailsDraft.latitude.trim() ? Number(branchDetailsDraft.latitude) : null,
-        longitude: branchDetailsDraft.longitude.trim() ? Number(branchDetailsDraft.longitude) : null,
-        signageCompany: branchDetailsDraft.signageCompany.trim() || null,
-        signageContactName: branchDetailsDraft.signageContactName.trim() || null,
-        signageContactPhone: branchDetailsDraft.signageContactPhone.trim() || null,
-        signageContactEmail: branchDetailsDraft.signageContactEmail.trim() || null,
-        signageAddress: branchDetailsDraft.signageAddress.trim() || null,
-        contactName: contacts[0]?.name.trim() || null,
-        contactEmail: contacts[0]?.email?.trim() || null,
-        contactPhone: contacts[0]?.phone?.trim() || null,
-        contacts,
-      });
-      const updatedProject = await updateProjectSummary({
-        projectId: projectId ?? '',
-        actor: user?.name ?? 'Workspace user',
-        currentStage: currentStageDraft,
-        status: statusDraft,
-        targetDate: targetDateDraft,
-        briefRequestedDate: selectedProject.briefRequestedDate,
-        installationDate: selectedProject.installationDate,
-        manager: users.find((item) => item.email.toLowerCase() === marketingCoordinatorEmailDraft.toLowerCase())?.name ?? selectedProject.manager,
-        managerEmail: marketingCoordinatorEmailDraft,
-      });
+      const [updatedBranch, updatedProject] = await Promise.all([
+        updateBranch(branch.id, {
+          name: branchDetailsDraft.name.trim(),
+          code: branchDetailsDraft.code.trim() || null,
+          division: branchDetailsDraft.division,
+          province: branchDetailsDraft.province.trim(),
+          city: branchDetailsDraft.city.trim() || null,
+          town: branchDetailsDraft.town.trim(),
+          physicalAddress: branchDetailsDraft.physicalAddress.trim(),
+          latitude: branchDetailsDraft.latitude.trim() ? Number(branchDetailsDraft.latitude) : null,
+          longitude: branchDetailsDraft.longitude.trim() ? Number(branchDetailsDraft.longitude) : null,
+          signageCompany: branchDetailsDraft.signageCompany.trim() || null,
+          signageContactName: branchDetailsDraft.signageContactName.trim() || null,
+          signageContactPhone: branchDetailsDraft.signageContactPhone.trim() || null,
+          signageContactEmail: branchDetailsDraft.signageContactEmail.trim() || null,
+          signageAddress: branchDetailsDraft.signageAddress.trim() || null,
+          contactName: contacts[0]?.name.trim() || null,
+          contactEmail: contacts[0]?.email?.trim() || null,
+          contactPhone: contacts[0]?.phone?.trim() || null,
+          contacts,
+        }),
+        updateProjectSummary({
+          projectId: projectId ?? '',
+          actor: user?.name ?? 'Workspace user',
+          currentStage: currentStageDraft,
+          status: statusDraft,
+          targetDate: targetDateDraft,
+          briefRequestedDate: selectedProject.briefRequestedDate,
+          installationDate: selectedProject.installationDate,
+          manager: users.find((item) => item.email.toLowerCase() === marketingCoordinatorEmailDraft.toLowerCase())?.name ?? selectedProject.manager,
+          managerEmail: marketingCoordinatorEmailDraft,
+        }),
+      ]);
       return { updatedBranch, updatedProject };
     },
     onSuccess: async ({ updatedBranch, updatedProject }) => {
