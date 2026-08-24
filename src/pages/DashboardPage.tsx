@@ -185,7 +185,7 @@ export function DashboardPage() {
                           <p className="font-medium text-slate-900">{project.branch}</p>
                           <p className="mt-1 text-sm text-slate-600">{getAssignedAttentionStage(project, user?.email?.trim().toLowerCase())?.text} · {project.currentStage}</p>
                         </div>
-                        <span className="rounded-full bg-amber-100 px-2 py-1 text-[0.65rem] font-medium uppercase tracking-[0.12em] text-amber-700">
+                        <span className="rounded-full bg-amber-100 px-2 py-1 text-[0.65rem] font-medium uppercase tracking-[0.12em] text-[#0b1f3a]">
                           {project.status === 'delayed' || project.status === 'on_hold' ? 'At risk' : 'Action needed'}
                         </span>
                       </div>
