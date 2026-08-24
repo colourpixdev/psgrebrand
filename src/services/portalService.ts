@@ -2262,7 +2262,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     ? (input.completed ? 'done' : 'open')
     : existingTask.status ?? (existingTask.completed ? 'done' : 'open'));
   const startedDate = input.startedDate !== undefined
-    ? input.startedDate || undefined
+    ? (input.startedDate || (existingTask.startedDate ?? undefined))
     : existingTask.startedDate ?? (nextStatus === 'open' || nextStatus === 'busy' ? new Date().toISOString().slice(0, 10) : undefined);
   const nextCompleted = nextStatus === 'done';
   const assignees = input.assignees !== undefined
@@ -2289,7 +2289,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       assigneeEmail: primaryAssignee?.email,
       assignees,
       startedDate,
-      dueDate: input.dueDate !== undefined ? input.dueDate || undefined : task.dueDate,
+      dueDate: input.dueDate !== undefined ? (input.dueDate || (existingTask.dueDate ?? undefined)) : task.dueDate,
       completedAt: nextCompleted ? task.completedAt ?? now : undefined,
     }
     : task);
