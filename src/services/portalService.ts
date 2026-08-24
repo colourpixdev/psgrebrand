@@ -33,6 +33,7 @@ type ProjectRow = {
   designer: string;
   current_stage: string;
   status: Project['status'];
+  project_start_date?: string | null;
   target_date: string;
   brief_requested_date?: string | null;
   installation_date: string;
@@ -647,6 +648,7 @@ export type UpdateProjectSummaryInput = {
   currentStage: Project['currentStage'];
   status: Project['status'];
   progress?: number;
+  projectStartDate?: string;
   targetDate: string;
   briefRequestedDate: string;
   installationDate: string;
@@ -931,6 +933,7 @@ function mapProjectRow(row: ProjectRow): Project {
     designer: row.designer ?? '',
     currentStage: typeof row.current_stage === 'string' ? row.current_stage as Project['currentStage'] : template.name,
     status: row.status ?? 'busy',
+    projectStartDate: row.project_start_date ?? '',
     targetDate: row.target_date ?? '',
     briefRequestedDate: row.brief_requested_date ?? '',
     installationDate: row.installation_date ?? '',
@@ -1548,6 +1551,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
   }
 
   const targetDate = input.targetDate.trim();
+  const projectStartDate = input.projectStartDate?.trim() ?? existingProject.projectStartDate ?? '';
   const briefRequestedDate = input.briefRequestedDate.trim();
   const installationDate = input.installationDate.trim();
   const completionDate = input.completionDate?.trim() ?? '';
@@ -1579,6 +1583,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
   const summaryPayload = {
     current_stage: currentStage,
     status: input.status,
+    project_start_date: projectStartDate,
     target_date: targetDate,
     brief_requested_date: briefRequestedDate,
     installation_date: installationDate,
@@ -1633,6 +1638,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     ...existingProject,
     currentStage,
     status: input.status,
+    projectStartDate,
     targetDate,
     briefRequestedDate,
     installationDate,

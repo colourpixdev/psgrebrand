@@ -147,6 +147,7 @@ export function ProjectDetailPage() {
   const [currentStageDraft, setCurrentStageDraft] = useState<ProjectStage>('New Project');
   const [statusDraft, setStatusDraft] = useState<ProjectStatus>('in_progress');
   const [targetDateDraft, setTargetDateDraft] = useState('');
+  const [projectStartDateDraft, setProjectStartDateDraft] = useState('');
   const [marketingCoordinatorEmailDraft, setMarketingCoordinatorEmailDraft] = useState('');
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [branchDetailsDraft, setBranchDetailsDraft] = useState({
@@ -207,6 +208,7 @@ export function ProjectDetailPage() {
       setCurrentStageDraft(project.currentStage);
       setStatusDraft(project.status);
       setTargetDateDraft(project.targetDate);
+      setProjectStartDateDraft(project.projectStartDate ?? '');
       setMarketingCoordinatorEmailDraft(project.managerEmail);
     }
   }, [project]);
@@ -330,6 +332,7 @@ export function ProjectDetailPage() {
           actor: user?.name ?? 'Workspace user',
           currentStage: currentStageDraft,
           status: statusDraft,
+          projectStartDate: projectStartDateDraft,
           targetDate: targetDateDraft,
           briefRequestedDate: selectedProject.briefRequestedDate,
           installationDate: selectedProject.installationDate,
@@ -843,7 +846,8 @@ export function ProjectDetailPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2">Current stage<select value={currentStageDraft} onChange={(event) => setCurrentStageDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none"><option value={currentStageDraft}>{currentStageDraft}</option>{summaryStageOptions.filter((stage) => stage !== currentStageDraft).map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
                   <label className="grid gap-2">Status<select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none">{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                  <DatePickerInput label="Target date" value={targetDateDraft} onChange={setTargetDateDraft} placeholder="Select target date" />
+                  <DatePickerInput label="Project start date" value={projectStartDateDraft} onChange={setProjectStartDateDraft} placeholder="Select project start date" />
+                  <DatePickerInput label="Project target completion" value={targetDateDraft} onChange={setTargetDateDraft} placeholder="Select project target completion" />
                   </div>
                 </section>
                 <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
@@ -876,6 +880,11 @@ export function ProjectDetailPage() {
                   <div><span className="text-cyan-200">Contact:</span> {branch.signageContactName || 'Not captured'}</div>
                   <div><span className="text-cyan-200">Telephone:</span> {branch.signageContactPhone || 'Not captured'}</div>
                   <div><span className="text-cyan-200">Email:</span> {branch.signageContactEmail || 'Not captured'}</div>
+                </section>
+                <section className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Project schedule</h3>
+                  <div><span className="text-cyan-200">Project start date:</span> {formatWorkspaceDate(selectedProject.projectStartDate ?? '')}</div>
+                  <div><span className="text-cyan-200">Project target completion:</span> {formatWorkspaceDate(selectedProject.targetDate)}</div>
                 </section>
               </div>
             )}

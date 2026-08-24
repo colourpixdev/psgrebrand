@@ -23,6 +23,14 @@ const statusLabels: Record<ProjectStatus, string> = {
   cancelled: 'Cancelled',
 };
 
+const taskStatusLabels = { pending: 'Pending', open: 'Started', busy: 'Busy', done: 'Completed' };
+
+function currentStageTask(project: Project) {
+  const stage = project.currentStage.trim().toLowerCase();
+  return project.tasks.find((task) => (task.stage ?? task.text).trim().toLowerCase() === stage)
+    ?? project.tasks.find((task) => !task.completed);
+}
+
 const reportTypes: Array<{ value: ReportType; label: string; description: string }> = [
   { value: 'multi-branch-overview', label: 'PSG National Rebrand Rollout Report', description: 'A clear view of every permitted branch, its current stage, status, and target date.' },
 ];
@@ -68,18 +76,21 @@ function formatFileName(reportName: string) {
 
 function projectSpreadsheetRows(projects: Project[]) {
   return projects.map((project) => {
+    const stageTask = currentStageTask(project);
     const pendingTasks = project.tasks.filter(isTaskOutstanding).length;
     const participants = project.tasks.flatMap((task) => task.assignees?.map((assignee) => `${assignee.name} (${assignee.designation})`) ?? []).join('; ');
     return [
       project.id,
       project.branch,
-      project.projectTypeName,
       project.town,
       project.province,
       project.manager,
-      project.currentStage,
-      statusLabels[project.status],
+      project.projectStartDate ?? '',
       project.targetDate,
+      project.currentStage,
+      stageTask ? taskStatusLabels[stageTask.status ?? 'pending'] : 'Not set',
+      stageTask?.startedDate ?? '',
+      stageTask?.dueDate ?? '',
       pendingTasks,
       project.files.length,
       participants,
@@ -89,12 +100,11 @@ function projectSpreadsheetRows(projects: Project[]) {
 }
 
 function downloadExcel(projects: Project[], reportName: string) {
-  const headers = ['Branch reference', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Target', 'Pending tasks', 'Files', 'Participants', 'Updated'];
+  const headers = ['Branch reference', 'Branch', 'Town', 'Province', 'Manager', 'Project Start Date', 'Project Target Completion', 'Stage', 'Stage Status', 'Stage Start Date', 'Stage Target Date', 'Pending tasks', 'Files', 'Participants', 'Updated'];
   const rows = projectSpreadsheetRows(projects);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   worksheet['!cols'] = [
-    { wch: 17 }, { wch: 30 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 28 },
-    { wch: 16 }, { wch: 16 }, { wch: 15 }, { wch: 10 }, { wch: 42 }, { wch: 22 },
+    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 10 }, { wch: 42 }, { wch: 22 },
   ];
   worksheet['!rows'] = [{ hpt: 30 }, ...rows.map(() => ({ hpt: 24 }))];
   worksheet['!autofilter'] = { ref: `A1:M${rows.length + 1}` };
@@ -227,18 +237,20 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
           <p class="meta">${projects.length} project${projects.length === 1 ? '' : 's'} · Generated ${escapeHtml(new Date().toLocaleDateString())}</p>
         </header>
         <table>
-          <thead><tr>${['Project ID', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Target'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
-          <tbody>${projects.map((project) => `<tr>${[
+            <thead><tr>${['Project ID', 'Branch', 'Town', 'Province', 'Manager', 'Project Start Date', 'Project Target Completion', 'Stage', 'Stage Status', 'Stage Start Date', 'Stage Target Date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+              <tbody>${projects.map((project) => { const stageTask = currentStageTask(project); return `<tr>${[
       project.id,
       project.branch,
-      project.projectTypeName,
       project.town,
       project.province,
       project.manager,
-      project.currentStage,
-      statusLabels[project.status],
+      project.projectStartDate ?? '',
       project.targetDate,
-    ].map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
+      project.currentStage,
+      stageTask ? taskStatusLabels[stageTask.status ?? 'pending'] : 'Not set',
+      stageTask?.startedDate ?? '',
+      stageTask?.dueDate ?? '',
+    ].map((cell) => `<td>${escapeHtml(cell || 'Not set')}</td>`).join('')}</tr>`; }).join('')}</tbody>
         </table>
         <p class="footer">PSG Rebrand rollout report</p>
         <script>window.addEventListener('load', () => setTimeout(() => window.print(), 150));</script>
@@ -454,28 +466,34 @@ export function ReportsPage() {
               <tr>
                 <th className="px-5 py-4 font-medium">Branch</th>
                 <th className="px-5 py-4 font-medium">Province</th>
+                <th className="px-5 py-4 font-medium">Project Start Date</th>
+                <th className="px-5 py-4 font-medium">Project Target Completion</th>
                 <th className="px-5 py-4 font-medium">Stage</th>
-                <th className="px-5 py-4 font-medium">Status</th>
-                <th className="px-5 py-4 font-medium">Target date</th>
-                <th className="px-5 py-4 font-medium">Completion date</th>
+                <th className="px-5 py-4 font-medium">Stage Status</th>
+                <th className="px-5 py-4 font-medium">Stage Start Date</th>
+                <th className="px-5 py-4 font-medium">Stage Target Date</th>
                 <th className="px-5 py-4 font-medium">Open</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
               {isLoading ? (
-                <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
+                <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
+                  {(() => { const stageTask = currentStageTask(project); return <>
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.province}</td>
-                  <td className="px-5 py-4">{project.currentStage}</td>
-                  <td className="px-5 py-4">{statusLabels[project.status]}</td>
+                  <td className="px-5 py-4">{project.projectStartDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.targetDate || 'Not set'}</td>
-                  <td className="px-5 py-4">{project.completionDate || 'Not completed'}</td>
+                  <td className="px-5 py-4">{project.currentStage}</td>
+                  <td className="px-5 py-4">{stageTask ? taskStatusLabels[stageTask.status ?? 'pending'] : 'Not set'}</td>
+                  <td className="px-5 py-4">{stageTask?.startedDate || 'Not set'}</td>
+                  <td className="px-5 py-4">{stageTask?.dueDate || 'Not set'}</td>
                   <td className="px-5 py-4"><Link to={`/projects/${project.id}`} className="inline-flex items-center rounded-xl border border-sky-300/30 bg-sky-400/10 px-3 py-1.5 font-medium text-sky-200 hover:bg-sky-400/20 hover:text-white">View</Link></td>
+                  </>; })()}
                 </tr>
               )) : (
-                <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">No projects match the selected filters.</td></tr>
+                <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-400">No projects match the selected filters.</td></tr>
               )}
             </tbody>
           </table>

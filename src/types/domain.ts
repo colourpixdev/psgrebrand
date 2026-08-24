@@ -93,6 +93,7 @@ export interface Project {
   designer: string;
   currentStage: ProjectStage;
   status: ProjectStatus;
+  projectStartDate?: string;
   targetDate: string;
   briefRequestedDate: string;
   installationDate: string;

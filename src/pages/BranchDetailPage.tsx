@@ -397,7 +397,7 @@ export function BranchDetailPage() {
                   <div>
                     <p className="text-base font-semibold text-white">{project.branch}</p>
                     <p className="mt-1 text-sm text-slate-300">{project.currentStage} · {project.status.replace('_', ' ')}</p>
-                    <p className="mt-1 text-xs text-slate-400">Target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
+                    <p className="mt-1 text-xs text-slate-400">Project start {project.projectStartDate || 'Not set'} · Project target {project.targetDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button type="button" onClick={() => navigate(`/projects/${project.id}`)} className="inline-flex items-center justify-center rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/25 cursor-pointer">Edit branch project</button>
