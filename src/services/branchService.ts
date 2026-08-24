@@ -105,6 +105,17 @@ function createBranchId() {
   return globalThis.crypto?.randomUUID?.() ?? `branch-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+async function createProjectId(branchCode: string) {
+  if (supabase) {
+    const { data, error } = await supabase.rpc('allocate_project_id', { p_branch_code: branchCode });
+    if (!error && typeof data === 'string' && data.trim()) {
+      return data;
+    }
+  }
+
+  return createNextProjectId(branchCode, await getProjects());
+}
+
 function readLocalBranches(): Branch[] {
   if (typeof localStorage === 'undefined') {
     return [];
@@ -448,7 +459,7 @@ export async function createBranchProject(input: CreateBranchInput): Promise<{ b
   }
 
   const projectInput: CreateProjectInput = {
-    id: createNextProjectId(branch.code ?? 'PSG000', await getProjects()),
+    id: await createProjectId(branch.code ?? 'PSG000'),
     branchId: branch.id,
     branch: branch.name,
     branchCode: branch.code,
