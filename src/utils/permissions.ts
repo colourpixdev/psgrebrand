@@ -430,7 +430,11 @@ export function canViewProject(user: UserRecord | null | undefined, project: Pro
   const normalizedBranch = (user.branch ?? '').trim().toLowerCase();
   const projectBranch = (project.branch ?? '').trim().toLowerCase();
   const matchesManager = project.managerEmail?.trim().toLowerCase() === normalizedUserEmail;
-  const matchesBranch = Boolean(normalizedBranch) && projectBranch.includes(normalizedBranch);
+  const matchesBranch = Boolean(normalizedBranch) && (
+    projectBranch === normalizedBranch
+    || projectBranch.startsWith(`${normalizedBranch} `)
+    || projectBranch.endsWith(` ${normalizedBranch}`)
+  );
   const matchesAssignee = project.tasks.some((task) =>
     [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)]
       .filter(Boolean)

@@ -52,11 +52,14 @@ export function isAdminUserEmail(email: string | undefined) {
 export function enrichWorkspaceAccess(user: UserRecord): UserRecord {
   const normalizedEmail = user.email.trim().toLowerCase();
   const canAccessAllWorkspaces = isAllWorkspaceAdmin(normalizedEmail) || user.workspaceIds?.includes('*') === true;
+  const workspaceIds = canAccessAllWorkspaces
+    ? ['*']
+    : (user.workspaceIds ?? []).filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
 
   return {
     ...user,
     company: user.company ?? (user.role === 'sign_company' ? user.branch : undefined),
-    workspaceIds: canAccessAllWorkspaces ? ['*'] : user.workspaceIds ?? [defaultWorkspace.id],
+    workspaceIds,
     canAccessAllWorkspaces,
     isPlatformOwner: isPlatformOwnerEmail(normalizedEmail),
   };

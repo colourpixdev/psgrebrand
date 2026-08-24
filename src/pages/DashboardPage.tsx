@@ -58,10 +58,16 @@ export function DashboardPage() {
   const stats = useMemo(() => {
     const total = scopedProjects.length;
     const completed = scopedProjects.filter((project) => project.status === 'completed').length;
-    const inProgress = scopedProjects.filter((project) => project.status === 'in_progress' || project.status === 'busy').length;
     const atRisk = scopedProjects.filter((project) => project.status === 'delayed' || project.status === 'on_hold').length;
-    const notStarted = scopedProjects.filter((project) => project.currentStage === 'New Project' && project.status !== 'completed').length;
-    const awaitingApproval = scopedProjects.filter((project) => project.currentStage === 'Awaiting Approval').length;
+    const awaitingApproval = scopedProjects.filter((project) => project.currentStage === 'Awaiting Approval' && project.status !== 'completed' && project.status !== 'delayed' && project.status !== 'on_hold').length;
+    const notStarted = scopedProjects.filter((project) => project.currentStage === 'New Project' && project.status !== 'completed' && project.status !== 'delayed' && project.status !== 'on_hold').length;
+    const inProgress = scopedProjects.filter((project) =>
+      project.status !== 'completed'
+      && project.status !== 'delayed'
+      && project.status !== 'on_hold'
+      && project.currentStage !== 'New Project'
+      && project.currentStage !== 'Awaiting Approval'
+    ).length;
     const installationsToday = scopedProjects.filter((project) => project.installationDate && project.installationDate.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
 
     return { total, completed, inProgress, atRisk, notStarted, awaitingApproval, installationsToday };
@@ -247,23 +253,6 @@ export function DashboardPage() {
               )}
             </section>
 
-            {!isInternalManagement ? <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between gap-2">
-                <h3 className="text-lg font-semibold text-slate-900">Branches allocated to me</h3>
-              </div>
-
-              <div className="space-y-3">
-                {scopedProjects.length > 0 ? scopedProjects.map((project) => (
-                  <Link key={project.id} to={`/projects/${project.id}`} className="block rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:border-sky-200 hover:bg-sky-50">
-                    <p className="font-medium text-slate-900">{project.branch}</p>
-                    <p className="mt-1 text-sm text-slate-600">{project.currentStage} · {project.status}</p>
-                    <p className="mt-1 text-xs text-slate-500">Allocated project</p>
-                  </Link>
-                )) : (
-                  <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">No branches have been allocated to you.</p>
-                )}
-              </div>
-            </section> : null}
           </div>
         </>
       )}
