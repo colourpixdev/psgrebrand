@@ -81,12 +81,6 @@ export function DashboardPage() {
       .slice(0, 5);
   }, [scopedProjects, user]);
 
-  const recentActivity = useMemo(() => {
-    return [...scopedProjects]
-      .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
-      .slice(0, 5);
-  }, [scopedProjects]);
-
   const followedProjects = useMemo(() => {
     const followed = new Set(followedProjectIds);
     return scopedProjects.filter((project) => followed.has(project.id));
@@ -206,51 +200,37 @@ export function DashboardPage() {
                 <h3 className="text-lg font-semibold text-slate-900">For attention</h3>
               </div>
 
-              {isInternalManagement || attentionProjects.length > 0 ? (
-                <div className="space-y-3">
-                  {attentionProjects.length > 0 ? attentionProjects.map((project) => {
-                    const assignedTask = getAssignedAttentionStage(project, user?.email?.trim().toLowerCase());
-                    return (
-                      <div key={project.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:border-sky-200 hover:bg-sky-50">
-                        <div className="flex items-start justify-between gap-3">
-                          <Link to={`/projects/${project.id}`} className="min-w-0 flex-1">
-                            <p className="font-medium text-slate-900">{project.branch}</p>
-                            <p className="mt-1 text-sm text-slate-600">{assignedTask?.text} · {project.currentStage}</p>
-                          </Link>
-                          <span className="rounded-full bg-[#0b1f3a] px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-white ring-1 ring-white/30">
-                            {project.status === 'delayed' || project.status === 'on_hold' ? 'At risk' : 'Action needed'}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-sm text-slate-600">Target: {project.targetDate || 'Not set'}</p>
-                          <button
-                            type="button"
-                            disabled={markTaskDoneMutation.isPending || !assignedTask}
-                            onClick={() => markTaskDoneMutation.mutate(project)}
-                            className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {markTaskDoneMutation.isPending ? 'Saving...' : 'Mark as done'}
-                          </button>
-                        </div>
+              <div className="space-y-3">
+                {attentionProjects.length > 0 ? attentionProjects.map((project) => {
+                  const assignedTask = getAssignedAttentionStage(project, user?.email?.trim().toLowerCase());
+                  return (
+                    <div key={project.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:border-sky-200 hover:bg-sky-50">
+                      <div className="flex items-start justify-between gap-3">
+                        <Link to={`/projects/${project.id}`} className="min-w-0 flex-1">
+                          <p className="font-medium text-slate-900">{project.branch}</p>
+                          <p className="mt-1 text-sm text-slate-600">{assignedTask?.text} · {project.currentStage}</p>
+                        </Link>
+                        <span className="rounded-full bg-[#0b1f3a] px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-white ring-1 ring-white/30">
+                          {project.status === 'delayed' || project.status === 'on_hold' ? 'At risk' : 'Action needed'}
+                        </span>
                       </div>
-                    );
-                  }) : (
-                    <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">No immediate follow-up items are flagged right now.</p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {recentActivity.length > 0 ? recentActivity.map((project) => (
-                    <Link key={project.id} to={`/projects/${project.id}`} className="block rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:border-sky-200 hover:bg-sky-50">
-                      <p className="font-medium text-slate-900">{project.branch}</p>
-                      <p className="mt-1 text-sm text-slate-600">{project.currentStage} · {project.status}</p>
-                      <p className="mt-2 text-sm text-slate-500">Updated {project.updatedAt || 'recently'}</p>
-                    </Link>
-                  )) : (
-                    <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">No recent updates available.</p>
-                  )}
-                </div>
-              )}
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm text-slate-600">Target: {project.targetDate || 'Not set'}</p>
+                        <button
+                          type="button"
+                          disabled={markTaskDoneMutation.isPending || !assignedTask}
+                          onClick={() => markTaskDoneMutation.mutate(project)}
+                          className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {markTaskDoneMutation.isPending ? 'Saving...' : 'Mark as done'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">No immediate follow-up items are flagged right now.</p>
+                )}
+              </div>
             </section>
 
           </div>
