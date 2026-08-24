@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FileText, Search } from 'lucide-react';
-import * as XLSX from 'xlsx-js-style';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
@@ -66,12 +65,17 @@ function formatFileName(reportName: string) {
   return `${reportName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${date}`;
 }
 
-function projectReportRows(projects: Project[]) {
+function toCsvCell(value: string | number) {
+  const normalized = String(value ?? '').replace(/\r?\n|\r/g, ' ');
+  return `"${normalized.replace(/"/g, '""')}"`;
+}
+
+function projectCsvRows(projects: Project[]) {
   return projects.map((project) => {
     const pendingTasks = project.tasks.filter(isTaskOutstanding).length;
     const participants = project.tasks.flatMap((task) => task.assignees?.map((assignee) => `${assignee.name} (${assignee.designation})`) ?? []).join('; ');
     return [
-      project.id,
+      project.branch,
       project.branch,
       project.projectTypeName,
       project.town,
@@ -90,29 +94,15 @@ function projectReportRows(projects: Project[]) {
 
 function downloadExcel(projects: Project[], reportName: string) {
   const headers = ['Branch reference', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Target', 'Pending tasks', 'Files', 'Participants', 'Updated'];
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...projectReportRows(projects)]);
-  worksheet['!cols'] = [
-    { wch: 18 }, { wch: 30 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 34 },
-    { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 42 }, { wch: 24 },
-  ];
-  worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
-  worksheet['!autofilter'] = { ref: `A1:M${projects.length + 1}` };
-  const headerStyle = { fill: { fgColor: { rgb: '0F4C5C' } }, font: { bold: true, color: { rgb: 'FFFFFF' } }, alignment: { vertical: 'center', wrapText: true } };
-  headers.forEach((_, index) => {
-    const cell = worksheet[XLSX.utils.encode_cell({ r: 0, c: index })];
-    if (cell) cell.s = headerStyle;
-  });
-  projectReportRows(projects).forEach((_, rowIndex) => {
-    headers.forEach((_, columnIndex) => {
-      const cell = worksheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: columnIndex })];
-      if (cell) {
-        cell.s = { fill: { fgColor: { rgb: rowIndex % 2 === 0 ? 'F1F7F8' : 'FFFFFF' } }, alignment: { vertical: 'top', wrapText: columnIndex === 12 } };
-      }
-    });
-  });
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Rollout overview');
-  XLSX.writeFile(workbook, `${formatFileName(reportName)}.xlsx`, { bookType: 'xlsx' });
+  const rows = projectCsvRows(projects);
+  const csv = ['\uFEFF', headers.map(toCsvCell).join(','), ...rows.map((row) => row.map(toCsvCell).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${formatFileName(reportName)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function branchDetailHtml(projects: Project[], reportName: string, branchName: string, userName?: string) {
@@ -183,26 +173,14 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
         <meta charset="utf-8" />
         <title>PSG Rebrand Report</title>
         <style>
-          @page { size: A4 landscape; margin: 14mm; }
-          body { font-family: Arial, sans-serif; color: #173042; margin: 0; background: #f4f8f9; }
-          .report { background: white; padding: 24px; }
-          .masthead { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 4px solid #0f766e; padding-bottom: 14px; margin-bottom: 20px; }
-          h1 { margin: 0; color: #0f4c5c; font-size: 24px; }
-          .meta { color: #5b7080; font-size: 12px; margin: 5px 0 0; }
-          .summary { display: flex; gap: 10px; margin-bottom: 18px; }
-          .metric { flex: 1; border: 1px solid #c9dfe0; background: #eef8f7; padding: 10px 12px; }
-          .metric strong { display: block; color: #0f766e; font-size: 18px; }
-          table { border-collapse: collapse; width: 100%; font-size: 10px; }
-          th, td { border-bottom: 1px solid #d8e4e7; padding: 8px; text-align: left; vertical-align: top; }
-          th { background: #0f4c5c; color: white; font-size: 10px; }
-          tr:nth-child(even) { background: #f1f7f8; }
-          tr { page-break-inside: avoid; }
-          .footer { margin-top: 18px; color: #718391; font-size: 10px; }
+          body { font-family: Arial, sans-serif; color: #111827; margin: 32px; }
+          table { border-collapse: collapse; width: 100%; font-size: 11px; }
+          th, td { border: 1px solid #d1d5db; padding: 7px; text-align: left; vertical-align: top; }
+          th { background: #e5e7eb; }
         </style>
       </head>
-      <body><main class="report">
-        <header class="masthead"><div><h1>${escapeHtml(reportName)}</h1><p class="meta">PSG Rebrand rollout overview</p></div><p class="meta">Generated ${escapeHtml(new Date().toLocaleDateString())}</p></header>
-        <div class="summary"><div class="metric"><strong>${projects.length}</strong>Projects</div><div class="metric"><strong>${projects.filter((project) => project.status === 'completed').length}</strong>Completed</div><div class="metric"><strong>${projects.filter((project) => project.status !== 'completed').length}</strong>Outstanding</div></div>
+      <body>
+        <p>${projects.length} project${projects.length === 1 ? '' : 's'} exported on ${new Date().toLocaleDateString()}</p>
         <table>
           <thead><tr>${['Project ID', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Target'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
           <tbody>${projects.map((project) => `<tr>${[
@@ -216,7 +194,7 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
       statusLabels[project.status],
       project.targetDate,
     ].map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
-        </table><p class="footer">${projects.length} project${projects.length === 1 ? '' : 's'} included in this report.</p></main>
+        </table>
         <script>window.addEventListener('load', () => setTimeout(() => window.print(), 150));</script>
       </body>
     </html>
