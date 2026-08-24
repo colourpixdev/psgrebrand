@@ -31,6 +31,7 @@ export function DashboardPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [followedProjectIds, setFollowedProjectIds] = useState<string[]>(() => getFollowedProjectIds(user?.email));
+  const [markDoneMessage, setMarkDoneMessage] = useState<string | null>(null);
   const {
     data: branches = [],
     isLoading: isLoadingBranches,
@@ -117,6 +118,7 @@ export function DashboardPage() {
 
   const markTaskDoneMutation = useMutation({
     mutationFn: async (project: Project) => {
+      setMarkDoneMessage(null);
       const assignedTask = getAssignedAttentionStage(project, user?.email?.trim().toLowerCase());
       if (!assignedTask) {
         throw new Error('This project has no stage assigned to you.');
@@ -134,8 +136,13 @@ export function DashboardPage() {
         actorEmail: user?.email,
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (_updatedProject, project) => {
+      queryClient.setQueryData<Project[]>(['projects'], (currentProjects) => currentProjects?.filter((item) => item.id !== project.id));
+      setMarkDoneMessage('Task marked as done and handed to Francois.');
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+    onError: (error) => {
+      setMarkDoneMessage(error instanceof Error ? error.message : 'Unable to mark this task as done.');
     },
   });
 
@@ -256,6 +263,7 @@ export function DashboardPage() {
                   <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">No immediate follow-up items are flagged right now.</p>
                 )}
               </div>
+              {markDoneMessage ? <p className={`mt-3 text-sm ${markDoneMessage.startsWith('Task marked') ? 'text-emerald-700' : 'text-red-600'}`}>{markDoneMessage}</p> : null}
             </section>
 
           </div>
