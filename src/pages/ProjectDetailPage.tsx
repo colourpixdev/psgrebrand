@@ -3,16 +3,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { DatePickerInput } from '../components/DatePickerInput';
-import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectActivity, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectActivity, updateProjectComment, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
+import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectActivity, deleteProjectComment, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectActivity, updateProjectComment, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById, updateBranch } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
 import { followProjectForUser } from '../services/projectFollowService';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { getUsers } from '../services/userService';
-import { can, canViewProject, canAddTaskComments, canEditOwnComment, canRenameFiles, getRolePolicy } from '../utils/permissions';
+import { can, canViewProject, canAddTaskComments, canDeleteComment, canEditOwnComment, canRenameFiles, getRolePolicy } from '../utils/permissions';
 import { getTaskStatus } from '../utils/taskStatus';
 import type { CommentItem, ContactPerson, Division, Project, ProjectFile, ProjectStatus, ProjectStage, TaskItem } from '../types/domain';
 import { normalizeRole } from '../types/domain';
+import { isPlatformOwnerEmail } from '../constants/workspaces';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'pending', label: 'Pending' },
@@ -433,6 +434,8 @@ export function ProjectDetailPage() {
       projectId: projectId ?? '',
       commentId,
       author: user?.name ?? 'Workspace user',
+      actorRole: user?.role,
+      actorEmail: user?.email,
       message,
     }),
     onSuccess: async (updatedProject) => {
@@ -441,6 +444,22 @@ export function ProjectDetailPage() {
       await syncProject(updatedProject, 'Comment updated.');
     },
     onError: (error) => showError(error instanceof Error ? error.message : 'Unable to update comment.'),
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: (commentId: string) => deleteProjectComment({
+      projectId: projectId ?? '',
+      commentId,
+      author: user?.name ?? 'Workspace user',
+      actorRole: user?.role,
+      actorEmail: user?.email,
+    }),
+    onSuccess: async (updatedProject) => {
+      setEditingCommentId(null);
+      setEditingCommentDraft('');
+      await syncProject(updatedProject, 'Comment deleted.');
+    },
+    onError: (error) => showError(error instanceof Error ? error.message : 'Unable to delete comment.'),
   });
 
   const updateActivityMutation = useMutation({
@@ -600,6 +619,12 @@ export function ProjectDetailPage() {
       showSuccess('File uploaded.');
     },
   });
+
+  const uploadFiles = async (files: File[], taskId?: string) => {
+    for (const file of files) {
+      await uploadMutation.mutateAsync({ file, taskId });
+    }
+  };
 
   const downloadMutation = useMutation({
     mutationFn: async (file: ProjectFile) => {
@@ -779,6 +804,9 @@ export function ProjectDetailPage() {
       ? [{ name: branch.contactName, email: branch.contactEmail, phone: branch.contactPhone, designation: 'Contact Person' }]
       : [];
   const hasSignageDetails = [branch?.signageCompany, branch?.signageAddress, branch?.signageContactName, branch?.signageContactPhone, branch?.signageContactEmail].some((value) => Boolean(value?.trim()));
+  const marketingCoordinatorName = selectedProject.manager?.trim() && selectedProject.manager.trim().toLowerCase() !== 'not captured' ? selectedProject.manager.trim() : '';
+  const marketingCoordinatorEmail = selectedProject.managerEmail?.trim() ?? '';
+  const hasMarketingCoordinator = Boolean(marketingCoordinatorName || marketingCoordinatorEmail);
 
   return (
     <div className="relative space-y-6">
@@ -807,7 +835,6 @@ export function ProjectDetailPage() {
             {isEditingDetails && canEditDetails ? (
               <div className="mt-4 grid gap-4 text-sm text-slate-200">
                 <section className="grid gap-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Current stage</h3>
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Branch</h3>
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="grid gap-2">Branch<input value={branchDetailsDraft.name} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, name: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
@@ -847,13 +874,6 @@ export function ProjectDetailPage() {
                     <label className="grid gap-2">Email<input type="email" value={branchDetailsDraft.signageContactEmail} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, signageContactEmail: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
                   </div>
                 </section>
-                <section className="grid gap-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Current stage</h3>
-                  <div className="grid gap-4 md:grid-cols-2">
-                  <label className="grid gap-2">Current stage<select value={currentStageDraft} onChange={(event) => setCurrentStageDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none"><option value={currentStageDraft}>{currentStageDraft}</option>{summaryStageOptions.filter((stage) => stage !== currentStageDraft).map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
-                  <label className="grid gap-2">Status<select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none">{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                  </div>
-                </section>
                 <section className="grid gap-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Project schedule</h3>
                   <div className="grid gap-4 md:grid-cols-2">
@@ -864,6 +884,7 @@ export function ProjectDetailPage() {
                 <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
                   <button type="button" disabled={detailsMutation.isPending} onClick={() => detailsMutation.mutate()} className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">{detailsMutation.isPending ? 'Saving...' : 'Save details'}</button>
                   <button type="button" disabled={detailsMutation.isPending || deleteProjectMutation.isPending} onClick={() => { setDeleteConfirmationArmed(false); setIsEditingDetails(false); }} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Cancel</button>
+                  <button type="button" onClick={() => navigate('/branches')} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/20">Back to branches</button>
                   {canDeleteProject ? <button type="button" onClick={() => { if (deleteConfirmationArmed) { deleteProjectMutation.mutate(); return; } setDeleteConfirmationArmed(true); }} disabled={detailsMutation.isPending || deleteProjectMutation.isPending} className="rounded-xl border border-red-400/35 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">
                     {deleteProjectMutation.isPending ? 'Deleting...' : deleteConfirmationArmed ? 'Confirm delete' : 'Delete project'}
                   </button> : null}
@@ -879,24 +900,27 @@ export function ProjectDetailPage() {
                   <div><span className="text-cyan-200">Division:</span> {branch.division}</div>
                   <div><span className="text-cyan-200">Town/Province:</span> {branch.town}, {branch.province}</div>
                   <div><span className="text-cyan-200">Address:</span> {branch.physicalAddress || 'Not captured'}</div>
+                  {hasMarketingCoordinator ? <div><span className="text-cyan-200">Marketing coordinator:</span> {marketingCoordinatorName}{marketingCoordinatorName && marketingCoordinatorEmail ? ` · ${marketingCoordinatorEmail}` : marketingCoordinatorEmail}</div> : null}
                   <div className="grid gap-3 border-t border-white/10 pt-3">
                     <h4 className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Contact persons</h4>
                     {branchParticipants.length > 0 ? branchParticipants.map((participant, index) => <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3"><p className="font-medium text-cyan-400">{participant.name}</p><p className="mt-1 text-xs text-slate-300">{participant.designation}</p>{participant.email ? <p className="mt-2 text-xs text-slate-300">{participant.email}</p> : null}{participant.phone ? <p className="mt-1 text-xs text-slate-300">{participant.phone}</p> : null}</div>) : <p className="text-xs text-slate-500">No contact persons added.</p>}
                   </div>
                 </section>
-                {hasSignageDetails ? <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Signage supplier</h3>
-                  {branch.signageCompany?.trim() ? <div><span className="text-cyan-200">Company:</span> {branch.signageCompany}</div> : null}
-                  {branch.signageAddress?.trim() ? <div><span className="text-cyan-200">Address:</span> {branch.signageAddress}</div> : null}
-                  {branch.signageContactName?.trim() ? <div><span className="text-cyan-200">Contact:</span> {branch.signageContactName}</div> : null}
-                  {branch.signageContactPhone?.trim() ? <div><span className="text-cyan-200">Telephone:</span> {branch.signageContactPhone}</div> : null}
-                  {branch.signageContactEmail?.trim() ? <div><span className="text-cyan-200">Email:</span> {branch.signageContactEmail}</div> : null}
-                </section> : null}
                 <section className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Project schedule</h3>
                   <div><span className="text-cyan-200">Project start date:</span> {formatWorkspaceDate(selectedProject.projectStartDate ?? '')}</div>
                   <div><span className="text-cyan-200">Project target completion:</span> {formatWorkspaceDate(selectedProject.targetDate)}</div>
                 </section>
+                {hasSignageDetails ? <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4 lg:col-span-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Signage supplier</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {branch.signageCompany?.trim() ? <div><span className="text-cyan-200">Company:</span> {branch.signageCompany}</div> : null}
+                    {branch.signageAddress?.trim() ? <div><span className="text-cyan-200">Address:</span> {branch.signageAddress}</div> : null}
+                    {branch.signageContactName?.trim() ? <div><span className="text-cyan-200">Contact:</span> {branch.signageContactName}</div> : null}
+                    {branch.signageContactPhone?.trim() ? <div><span className="text-cyan-200">Telephone:</span> {branch.signageContactPhone}</div> : null}
+                    {branch.signageContactEmail?.trim() ? <div><span className="text-cyan-200">Email:</span> {branch.signageContactEmail}</div> : null}
+                  </div>
+                </section> : null}
               </div>
             )}
           </div>
@@ -958,7 +982,8 @@ export function ProjectDetailPage() {
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   {item.author ? <p className="text-xs text-cyan-200">{item.author}</p> : <span />}
-                  {item.commentId && canEditOwnComment(user, item.author) && editingCommentId !== item.commentId ? <button type="button" onClick={() => { setEditingCommentId(item.commentId ?? null); setEditingCommentDraft(item.detail); }} className="rounded-xl border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 hover:text-white">Edit</button> : null}
+                  {item.commentId && (canEditOwnComment(user, item.author) || canAdministerProjectDetails || isPlatformOwnerEmail(user?.email)) && editingCommentId !== item.commentId ? <button type="button" onClick={() => { setEditingCommentId(item.commentId ?? null); setEditingCommentDraft(item.detail); }} className="rounded-xl border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 hover:text-white">Edit</button> : null}
+                  {item.commentId && canDeleteComment(user, item.author) ? <button type="button" disabled={deleteCommentMutation.isPending} onClick={() => { if (window.confirm('Delete this project comment?')) { deleteCommentMutation.mutate(item.commentId ?? ''); } }} className="rounded-xl border border-red-300/35 bg-red-400/10 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
                   {item.activityKey && canEditDetails && editingActivityKey !== item.activityKey ? <button type="button" onClick={() => { setEditingActivityKey(item.activityKey ?? null); setEditingActivityDraft(item.detail); }} className="rounded-xl border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 hover:text-white">Edit</button> : null}
                   {item.activityKey && canEditDetails ? <button type="button" disabled={deleteActivityMutation.isPending} onClick={() => { if (window.confirm('Delete this project history entry?')) { deleteActivityMutation.mutate({ date: item.date, title: item.title, detail: item.detail }); } }} className="rounded-xl border border-red-300/35 bg-red-400/10 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-400/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
                 </div>
@@ -1083,9 +1108,9 @@ export function ProjectDetailPage() {
                         event.preventDefault();
                         event.stopPropagation();
                         if (!uploadMutation.isPending) {
-                          const file = event.dataTransfer.files[0];
-                          if (file) {
-                            uploadMutation.mutate({ file, taskId: task.id });
+                          const files = Array.from(event.dataTransfer.files);
+                          if (files.length > 0) {
+                            void uploadFiles(files, task.id);
                           }
                         }
                       }}
@@ -1094,13 +1119,14 @@ export function ProjectDetailPage() {
                       <input
                         type="file"
                         disabled={uploadMutation.isPending}
+                        multiple
                         accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
                         className="sr-only"
                         onChange={(event) => {
-                          const file = event.target.files?.[0];
+                          const files = Array.from(event.target.files ?? []);
                           event.target.value = '';
-                          if (file) {
-                            uploadMutation.mutate({ file, taskId: task.id });
+                          if (files.length > 0) {
+                            void uploadFiles(files, task.id);
                           }
                         }}
                       />
@@ -1138,7 +1164,7 @@ export function ProjectDetailPage() {
                       >
                         Move down
                       </button>
-                      {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); }} className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600">Edit stage</button> : null}
+                      {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); }} className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600">Edit stage name</button> : null}
                       {canDeleteTasks ? <button type="button" disabled={deleteTaskMutation.isPending} onClick={() => deleteTaskMutation.mutate(task)} className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
                     </div>
                   </div>
@@ -1246,7 +1272,7 @@ export function ProjectDetailPage() {
                           <p className="text-xs text-slate-400">{c.date}</p>
                           <div className="mt-1 flex items-start justify-between gap-2">
                             <p className="font-medium text-white">{c.author}</p>
-                            {c.id && canEditOwnComment(user, c.author) && editingCommentId !== c.id ? (
+                            {c.id && (canEditOwnComment(user, c.author) || canAdministerProjectDetails) && editingCommentId !== c.id ? (
                               <button type="button" onClick={() => { setEditingCommentId(c.id ?? null); setEditingCommentDraft(c.message); }} className="text-xs font-semibold text-cyan-200 hover:text-white">Edit</button>
                             ) : null}
                           </div>
@@ -1438,7 +1464,7 @@ export function ProjectDetailPage() {
           canUpload={canUploadFiles}
           canDelete={canDeleteFiles}
           canRename={canRenameProjectFiles}
-          onUpload={(file, taskId) => uploadMutation.mutate({ file, taskId })}
+          onUpload={(files, taskId) => { void uploadFiles(files, taskId); }}
           onPreview={(file: ProjectFile) => previewMutation.mutate(file)}
           onDownload={(file: ProjectFile) => downloadMutation.mutate(file)}
           onRename={(file: ProjectFile, nextName) => renameFileMutation.mutate({ file, nextName })}

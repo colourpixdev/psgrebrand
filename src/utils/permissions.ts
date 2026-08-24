@@ -378,6 +378,20 @@ export function canEditOwnComment(user: UserRecord | null | undefined, author: s
   return user.name.trim().toLowerCase() === author.trim().toLowerCase();
 }
 
+export function canDeleteComment(user: UserRecord | null | undefined, author: string) {
+  if (!user) {
+    return false;
+  }
+
+  const communication = getRolePolicy(user)?.communication;
+  if (!communication) {
+    return false;
+  }
+
+  const isOwnComment = user.name.trim().toLowerCase() === author.trim().toLowerCase();
+  return isOwnComment ? communication.canDeleteOwnComments : communication.canDeleteOthersComments;
+}
+
 export function canManageAccessControls(user: UserRecord | null | undefined) {
   if (!user) {
     return false;

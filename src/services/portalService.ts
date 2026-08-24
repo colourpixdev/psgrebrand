@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectTemplateId, Role, TaskAssignee, TaskItem, TaskStatus, UserRecord } from '../types/domain';
-import { defaultWorkspace, rolloutAppEmail } from '../constants/workspaces';
+import { defaultWorkspace, isPlatformOwnerEmail, rolloutAppEmail } from '../constants/workspaces';
 import { defaultProjectTemplate, getProjectTemplate } from '../constants/projectTemplates';
 import { createTaskFromPool } from '../constants/taskPool';
 import { createNextProjectId } from '../utils/branchProjectIds';
@@ -668,7 +668,17 @@ export type UpdateProjectCommentInput = {
   projectId: string;
   commentId: string;
   author: string;
+  actorRole?: Role;
+  actorEmail?: string;
   message: string;
+};
+
+export type DeleteProjectCommentInput = {
+  projectId: string;
+  commentId: string;
+  author: string;
+  actorRole?: Role;
+  actorEmail?: string;
 };
 
 export type UpdateProjectActivityInput = {
@@ -1718,7 +1728,9 @@ export async function updateProjectComment(input: UpdateProjectCommentInput): Pr
   if (!existingComment) {
     throw new Error('Comment not found.');
   }
-  if (existingComment.author.trim().toLowerCase() !== input.author.trim().toLowerCase()) {
+  const isOwnComment = existingComment.author.trim().toLowerCase() === input.author.trim().toLowerCase();
+  const canEditAnotherUserComment = input.actorRole === 'colourpix_admin' || input.actorRole === 'psg_head_office' || isPlatformOwnerEmail(input.actorEmail);
+  if (!isOwnComment && !canEditAnotherUserComment) {
     throw new Error('You can only edit comments you created.');
   }
 
@@ -1736,6 +1748,46 @@ export async function updateProjectComment(input: UpdateProjectCommentInput): Pr
 
   if (error || !data) {
     throw error ?? new Error('Unable to update project comment.');
+  }
+
+  return mapProjectRow(data as ProjectRow);
+}
+
+export async function deleteProjectComment(input: DeleteProjectCommentInput): Promise<Project> {
+  const client = supabase;
+
+  if (!client) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const existingProject = await getProjectById(input.projectId);
+  if (!existingProject) {
+    throw new Error('Project not found.');
+  }
+
+  const comment = existingProject.comments.find((item) => item.id === input.commentId);
+  if (!comment) {
+    throw new Error('Comment not found.');
+  }
+  const isOwnComment = comment.author.trim().toLowerCase() === input.author.trim().toLowerCase();
+  const canDeleteAnotherUserComment = input.actorRole === 'colourpix_admin' || input.actorRole === 'psg_head_office' || isPlatformOwnerEmail(input.actorEmail);
+  if (!isOwnComment && !canDeleteAnotherUserComment) {
+    throw new Error('You can only delete comments you created.');
+  }
+
+  const comments = existingProject.comments.filter((item) => item.id !== input.commentId);
+  const activity = existingProject.activity.filter((item) => !item.detail.includes(comment.message));
+  const { data, error } = await client
+    .from('projects')
+    .update({ comments, activity, updated_at: new Date().toISOString() })
+    .eq('id', input.projectId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to delete project comment.');
   }
 
   return mapProjectRow(data as ProjectRow);

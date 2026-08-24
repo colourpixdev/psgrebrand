@@ -57,7 +57,7 @@ export function FileGrid({
   onPreview?: (file: ProjectFile) => void;
   onDownload?: (file: ProjectFile) => void;
   onRename?: (file: ProjectFile, nextName: string) => void;
-  onUpload?: (file: File, taskId?: string) => void;
+  onUpload?: (files: File[], taskId?: string) => void;
   getThumbnailUrl?: (file: ProjectFile) => Promise<string | null>;
   onDelete?: (file: ProjectFile) => void;
 }) {
@@ -179,7 +179,10 @@ export function FileGrid({
       return;
     }
 
-    Array.from(event.dataTransfer.files).forEach((file) => onUpload?.(file));
+    const files = Array.from(event.dataTransfer.files);
+    if (files.length > 0) {
+      onUpload?.(files);
+    }
   }
 
   return (
@@ -211,13 +214,14 @@ export function FileGrid({
             <input
               type="file"
               disabled={isUploading}
+              multiple
               accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
               className="sr-only"
               onChange={(event) => {
-                const file = event.target.files?.[0];
+                const files = Array.from(event.target.files ?? []);
                 event.target.value = '';
-                if (file) {
-                  onUpload?.(file);
+                if (files.length > 0) {
+                  onUpload?.(files);
                 }
               }}
             />

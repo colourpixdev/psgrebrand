@@ -245,6 +245,12 @@ export function BranchDetailPage() {
     },
   });
 
+  const uploadFiles = async (projectId: string, files: File[], taskId: string) => {
+    for (const file of files) {
+      await uploadMutation.mutateAsync({ projectId, file, taskId });
+    }
+  };
+
   const deleteFileMutation = useMutation({
     mutationFn: ({ projectId, file }: { projectId: string; file: ProjectFile }) => deleteProjectFile({
       projectId,
@@ -524,13 +530,14 @@ export function BranchDetailPage() {
                                 <input
                                   type="file"
                                   disabled={uploadMutation.isPending}
+                                  multiple
                                   accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.dwg,.ai"
                                   className="sr-only"
                                   onChange={(event) => {
-                                    const file = event.target.files?.[0];
+                                    const files = Array.from(event.target.files ?? []);
                                     event.target.value = '';
-                                    if (file) {
-                                      uploadMutation.mutate({ projectId: project.id, file, taskId: task.id });
+                                    if (files.length > 0) {
+                                      void uploadFiles(project.id, files, task.id);
                                     }
                                   }}
                                 />
