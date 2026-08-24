@@ -62,8 +62,8 @@ export function DashboardPage() {
   const attentionProjects = useMemo(() => {
     const userEmail = user?.email?.trim().toLowerCase();
     return scopedProjects
-      .filter((project) => project.status === 'delayed' || project.status === 'on_hold' || project.currentStage === 'Awaiting Approval' || Boolean(userEmail && project.tasks.some((task) => [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)].some((email) => email?.trim().toLowerCase() === userEmail))))
-      .sort((a, b) => (a.updatedAt || '').localeCompare(b.updatedAt || ''))
+      .filter((project) => project.status === 'delayed' || project.status === 'on_hold' || project.currentStage === 'Awaiting Approval' || Boolean(userEmail && project.tasks.some((task) => task.status !== 'done' && !task.completed && [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)].some((email) => email?.trim().toLowerCase() === userEmail))))
+      .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
       .slice(0, 5);
   }, [scopedProjects, user]);
 

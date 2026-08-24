@@ -1077,7 +1077,7 @@ export async function getProjects(): Promise<Project[]> {
 
           return hydrateProjectFiles(projects.map((project) => ({
             ...project,
-            tasks: tasksByBranch.get(project.branchId) ?? [],
+            tasks: tasksByBranch.get(project.branchId) ?? project.tasks,
           })));
         }
       }
@@ -1086,7 +1086,7 @@ export async function getProjects(): Promise<Project[]> {
     }
   }
 
-  return hydrateProjectFiles(projects.map((project) => ({ ...project, tasks: [] })));
+  return hydrateProjectFiles(projects);
 }
 
 export async function getProjectById(projectId: string): Promise<Project | undefined> {
