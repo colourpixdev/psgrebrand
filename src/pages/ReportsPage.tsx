@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FileText, Search } from 'lucide-react';
+import * as XLSX from 'xlsx-js-style';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
@@ -65,17 +66,12 @@ function formatFileName(reportName: string) {
   return `${reportName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${date}`;
 }
 
-function toCsvCell(value: string | number) {
-  const normalized = String(value ?? '').replace(/\r?\n|\r/g, ' ');
-  return `"${normalized.replace(/"/g, '""')}"`;
-}
-
-function projectCsvRows(projects: Project[]) {
+function projectSpreadsheetRows(projects: Project[]) {
   return projects.map((project) => {
     const pendingTasks = project.tasks.filter(isTaskOutstanding).length;
     const participants = project.tasks.flatMap((task) => task.assignees?.map((assignee) => `${assignee.name} (${assignee.designation})`) ?? []).join('; ');
     return [
-      project.branch,
+      project.id,
       project.branch,
       project.projectTypeName,
       project.town,
@@ -94,13 +90,52 @@ function projectCsvRows(projects: Project[]) {
 
 function downloadExcel(projects: Project[], reportName: string) {
   const headers = ['Branch reference', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Target', 'Pending tasks', 'Files', 'Participants', 'Updated'];
-  const rows = projectCsvRows(projects);
-  const csv = ['\uFEFF', headers.map(toCsvCell).join(','), ...rows.map((row) => row.map(toCsvCell).join(','))].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const rows = projectSpreadsheetRows(projects);
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  worksheet['!cols'] = [
+    { wch: 17 }, { wch: 30 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 28 },
+    { wch: 16 }, { wch: 16 }, { wch: 15 }, { wch: 10 }, { wch: 42 }, { wch: 22 },
+  ];
+  worksheet['!rows'] = [{ hpt: 30 }, ...rows.map(() => ({ hpt: 24 }))];
+  worksheet['!autofilter'] = { ref: `A1:M${rows.length + 1}` };
+  worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+  for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
+    const headerCell = worksheet[XLSX.utils.encode_cell({ r: 0, c: columnIndex })];
+    headerCell.s = {
+      fill: { fgColor: { rgb: '0F3D56' } },
+      font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      border: { bottom: { style: 'medium', color: { rgb: '38BDF8' } } },
+    };
+  }
+
+  rows.forEach((_, rowIndex) => {
+    for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
+      const cell = worksheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: columnIndex })];
+      cell.s = {
+        fill: { fgColor: { rgb: rowIndex % 2 === 0 ? 'F0F9FF' : 'FFFFFF' } },
+        font: { color: { rgb: '172033' }, sz: 10 },
+        alignment: { vertical: 'top', wrapText: columnIndex === 11 },
+        border: { bottom: { style: 'thin', color: { rgb: 'D7E3EA' } } },
+      };
+    }
+    const statusCell = worksheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: 7 })];
+    statusCell.s = {
+      ...statusCell.s,
+      font: { bold: true, color: { rgb: '075985' }, sz: 10 },
+      alignment: { horizontal: 'center', vertical: 'top', wrapText: true },
+    };
+  });
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Rollout report');
+  const workbookData = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([workbookData], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${formatFileName(reportName)}.csv`;
+  link.download = `${formatFileName(reportName)}.xlsx`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -173,14 +208,24 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
         <meta charset="utf-8" />
         <title>PSG Rebrand Report</title>
         <style>
-          body { font-family: Arial, sans-serif; color: #111827; margin: 32px; }
-          table { border-collapse: collapse; width: 100%; font-size: 11px; }
-          th, td { border: 1px solid #d1d5db; padding: 7px; text-align: left; vertical-align: top; }
-          th { background: #e5e7eb; }
+          @page { size: A4 landscape; margin: 14mm; }
+          body { font-family: Arial, sans-serif; color: #172033; margin: 0; background: #ffffff; }
+          header { border-bottom: 4px solid #0f7894; margin-bottom: 18px; padding-bottom: 12px; }
+          h1 { color: #0f3d56; font-size: 24px; margin: 0 0 6px; }
+          .meta { color: #64748b; font-size: 11px; margin: 0; }
+          table { border-collapse: collapse; width: 100%; font-size: 10px; table-layout: fixed; }
+          th, td { border: 1px solid #cbd5e1; padding: 7px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+          th { background: #0f3d56; color: #ffffff; font-size: 10px; }
+          tbody tr:nth-child(even) { background: #f0f9ff; }
+          tbody tr { page-break-inside: avoid; }
+          .footer { color: #64748b; font-size: 9px; margin-top: 14px; text-align: right; }
         </style>
       </head>
       <body>
-        <p>${projects.length} project${projects.length === 1 ? '' : 's'} exported on ${new Date().toLocaleDateString()}</p>
+        <header>
+          <h1>${escapeHtml(reportName)}</h1>
+          <p class="meta">${projects.length} project${projects.length === 1 ? '' : 's'} · Generated ${escapeHtml(new Date().toLocaleDateString())}</p>
+        </header>
         <table>
           <thead><tr>${['Project ID', 'Branch', 'Type', 'Town', 'Province', 'Manager', 'Stage', 'Status', 'Target'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
           <tbody>${projects.map((project) => `<tr>${[
@@ -195,6 +240,7 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
       project.targetDate,
     ].map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
         </table>
+        <p class="footer">PSG Rebrand rollout report</p>
         <script>window.addEventListener('load', () => setTimeout(() => window.print(), 150));</script>
       </body>
     </html>
