@@ -7,19 +7,27 @@ function leftPad(value: number, width: number) {
 }
 
 export function formatBranchCode(index: number) {
-  return `${branchCodePrefix}${leftPad(index + 1, 3)}`;
+  return `${branchCodePrefix}${leftPad(index, 3)}`;
 }
 
-function branchSortKey(branch: Branch) {
-  return `${branch.createdAt}|${branch.name.toLowerCase()}|${branch.id}`;
+export function createNextBranchCode(branches: Branch[]) {
+  const highestUsedCode = branches.reduce((highest, branch) => {
+    const match = new RegExp(`^${branchCodePrefix}(\\d+)$`, 'i').exec(branch.code?.trim() ?? '');
+    const value = match ? Number.parseInt(match[1], 10) : 0;
+    return Number.isFinite(value) ? Math.max(highest, value) : highest;
+  }, 0);
+
+  return formatBranchCode(highestUsedCode + 1);
 }
 
 export function buildBranchCodeMap(branches: Branch[]) {
-  const sorted = [...branches].sort((a, b) => branchSortKey(a).localeCompare(branchSortKey(b)));
   const codeByBranchId: Record<string, string> = {};
 
-  sorted.forEach((branch, index) => {
-    codeByBranchId[branch.id] = formatBranchCode(index);
+  branches.forEach((branch) => {
+    const code = branch.code?.trim().toUpperCase();
+    if (code) {
+      codeByBranchId[branch.id] = code;
+    }
   });
 
   return codeByBranchId;

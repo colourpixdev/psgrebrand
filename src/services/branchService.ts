@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
-import { createProject, type CreateProjectInput } from './portalService';
+import { createProject, getProjects, type CreateProjectInput } from './portalService';
 import type { Branch, ContactPerson, Division, Project } from '../types/domain';
+import { createNextBranchCode, createNextProjectId } from '../utils/branchProjectIds';
 
 const branchesStorageKey = 'psg-rebrand:branches';
 
@@ -223,9 +224,8 @@ function getPrimaryContactFromContacts(input: Pick<CreateBranchInput, 'contactNa
 function buildBranchInsertPayload(input: CreateBranchInput) {
   const syncedContactFields = getPrimaryContactFromContacts(input);
 
-  return {
+  const payload = {
     name: input.name,
-    code: input.code?.trim() || null,
     division: input.division,
     province: input.province,
     city: input.city?.trim() || null,
@@ -243,6 +243,9 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
     contact_phone: syncedContactFields.contactPhone,
     contacts: input.contacts ?? [],
   };
+
+  const code = input.code?.trim();
+  return code ? { ...payload, code } : payload;
 }
 
 function omitBranchColumns<T extends Record<string, unknown>>(
@@ -360,8 +363,11 @@ export async function getBranchById(id: string): Promise<Branch | null> {
 export async function createBranch(input: CreateBranchInput): Promise<Branch | null> {
   if (!supabase) {
     const now = new Date().toISOString();
+    const localBranches = readLocalBranches();
+    const code = input.code?.trim() || createNextBranchCode(localBranches);
     const nextBranch: Branch = {
       id: createBranchId(),
+      code,
       name: input.name,
       division: input.division,
       province: input.province,
@@ -400,8 +406,11 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
     }
 
     const now = new Date().toISOString();
+    const localBranches = readLocalBranches();
+    const code = input.code?.trim() || createNextBranchCode(localBranches);
     const nextBranch: Branch = {
       id: createBranchId(),
+      code,
       name: input.name,
       division: input.division,
       province: input.province,
@@ -439,7 +448,7 @@ export async function createBranchProject(input: CreateBranchInput): Promise<{ b
   }
 
   const projectInput: CreateProjectInput = {
-    id: `branch-${branch.id}`,
+    id: createNextProjectId(branch.code ?? 'PSG000', await getProjects()),
     branchId: branch.id,
     branch: branch.name,
     branchCode: branch.code,

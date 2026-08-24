@@ -12,7 +12,7 @@ import { defaultProjectTemplate, projectTemplateOptions } from '../../constants/
 import { defaultTaskPool } from '../../constants/taskPool';
 import { useSaveFeedback } from '../../contexts/SaveFeedbackContext';
 import { DatePickerInput } from '../DatePickerInput';
-import { buildBranchCodeMap, createNextProjectId, getBranchCodeForBranch } from '../../utils/branchProjectIds';
+import { getBranchCodeForBranch } from '../../utils/branchProjectIds';
 
 const optionalText = z.string().optional().default('');
 const optionalEmail = z.string().trim().refine((value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), 'Enter a valid manager email');
@@ -215,12 +215,11 @@ export function ProjectCreateForm() {
         throw new Error('The selected branch is unavailable. Refresh the page, select the branch again, and retry saving.');
       }
 
-      const branchCode = getBranchCodeForBranch(selectedBranch, buildBranchCodeMap(branches));
-      const projectId = createNextProjectId(branchCode, projects);
+      const branchCode = getBranchCodeForBranch(selectedBranch, {});
 
       await mutation.mutateAsync({
         ...values,
-        id: projectId,
+        id: undefined,
         branchCode,
         currentStage: values.currentStage as CreateProjectInput['currentStage'],
         workspaceName: defaultWorkspace.name,

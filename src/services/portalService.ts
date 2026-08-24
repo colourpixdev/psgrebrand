@@ -3,6 +3,7 @@ import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectTemplateId
 import { defaultWorkspace, rolloutAppEmail } from '../constants/workspaces';
 import { defaultProjectTemplate, getProjectTemplate } from '../constants/projectTemplates';
 import { createTaskFromPool } from '../constants/taskPool';
+import { createNextProjectId } from '../utils/branchProjectIds';
 
 export interface PortalSummary {
   metrics: Array<{ label: string; value: number }>;
@@ -1180,8 +1181,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   const template = input.projectType ? getProjectTemplate(input.projectType) : defaultProjectTemplate;
   const resolvedBranchId = input.branchId?.trim() || input.branch.trim();
   const normalizedProjectId = input.id?.trim()
-    || input.branch.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    || `project-${Date.now()}`;
+    || createNextProjectId(input.branchCode?.trim() || 'PSG000', await getProjects());
 
   // Start with no tasks - users can add from the task pool or create custom tasks
   const basePayload = {
