@@ -125,7 +125,7 @@ export const rolePolicies: Record<Role, RolePolicy> = {
     communication: { canCreateComments: false, canReply: false, canEditOwnComments: false, canDeleteOwnComments: false, canDeleteOthersComments: false, canAskQuestions: false, canAnswerQuestions: false, canCloseQuestions: false, canMentionUsers: false, canCreateInternalNotes: false },
     files: { canUploadFiles: false, canDownloadFiles: true, canDeleteFiles: false, canReplaceFiles: false, allowedFileTypes: [] },
     tasks: { canCreateTasks: false, canAssignTasks: false, canCompleteTasks: false, canDeleteTasks: false, canReassignTasks: false },
-    reports: { canViewReports: false, canExportReports: false, canCreateCustomReports: false, canScheduleReports: false },
+    reports: { canViewReports: true, canExportReports: true, canCreateCustomReports: false, canScheduleReports: false },
     userManagement: { canInviteUsers: false, canDisableUsers: false, canEditUsers: false, canResetPasswords: false },
     notifications: { receiveEmail: true, receiveInApp: true, receiveSms: false, receiveWhatsApp: false, notifyOn: [] },
   },
@@ -315,7 +315,7 @@ const permissionCapabilities: Record<Permission, (policy: RolePolicy) => boolean
   add_comments: (policy) => policy.communication.canCreateComments,
   add_tasks: (policy) => policy.tasks.canCreateTasks,
   batch_voice_updates: (policy) => policy.communication.canCreateInternalNotes && policy.workflow.canChangeStage,
-  export_reports: (policy) => policy.reports.canViewReports,
+  export_reports: (policy) => policy.reports.canExportReports,
   view_settings: (policy) => policy.userManagement.canEditUsers || policy.userManagement.canInviteUsers,
 };
 
