@@ -64,7 +64,7 @@ type ProjectTaskRow = {
   due_date?: string | null;
   responsible_group_id?: string | null;
   responsible_person_id?: string | null;
-  responsible_person?: { name?: string | null; email?: string | null; profile_title?: string | null } | null;
+  responsible_person?: { name?: string | null; email?: string | null; profile_title?: string | null } | Array<{ name?: string | null; email?: string | null; profile_title?: string | null }> | null;
   required_action: string;
   waiting_reason?: string | null;
   blocker_reason?: string | null;
@@ -79,6 +79,7 @@ function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
   const completed = status === 'complete';
   const isWaiting = status === 'waiting';
   const isBlocked = status === 'blocked';
+  const responsiblePerson = Array.isArray(taskRow.responsible_person) ? taskRow.responsible_person[0] : taskRow.responsible_person;
 
   return {
     id: taskRow.id,
@@ -87,9 +88,9 @@ function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
     status: status === 'not_started' ? 'pending' : status === 'in_progress' ? 'busy' : status === 'complete' ? 'done' : 'open',
     stage: taskRow.title || undefined,
     dueDate: taskRow.due_date ?? undefined,
-    assigneeName: taskRow.responsible_person?.name ?? undefined,
-    assigneeEmail: taskRow.responsible_person?.email ?? undefined,
-    assignees: taskRow.responsible_person?.email ? [{ name: taskRow.responsible_person.name ?? taskRow.responsible_person.email, email: taskRow.responsible_person.email, designation: taskRow.responsible_person.profile_title ?? 'Assigned user' }] : undefined,
+    assigneeName: responsiblePerson?.name ?? undefined,
+    assigneeEmail: responsiblePerson?.email ?? undefined,
+    assignees: responsiblePerson?.email ? [{ name: responsiblePerson.name ?? responsiblePerson.email, email: responsiblePerson.email, designation: responsiblePerson.profile_title ?? 'Assigned user' }] : undefined,
     startedDate: taskRow.started_date ?? undefined,
     installationRequest: isWaiting ? (taskRow.waiting_reason || 'Waiting for details') : isBlocked ? (taskRow.blocker_reason || 'Blocked') : undefined,
     createdAt: taskRow.created_at,
