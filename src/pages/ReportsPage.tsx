@@ -48,6 +48,38 @@ function isPastDate(value: string) {
   return Number.isFinite(timestamp) ? timestamp < Date.now() : false;
 }
 
+function formatReportDate(value: string) {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) {
+    return value;
+  }
+
+  const hasTime = value.includes('T') || value.includes(':');
+  const datePart = new Intl.DateTimeFormat('en-ZA', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Africa/Johannesburg',
+  }).format(date);
+
+  if (!hasTime) {
+    return datePart;
+  }
+
+  const timePart = new Intl.DateTimeFormat('en-ZA', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Africa/Johannesburg',
+  }).format(date).replace(' ', '');
+
+  return `${datePart} - ${timePart}`;
+}
+
 function isOperationalBlocker(project: Project) {
   const pendingTasks = project.tasks.filter(isTaskOutstanding);
   const missingManager = !project.manager || project.manager.toLowerCase() === 'not captured';
@@ -85,16 +117,16 @@ function projectSpreadsheetRows(projects: Project[]) {
       project.town,
       project.province,
       project.manager,
-      project.projectStartDate ?? '',
-      project.targetDate,
+      formatReportDate(project.projectStartDate ?? ''),
+      formatReportDate(project.targetDate),
       project.currentStage,
       stageTask ? taskStatusLabels[stageTask.status ?? 'pending'] : 'Not set',
-      stageTask?.startedDate ?? '',
-      stageTask?.dueDate ?? '',
+      formatReportDate(stageTask?.startedDate ?? ''),
+      formatReportDate(stageTask?.dueDate ?? ''),
       pendingTasks,
       project.files.length,
       participants,
-      project.updatedAt,
+      formatReportDate(project.updatedAt),
     ];
   });
 }

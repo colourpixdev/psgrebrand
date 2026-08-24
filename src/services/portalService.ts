@@ -1583,7 +1583,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
   const summaryPayload = {
     current_stage: currentStage,
     status: input.status,
-    project_start_date: projectStartDate,
+    project_start_date: projectStartDate || null,
     target_date: targetDate,
     brief_requested_date: briefRequestedDate,
     installation_date: installationDate,

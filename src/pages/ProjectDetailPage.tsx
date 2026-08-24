@@ -359,6 +359,7 @@ export function ProjectDetailPage() {
       actor: user?.name ?? 'Workspace user',
       currentStage,
       status: selectedProject.status,
+      projectStartDate: selectedProject.projectStartDate,
       targetDate: selectedProject.targetDate,
       briefRequestedDate: selectedProject.briefRequestedDate,
       installationDate: selectedProject.installationDate,
@@ -802,6 +803,7 @@ export function ProjectDetailPage() {
             {isEditingDetails && canEditDetails ? (
               <div className="mt-4 grid gap-4 text-sm text-slate-200">
                 <section className="grid gap-4 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Current stage</h3>
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Branch</h3>
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="grid gap-2">Branch<input value={branchDetailsDraft.name} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, name: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
