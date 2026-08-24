@@ -897,7 +897,7 @@ export function ProjectDetailPage() {
           </div> : null}
         </div> : null}
       </section>
-      <section className={isInternalUser ? 'space-y-3' : 'hidden'}>
+      <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 px-1">
           <h3 className="text-2xl font-semibold text-white">Stages</h3>
             {mergedTasks.length > 0 && (
