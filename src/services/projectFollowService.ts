@@ -37,6 +37,23 @@ export function toggleFollowedProject(userEmail: string | undefined, projectId: 
   return !isFollowed;
 }
 
+export function followProjectForUser(userEmail: string | undefined, projectId: string): boolean {
+  if (typeof localStorage === 'undefined') {
+    return false;
+  }
+
+  const followed = new Set(getFollowedProjectIds(userEmail));
+  const wasFollowed = followed.has(projectId);
+  followed.add(projectId);
+  localStorage.setItem(storageKey(userEmail), JSON.stringify([...followed]));
+
+  if (!wasFollowed) {
+    window.dispatchEvent(new CustomEvent(followChangedEvent, { detail: { userEmail } }));
+  }
+
+  return !wasFollowed;
+}
+
 export function getFollowChangedEventName() {
   return followChangedEvent;
 }

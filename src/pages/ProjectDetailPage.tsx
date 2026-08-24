@@ -6,6 +6,7 @@ import { DatePickerInput } from '../components/DatePickerInput';
 import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectActivity, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectActivity, updateProjectComment, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById, updateBranch } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
+import { followProjectForUser } from '../services/projectFollowService';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { getUsers } from '../services/userService';
 import { can, canViewProject, canAddTaskComments, canEditOwnComment, canRenameFiles, getRolePolicy } from '../utils/permissions';
@@ -340,6 +341,9 @@ export function ProjectDetailPage() {
           managerEmail: marketingCoordinatorEmailDraft,
         }),
       ]);
+      if (marketingCoordinatorEmailDraft.trim()) {
+        followProjectForUser(marketingCoordinatorEmailDraft, updatedProject.id);
+      }
       return { updatedBranch, updatedProject };
     },
     onSuccess: async ({ updatedBranch, updatedProject }) => {
