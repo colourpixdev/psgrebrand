@@ -17,6 +17,14 @@ type ProfileRow = {
   permission_overrides?: Record<string, unknown> | null;
 };
 
+export const removedUserEmails = new Set([
+  'ops@abcsignage.co.za',
+  'beverley@colourpix.co.za',
+  'john.smith@psg.co.za',
+  'head.office@psg.co.za',
+  'psg@psg.co.za',
+]);
+
 export class UserProfilesNotConfiguredError extends Error {
   constructor() {
     super('The Supabase profiles table is not installed yet.');
@@ -94,7 +102,9 @@ export async function getUsers(): Promise<UserRecord[]> {
     return [];
   }
 
-  return (data as ProfileRow[]).map(profileRowToUser);
+  return (data as ProfileRow[])
+    .map(profileRowToUser)
+    .filter((user) => !removedUserEmails.has(user.email.trim().toLowerCase()));
 }
 
 export async function getUsersResult(): Promise<UsersResult> {
