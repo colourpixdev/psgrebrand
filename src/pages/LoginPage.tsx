@@ -146,7 +146,6 @@ export function LoginPage() {
                   autoComplete="email"
                   {...register('email')}
                   className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-300 focus:border-sky-400/50"
-                  placeholder="name@company.co.za"
                 />
                 {errors.email ? <span className="text-xs text-red-300">{errors.email.message}</span> : null}
               </label>
@@ -158,7 +157,6 @@ export function LoginPage() {
                   autoComplete="current-password"
                   {...register('password')}
                   className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-300 focus:border-sky-400/50"
-                  placeholder="••••••••"
                 />
                 {errors.password ? <span className="text-xs text-red-300">{errors.password.message}</span> : null}
               </label>
@@ -238,9 +236,6 @@ export function LoginPage() {
         <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-6 shadow-soft backdrop-blur-xl">
           <p className="text-xs uppercase tracking-[0.3em] text-teal-200/80">Workspace access</p>
           <h3 className="mt-3 text-2xl font-semibold text-slate-900">This is a private client workspace instance.</h3>
-          <p className="mt-2 text-sm leading-6 text-cyan-200">
-            Sign in with the account assigned to your active workspace. Public enquiries and commercial onboarding are handled outside this operational environment before users are invited here.
-          </p>
           <div className="mt-5 grid gap-3 text-sm text-slate-300">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <p className="font-semibold text-white">Invited users only</p>

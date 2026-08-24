@@ -422,10 +422,9 @@ export function ProjectDetailPage() {
       message,
       taskId: taskId || undefined,
     }),
-    onSuccess: async (_, variables) => {
+    onSuccess: async (updatedProject, variables) => {
       setTaskCommentDrafts((current) => ({ ...current, [variables.taskId]: '' }));
-      await queryClient.invalidateQueries({ queryKey: ['projects'] });
-      showSuccess('Comment added.');
+      await syncProject(updatedProject, 'Comment added.');
     },
   });
 
@@ -779,6 +778,7 @@ export function ProjectDetailPage() {
     : branch?.contactName
       ? [{ name: branch.contactName, email: branch.contactEmail, phone: branch.contactPhone, designation: 'Contact Person' }]
       : [];
+  const hasSignageDetails = [branch?.signageCompany, branch?.signageAddress, branch?.signageContactName, branch?.signageContactPhone, branch?.signageContactEmail].some((value) => Boolean(value?.trim()));
 
   return (
     <div className="relative space-y-6">
@@ -884,14 +884,14 @@ export function ProjectDetailPage() {
                     {branchParticipants.length > 0 ? branchParticipants.map((participant, index) => <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3"><p className="font-medium text-cyan-400">{participant.name}</p><p className="mt-1 text-xs text-slate-300">{participant.designation}</p>{participant.email ? <p className="mt-2 text-xs text-slate-300">{participant.email}</p> : null}{participant.phone ? <p className="mt-1 text-xs text-slate-300">{participant.phone}</p> : null}</div>) : <p className="text-xs text-slate-500">No contact persons added.</p>}
                   </div>
                 </section>
-                <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
+                {hasSignageDetails ? <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Signage supplier</h3>
-                  <div><span className="text-cyan-200">Company:</span> {branch.signageCompany || 'Not captured'}</div>
-                  <div><span className="text-cyan-200">Address:</span> {branch.signageAddress || 'Not captured'}</div>
-                  <div><span className="text-cyan-200">Contact:</span> {branch.signageContactName || 'Not captured'}</div>
-                  <div><span className="text-cyan-200">Telephone:</span> {branch.signageContactPhone || 'Not captured'}</div>
-                  <div><span className="text-cyan-200">Email:</span> {branch.signageContactEmail || 'Not captured'}</div>
-                </section>
+                  {branch.signageCompany?.trim() ? <div><span className="text-cyan-200">Company:</span> {branch.signageCompany}</div> : null}
+                  {branch.signageAddress?.trim() ? <div><span className="text-cyan-200">Address:</span> {branch.signageAddress}</div> : null}
+                  {branch.signageContactName?.trim() ? <div><span className="text-cyan-200">Contact:</span> {branch.signageContactName}</div> : null}
+                  {branch.signageContactPhone?.trim() ? <div><span className="text-cyan-200">Telephone:</span> {branch.signageContactPhone}</div> : null}
+                  {branch.signageContactEmail?.trim() ? <div><span className="text-cyan-200">Email:</span> {branch.signageContactEmail}</div> : null}
+                </section> : null}
                 <section className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Project schedule</h3>
                   <div><span className="text-cyan-200">Project start date:</span> {formatWorkspaceDate(selectedProject.projectStartDate ?? '')}</div>
@@ -910,8 +910,8 @@ export function ProjectDetailPage() {
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_minmax(150px,1fr)_minmax(170px,1fr)]">
             <label className="grid min-w-0 gap-1"><span className="text-xs uppercase tracking-[0.16em] text-slate-400">Current stage</span><select value={selectedProject.currentStage} disabled={!canChangeStage || stagePlan.length === 0 || currentStageMutation.isPending} onChange={(event) => currentStageMutation.mutate(event.target.value)} className="mt-1 w-full min-w-0 max-w-full truncate rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-lg font-semibold text-white outline-none focus:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-60" aria-label="Current stage"><option value="" disabled>No stage set</option>{stagePlan.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
             <div className="min-w-0"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 truncate text-lg font-semibold text-white">{displayedStatus}</p></div>
-            <div className="min-w-0"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Assignee</p><p className="mt-1 truncate text-lg font-semibold text-white">{currentStageAssigneeDisplay === 'Unassigned' ? 'Assignee: Unassigned' : `Assignee: ${currentStageAssigneeDisplay}`}</p></div>
-            <div className="min-w-0"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Stage dates</p><p className="mt-1 truncate text-lg font-semibold text-white">Started: {formatWorkspaceDate(currentStageTask?.startedDate ?? '')}</p><p className="mt-1 truncate text-lg font-semibold text-white">Target completion: {formatWorkspaceDate(currentStageTask?.dueDate ?? '')}</p></div>
+            <div className="min-w-0 overflow-hidden"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Assignee</p><p className="mt-1 truncate whitespace-nowrap text-sm font-semibold text-white" title={currentStageAssigneeDisplay}>{currentStageAssigneeDisplay}</p></div>
+            <div className="min-w-0 overflow-hidden"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Stage dates</p><p className="mt-1 truncate whitespace-nowrap text-sm font-semibold text-white" title={`Started: ${formatWorkspaceDate(currentStageTask?.startedDate ?? '')}`}>Started: {formatWorkspaceDate(currentStageTask?.startedDate ?? '')}</p><p className="mt-1 truncate whitespace-nowrap text-sm font-semibold text-white" title={`Target completion: ${formatWorkspaceDate(currentStageTask?.dueDate ?? '')}`}>Target completion: {formatWorkspaceDate(currentStageTask?.dueDate ?? '')}</p></div>
           </div>
           {currentStageTask ? <div className="mt-5 grid gap-4 border-t border-white/10 pt-4 lg:grid-cols-2">
             <div>
