@@ -737,6 +737,7 @@ export type UpdateProjectTaskInput = {
   installationRequest?: string;
   actor: string;
   actorEmail?: string;
+  handoffAfterCompletion?: TaskAssignee;
 };
 
 export type ReorderProjectTaskInput = {
@@ -2338,14 +2339,17 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
 
   // Record activity
   const assignmentChanged = input.assignees !== undefined && (existingTask.assigneeEmail ?? '') !== (primaryAssignee?.email ?? '');
-  const activityTitle = assignmentChanged ? 'Stage assigned' : relationalStatus === 'complete' ? 'Task completed' : relationalStatus === 'in_progress' ? 'Task in progress' : relationalStatus === 'waiting' ? 'Task started' : relationalStatus === 'not_started' ? 'Task reopened' : 'Task updated';
+  const activityTitle = input.handoffAfterCompletion ? 'Task completed' : assignmentChanged ? 'Stage assigned' : relationalStatus === 'complete' ? 'Task completed' : relationalStatus === 'in_progress' ? 'Task in progress' : relationalStatus === 'waiting' ? 'Task started' : relationalStatus === 'not_started' ? 'Task reopened' : 'Task updated';
   const activityVerb = relationalStatus === 'complete' ? 'completed' : relationalStatus === 'in_progress' ? 'marked in progress on' : relationalStatus === 'waiting' ? 'started' : relationalStatus === 'not_started' ? 'reopened' : 'updated';
+  const activityDetail = input.handoffAfterCompletion
+    ? `${input.actor} completed their assigned task: ${text ?? existingTask.text}. Stage reassigned to ${input.handoffAfterCompletion.name}.`
+    : assignmentChanged
+      ? `${input.actor} assigned stage: ${text ?? existingTask.text} to ${primaryAssignee?.name ?? 'unassigned'}.`
+      : `${input.actor} ${activityVerb} stage: ${text ?? existingTask.text}`;
   const activity = [
     createActivity(
       activityTitle,
-      assignmentChanged
-        ? `${input.actor} assigned stage: ${text ?? existingTask.text} to ${primaryAssignee?.name ?? 'unassigned'}.`
-        : `${input.actor} ${activityVerb} stage: ${text ?? existingTask.text}`,
+      activityDetail,
       relationalStatus === 'complete' ? 'success' : 'info',
     ),
     ...existingProject.activity,

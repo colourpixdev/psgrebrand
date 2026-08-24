@@ -126,9 +126,10 @@ export function DashboardPage() {
         projectId: project.id,
         taskId: assignedTask.id,
         text: assignedTask.text,
-        status: 'done',
-        completed: true,
-        assignees: [],
+        status: 'busy',
+        completed: false,
+        assignees: [{ name: 'Francois', email: 'francois@colourpix.co.za', designation: 'Colourpix administrator' }],
+        handoffAfterCompletion: { name: 'Francois', email: 'francois@colourpix.co.za', designation: 'Colourpix administrator' },
         actor: user?.name ?? 'Workspace user',
         actorEmail: user?.email,
       });
