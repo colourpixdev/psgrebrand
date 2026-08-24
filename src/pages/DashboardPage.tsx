@@ -23,7 +23,7 @@ function greeting() {
 
 function getAssignedAttentionStage(project: Project, userEmail: string | undefined) {
   return userEmail
-    ? project.tasks.find((task) => task.status !== 'done' && !task.completed && [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)].some((email) => email?.trim().toLowerCase() === userEmail))
+    ? project.tasks.find((task) => [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)].some((email) => email?.trim().toLowerCase() === userEmail))
     : undefined;
 }
 
