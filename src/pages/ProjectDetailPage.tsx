@@ -65,8 +65,18 @@ const stageStatusTones: Record<NonNullable<TaskItem['status']>, string> = {
 
 function findStageTask(tasks: TaskItem[], stage: string) {
   const stageKey = stage.trim().toLowerCase();
-  return tasks.find((task) => (task.stage ?? task.text).trim().toLowerCase() === stageKey)
+  const normalizeStage = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+  const normalizedStage = normalizeStage(stage);
+  const exactTask = tasks.find((task) => (task.stage ?? task.text).trim().toLowerCase() === stageKey)
     ?? tasks.find((task) => task.text.trim().toLowerCase() === stageKey);
+  if (exactTask) {
+    return exactTask;
+  }
+
+  return tasks.find((task) => {
+    const taskName = normalizeStage(task.stage ?? task.text);
+    return taskName.includes(normalizedStage) || normalizedStage.includes(taskName);
+  });
 }
 
 function findCurrentStageTask(project: Project) {
