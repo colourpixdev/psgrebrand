@@ -148,6 +148,7 @@ export function ProjectDetailPage() {
   const [editingTaskText, setEditingTaskText] = useState('');
   const [taskDueDateDrafts, setTaskDueDateDrafts] = useState<Record<string, string>>({});
   const [taskStartedDateDrafts, setTaskStartedDateDrafts] = useState<Record<string, string>>({});
+  const [taskDateSaveMessage, setTaskDateSaveMessage] = useState<string | null>(null);
   const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>({});
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentDraft, setEditingCommentDraft] = useState('');
@@ -468,6 +469,7 @@ export function ProjectDetailPage() {
         delete next[variables.task.id];
         return next;
       });
+      setTaskDateSaveMessage('Saved');
       const syncedProject = {
         ...updatedProject,
         tasks: updatedProject.tasks.map((task) => task.id === variables.task.id
@@ -485,7 +487,10 @@ export function ProjectDetailPage() {
       };
       await syncProject(syncedProject, 'Stage saved.');
     },
-    onError: (error) => showError(error instanceof Error ? error.message : 'Unable to save stage.'),
+    onError: (error) => {
+      setTaskDateSaveMessage(error instanceof Error ? error.message : 'Unable to save stage.');
+      showError(error instanceof Error ? error.message : 'Unable to save stage.');
+    },
   });
 
   const reorderTaskMutation = useMutation({
@@ -1088,15 +1093,19 @@ export function ProjectDetailPage() {
                     <button
                       type="button"
                       disabled={updateTaskMutation.isPending || ((taskStartedDateDrafts[task.id] ?? task.startedDate ?? '') === (task.startedDate ?? '') && (taskDueDateDrafts[task.id] ?? task.dueDate ?? '') === (task.dueDate ?? ''))}
-                      onClick={() => updateTaskMutation.mutate({
-                        task,
-                        startedDate: taskStartedDateDrafts[task.id] ?? task.startedDate ?? undefined,
-                        dueDate: taskDueDateDrafts[task.id] ?? task.dueDate ?? undefined,
-                      })}
+                      onClick={() => {
+                        setTaskDateSaveMessage(null);
+                        updateTaskMutation.mutate({
+                          task,
+                          startedDate: taskStartedDateDrafts[task.id] ?? task.startedDate ?? undefined,
+                          dueDate: taskDueDateDrafts[task.id] ?? task.dueDate ?? undefined,
+                        });
+                      }}
                       className="w-fit rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {updateTaskMutation.isPending ? 'Saving...' : 'Save date'}
                     </button>
+                    {taskDateSaveMessage ? <p className={taskDateSaveMessage === 'Saved' ? 'text-xs font-medium text-emerald-300' : 'text-xs font-medium text-red-300'}>{taskDateSaveMessage}</p> : null}
                     {taskFiles.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
