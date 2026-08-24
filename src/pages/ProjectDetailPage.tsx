@@ -610,6 +610,8 @@ export function ProjectDetailPage() {
   const canAskColourpix = Boolean(rolePolicy?.communication.canAskQuestions);
   const canAnswerColourpixQuestions = canAdministerProjectDetails && Boolean(rolePolicy?.communication.canAnswerQuestions);
   const canChangeStage = Boolean(rolePolicy?.workflow.canChangeStage);
+  const canAssignStageTasks = Boolean(rolePolicy?.tasks.canAssignTasks);
+  const canEditStageDates = Boolean(rolePolicy?.workflow.canChangeTargetDates || rolePolicy?.workflow.canChangeStage || canAdministerProjectDetails);
   const canAddTasks = Boolean(rolePolicy?.tasks.canCreateTasks);
   const canCompleteTasks = Boolean(rolePolicy?.tasks.canCompleteTasks);
   const isBranchContact = Boolean(branch && user && (
@@ -986,7 +988,7 @@ export function ProjectDetailPage() {
                   </select>
                   <select
                     value={task.assigneeEmail ?? ''}
-                    disabled={updateTaskMutation.isPending}
+                    disabled={!canAssignStageTasks || updateTaskMutation.isPending}
                     onChange={(event) => {
                       const selectedUser = users.find((item) => item.email === event.target.value);
                       updateTaskMutation.mutate({
@@ -1080,27 +1082,30 @@ export function ProjectDetailPage() {
                         value={taskStartedDateDrafts[task.id] ?? task.startedDate ?? ''}
                         onChange={(value) => setTaskStartedDateDrafts((current) => ({ ...current, [task.id]: value }))}
                         placeholder="Select started date"
-                        disabled={updateTaskMutation.isPending}
+                        disabled={!canEditStageDates || updateTaskMutation.isPending}
                       />
                       <DatePickerInput
                         label="Target completion"
                         value={taskDueDateDrafts[task.id] ?? task.dueDate ?? ''}
                         onChange={(value) => setTaskDueDateDrafts((current) => ({ ...current, [task.id]: value }))}
                         placeholder="Select target date"
-                        disabled={updateTaskMutation.isPending}
+                        disabled={!canEditStageDates || updateTaskMutation.isPending}
                       />
                     </div>
                     <button
                       type="button"
-                      disabled={updateTaskMutation.isPending || ((taskStartedDateDrafts[task.id] ?? task.startedDate ?? '') === (task.startedDate ?? '') && (taskDueDateDrafts[task.id] ?? task.dueDate ?? '') === (task.dueDate ?? ''))}
+                      disabled={!canEditStageDates || updateTaskMutation.isPending || ((taskStartedDateDrafts[task.id] ?? task.startedDate ?? '') === (task.startedDate ?? '') && (taskDueDateDrafts[task.id] ?? task.dueDate ?? '') === (task.dueDate ?? ''))}
                       onClick={() => {
+                        if (!canEditStageDates) {
+                          return;
+                        }
                         setTaskDateSaveMessage(null);
                         const nextStartedDate = taskStartedDateDrafts[task.id];
                         const nextDueDate = taskDueDateDrafts[task.id];
                         updateTaskMutation.mutate({
                           task,
-                          startedDate: nextStartedDate && nextStartedDate !== task.startedDate ? nextStartedDate : undefined,
-                          dueDate: nextDueDate && nextDueDate !== task.dueDate ? nextDueDate : undefined,
+                          startedDate: nextStartedDate !== undefined && nextStartedDate !== task.startedDate ? nextStartedDate : undefined,
+                          dueDate: nextDueDate !== undefined && nextDueDate !== task.dueDate ? nextDueDate : undefined,
                         });
                       }}
                       className="w-fit rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"

@@ -12,18 +12,26 @@ import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { getTaskStatus, isTaskOutstanding } from '../utils/taskStatus';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
 
-function canPreviewFile(file: ProjectFile) {
+function isImageFile(file: ProjectFile) {
   const fileType = file.type ?? '';
   const fileName = file.name.toLowerCase();
 
-  return fileType.startsWith('image/') || fileType === 'application/pdf' || fileName.endsWith('.pdf');
+  return fileType.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg|bmp|tif|tiff)$/.test(fileName);
+}
+
+function isPdfFile(file: ProjectFile) {
+  const fileType = file.type ?? '';
+  const fileName = file.name.toLowerCase();
+
+  return fileType === 'application/pdf' || fileName.endsWith('.pdf');
+}
+
+function canPreviewFile(file: ProjectFile) {
+  return isImageFile(file) || isPdfFile(file);
 }
 
 function isPreviewThumbnailCandidate(file: ProjectFile) {
-  const fileType = file.type ?? '';
-  const fileName = file.name.toLowerCase();
-
-  return fileType.startsWith('image/') || fileType === 'application/pdf' || fileName.endsWith('.pdf');
+  return canPreviewFile(file);
 }
 
 function formatPhoneHref(phone: string) {

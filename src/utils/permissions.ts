@@ -426,10 +426,10 @@ export function canViewProject(user: UserRecord | null | undefined, project: Pro
     return true;
   }
 
-  const normalizedUserEmail = user.email.trim().toLowerCase();
+  const normalizedUserEmail = (user.email ?? '').trim().toLowerCase();
   const normalizedBranch = (user.branch ?? '').trim().toLowerCase();
   const projectBranch = (project.branch ?? '').trim().toLowerCase();
-  const matchesManager = project.managerEmail?.trim().toLowerCase() === normalizedUserEmail;
+  const matchesManager = (project.managerEmail ?? '').trim().toLowerCase() === normalizedUserEmail;
   const matchesBranch = Boolean(normalizedBranch) && (
     projectBranch === normalizedBranch
     || projectBranch.startsWith(`${normalizedBranch} `)
@@ -438,14 +438,20 @@ export function canViewProject(user: UserRecord | null | undefined, project: Pro
   const matchesAssignee = project.tasks.some((task) =>
     [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)]
       .filter(Boolean)
-      .some((email) => email?.trim().toLowerCase() === normalizedUserEmail)
+      .some((email) => (email ?? '').trim().toLowerCase() === normalizedUserEmail)
   );
-  const matchesWorkspace = user.canAccessAllWorkspaces
+  const matchesProjectTaskParticipant = project.tasks.some((task) =>
+    [task.assigneeName, ...(task.assignees ?? []).map((assignee) => assignee.name)]
+      .filter(Boolean)
+      .some((name) => (name ?? '').trim().toLowerCase() === (user.name ?? '').trim().toLowerCase())
+  );
+  const matchesWorkspace = Boolean(user.canAccessAllWorkspaces)
     || user.workspaceIds?.includes('*')
     || user.workspaceIds?.includes(project.workspaceId)
-    || user.workspaceIds?.includes(project.branchId);
+    || user.workspaceIds?.includes(project.branchId)
+    || Boolean(project.workspaceName && user.branch && project.workspaceName.toLowerCase() === user.branch.toLowerCase());
 
-  return matchesManager || matchesBranch || matchesAssignee || Boolean(matchesWorkspace);
+  return matchesManager || matchesBranch || matchesAssignee || matchesProjectTaskParticipant || Boolean(matchesWorkspace);
 }
 
 export function filterProjectsForUser(projects: Project[], user: UserRecord | null | undefined) {

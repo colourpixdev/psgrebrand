@@ -14,18 +14,11 @@ function formatFileSize(size?: number) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function canPreviewFile(file: ProjectFile) {
-  const fileType = file.type ?? '';
-  const fileName = file.name.toLowerCase();
-
-  return fileType.startsWith('image/') || fileType === 'application/pdf' || fileName.endsWith('.pdf');
-}
-
 function isImageFile(file: ProjectFile) {
   const fileType = file.type ?? '';
   const fileName = file.name.toLowerCase();
 
-  return fileType.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg)$/.test(fileName);
+  return fileType.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg|bmp|tif|tiff)$/.test(fileName);
 }
 
 function isPdfFile(file: ProjectFile) {
@@ -33,6 +26,10 @@ function isPdfFile(file: ProjectFile) {
   const fileName = file.name.toLowerCase();
 
   return fileType === 'application/pdf' || fileName.endsWith('.pdf');
+}
+
+function canPreviewFile(file: ProjectFile) {
+  return isImageFile(file) || isPdfFile(file);
 }
 
 export function FileGrid({

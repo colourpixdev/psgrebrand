@@ -2262,7 +2262,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     ? (input.completed ? 'done' : 'open')
     : existingTask.status ?? (existingTask.completed ? 'done' : 'open'));
   const startedDate = input.startedDate !== undefined
-    ? (input.startedDate || (existingTask.startedDate ?? undefined))
+    ? input.startedDate
     : existingTask.startedDate ?? (nextStatus === 'open' || nextStatus === 'busy' ? new Date().toISOString().slice(0, 10) : undefined);
   const nextCompleted = nextStatus === 'done';
   const assignees = input.assignees !== undefined
@@ -2289,7 +2289,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       assigneeEmail: primaryAssignee?.email,
       assignees,
       startedDate,
-      dueDate: input.dueDate !== undefined ? (input.dueDate || (existingTask.dueDate ?? undefined)) : task.dueDate,
+      dueDate: input.dueDate !== undefined ? (input.dueDate === '' ? '' : input.dueDate || existingTask.dueDate || undefined) : task.dueDate,
       completedAt: nextCompleted ? task.completedAt ?? now : undefined,
     }
     : task);
@@ -2319,8 +2319,8 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       title: text ?? existingTask.text,
       status: relationalStatus,
       priority: relationalPriority,
-      started_date: startedDate ?? null,
-      due_date: input.dueDate !== undefined ? input.dueDate || null : existingTask.dueDate ?? null,
+      started_date: startedDate === '' ? null : startedDate ?? null,
+      due_date: input.dueDate !== undefined ? (input.dueDate === '' ? null : input.dueDate || null) : (existingTask.dueDate ?? null),
       updated_at: now,
       completed_at: relationalStatus === 'complete' ? now : null,
       completed_by: completedBy,

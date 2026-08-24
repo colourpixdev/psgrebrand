@@ -57,17 +57,41 @@ export function DashboardPage() {
 
   const stats = useMemo(() => {
     const total = scopedProjects.length;
+
     const completed = scopedProjects.filter((project) => project.status === 'completed').length;
     const atRisk = scopedProjects.filter((project) => project.status === 'delayed' || project.status === 'on_hold').length;
-    const awaitingApproval = scopedProjects.filter((project) => project.currentStage === 'Awaiting Approval' && project.status !== 'completed' && project.status !== 'delayed' && project.status !== 'on_hold').length;
-    const notStarted = scopedProjects.filter((project) => project.currentStage === 'New Project' && project.status !== 'completed' && project.status !== 'delayed' && project.status !== 'on_hold').length;
-    const inProgress = scopedProjects.filter((project) =>
-      project.status !== 'completed'
-      && project.status !== 'delayed'
-      && project.status !== 'on_hold'
-      && project.currentStage !== 'New Project'
-      && project.currentStage !== 'Awaiting Approval'
+    const awaitingApproval = scopedProjects.filter((project) =>
+      project.status === 'awaiting_approval' || project.currentStage === 'Awaiting Approval'
     ).length;
+
+    const notStarted = scopedProjects.filter((project) => {
+      if (project.status === 'completed' || project.status === 'delayed' || project.status === 'on_hold') {
+        return false;
+      }
+
+      if (project.status === 'awaiting_approval' || project.currentStage === 'Awaiting Approval') {
+        return false;
+      }
+
+      return project.currentStage === 'New Project';
+    }).length;
+
+    const inProgress = scopedProjects.filter((project) => {
+      if (project.status === 'completed' || project.status === 'delayed' || project.status === 'on_hold') {
+        return false;
+      }
+
+      if (project.status === 'awaiting_approval' || project.currentStage === 'Awaiting Approval') {
+        return false;
+      }
+
+      if (project.currentStage === 'New Project') {
+        return false;
+      }
+
+      return true;
+    }).length;
+
     const installationsToday = scopedProjects.filter((project) => project.installationDate && project.installationDate.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
 
     return { total, completed, inProgress, atRisk, notStarted, awaitingApproval, installationsToday };
@@ -170,7 +194,7 @@ export function DashboardPage() {
           <section className="grid grid-cols-2 gap-3 md:grid-cols-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Total branches</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{branches.length}</p>
+              <p className="mt-2 text-3xl font-bold text-slate-900">{stats.total}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Completed</p>
