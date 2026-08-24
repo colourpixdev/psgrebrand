@@ -60,11 +60,12 @@ export function DashboardPage() {
   }, [scopedProjects]);
 
   const attentionProjects = useMemo(() => {
+    const userEmail = user?.email?.trim().toLowerCase();
     return scopedProjects
-      .filter((project) => project.status === 'delayed' || project.status === 'on_hold' || project.currentStage === 'Awaiting Approval')
+      .filter((project) => project.status === 'delayed' || project.status === 'on_hold' || project.currentStage === 'Awaiting Approval' || Boolean(userEmail && project.tasks.some((task) => [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)].some((email) => email?.trim().toLowerCase() === userEmail))))
       .sort((a, b) => (a.updatedAt || '').localeCompare(b.updatedAt || ''))
       .slice(0, 5);
-  }, [scopedProjects]);
+  }, [scopedProjects, user]);
 
   const recentActivity = useMemo(() => {
     return [...scopedProjects]
@@ -165,10 +166,10 @@ export function DashboardPage() {
           <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
             <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-2">
-                <h3 className="text-lg font-semibold text-slate-900">{isInternalManagement ? 'My attention' : 'Recently updated'}</h3>
+                <h3 className="text-lg font-semibold text-slate-900">For attention</h3>
               </div>
 
-              {isInternalManagement ? (
+              {isInternalManagement || attentionProjects.length > 0 ? (
                 <div className="space-y-3">
                   {attentionProjects.length > 0 ? attentionProjects.map((project) => (
                     <Link key={project.id} to={`/projects/${project.id}`} className="block rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:border-sky-200 hover:bg-sky-50">

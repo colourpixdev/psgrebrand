@@ -63,6 +63,7 @@ type ProjectTaskRow = {
   due_date?: string | null;
   responsible_group_id?: string | null;
   responsible_person_id?: string | null;
+  responsible_person?: { name?: string | null; email?: string | null; profile_title?: string | null } | null;
   required_action: string;
   waiting_reason?: string | null;
   blocker_reason?: string | null;
@@ -85,9 +86,9 @@ function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
     status: status === 'not_started' ? 'pending' : status === 'in_progress' ? 'busy' : status === 'complete' ? 'done' : 'open',
     stage: taskRow.title || undefined,
     dueDate: taskRow.due_date ?? undefined,
-    assigneeName: undefined,
-    assigneeEmail: undefined,
-    assignees: undefined,
+    assigneeName: taskRow.responsible_person?.name ?? undefined,
+    assigneeEmail: taskRow.responsible_person?.email ?? undefined,
+    assignees: taskRow.responsible_person?.email ? [{ name: taskRow.responsible_person.name ?? taskRow.responsible_person.email, email: taskRow.responsible_person.email, designation: taskRow.responsible_person.profile_title ?? 'Assigned user' }] : undefined,
     startedDate: taskRow.started_date ?? undefined,
     installationRequest: isWaiting ? (taskRow.waiting_reason || 'Waiting for details') : isBlocked ? (taskRow.blocker_reason || 'Blocked') : undefined,
     createdAt: taskRow.created_at,
@@ -108,7 +109,7 @@ async function getWorkspaceTasks(workspaceId: string): Promise<TaskItem[]> {
 
   const { data, error } = await client
     .from('project_tasks')
-    .select('*')
+    .select('*, responsible_person:profiles!project_tasks_responsible_person_id_fkey(name, email, profile_title)')
     .eq('workspace_id', workspaceId)
     .is('deleted_at', null)
     .order('sort_order', { ascending: true });
@@ -190,6 +191,12 @@ async function getCurrentProfileId() {
   if (!userId) return null;
 
   const { data: profile } = await client.from('profiles').select('id').eq('user_id', userId).maybeSingle();
+  return profile?.id ?? null;
+}
+
+async function getProfileIdByEmail(email?: string) {
+  if (!email) return null;
+  const { data: profile } = await supabase?.from('profiles').select('id').eq('email', email).maybeSingle() ?? { data: null };
   return profile?.id ?? null;
 }
 
@@ -2206,6 +2213,11 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     ? input.startedDate || undefined
     : existingTask.startedDate ?? (nextStatus === 'open' || nextStatus === 'busy' ? new Date().toISOString().slice(0, 10) : undefined);
   const nextCompleted = nextStatus === 'done';
+  const assignees = input.assignees !== undefined
+    ? (input.assignees.length > 0 ? input.assignees : undefined)
+    : existingTask.assignees;
+  const primaryAssignee = assignees?.[assignees.length - 1];
+  const assignedProfileId = await getProfileIdByEmail(primaryAssignee?.email);
   const relationalStatus = nextStatus === 'done' ? 'complete' : nextStatus === 'busy' ? 'in_progress' : nextStatus === 'pending' ? 'not_started' : nextStatus === 'open' ? 'waiting' : 'not_started';
   const relationalPriority = 'normal'; // Default priority for updates
   const completedBy = relationalStatus === 'complete' ? await getCurrentProfileId() : null;
@@ -2221,6 +2233,9 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       stage: text ?? task.stage,
       status: nextStatus ?? task.status,
       completed: nextCompleted,
+      assigneeName: primaryAssignee?.name,
+      assigneeEmail: primaryAssignee?.email,
+      assignees,
       startedDate,
       dueDate: input.dueDate !== undefined ? input.dueDate || undefined : task.dueDate,
       completedAt: nextCompleted ? task.completedAt ?? now : undefined,
@@ -2261,6 +2276,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       updated_at: now,
       completed_at: relationalStatus === 'complete' ? now : null,
       completed_by: completedBy,
+      responsible_person_id: assignedProfileId,
       waiting_reason: relationalStatus === 'waiting' ? (existingTask.installationRequest || 'Waiting for details') : null,
     };
     let { data: updatedTask, error: updateError } = await client
@@ -2288,12 +2304,15 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
   }
 
   // Record activity
-  const activityTitle = relationalStatus === 'complete' ? 'Task completed' : relationalStatus === 'in_progress' ? 'Task in progress' : relationalStatus === 'waiting' ? 'Task started' : relationalStatus === 'not_started' ? 'Task reopened' : 'Task updated';
+  const assignmentChanged = input.assignees !== undefined && (existingTask.assigneeEmail ?? '') !== (primaryAssignee?.email ?? '');
+  const activityTitle = assignmentChanged ? 'Stage assigned' : relationalStatus === 'complete' ? 'Task completed' : relationalStatus === 'in_progress' ? 'Task in progress' : relationalStatus === 'waiting' ? 'Task started' : relationalStatus === 'not_started' ? 'Task reopened' : 'Task updated';
   const activityVerb = relationalStatus === 'complete' ? 'completed' : relationalStatus === 'in_progress' ? 'marked in progress on' : relationalStatus === 'waiting' ? 'started' : relationalStatus === 'not_started' ? 'reopened' : 'updated';
   const activity = [
     createActivity(
-      activityTitle.replace('Task', 'Stage'),
-      `${input.actor} ${activityVerb} stage: ${text ?? existingTask.text}`,
+      activityTitle,
+      assignmentChanged
+        ? `${input.actor} assigned stage: ${text ?? existingTask.text} to ${primaryAssignee?.name ?? 'unassigned'}.`
+        : `${input.actor} ${activityVerb} stage: ${text ?? existingTask.text}`,
       relationalStatus === 'complete' ? 'success' : 'info',
     ),
     ...existingProject.activity,

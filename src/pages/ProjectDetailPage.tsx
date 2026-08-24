@@ -121,10 +121,14 @@ export function ProjectDetailPage() {
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [branchDetailsDraft, setBranchDetailsDraft] = useState({
     name: '',
+    code: '',
     division: 'Wealth' as Division,
     province: '',
+    city: '',
     town: '',
     physicalAddress: '',
+    latitude: '',
+    longitude: '',
     signageCompany: '',
     signageContactName: '',
     signageContactPhone: '',
@@ -187,10 +191,14 @@ export function ProjectDetailPage() {
         : [];
     setBranchDetailsDraft({
       name: branch.name,
+      code: branch.code ?? '',
       division: branch.division,
       province: branch.province,
+      city: branch.city ?? '',
       town: branch.town,
       physicalAddress: branch.physicalAddress,
+      latitude: branch.latitude?.toString() ?? '',
+      longitude: branch.longitude?.toString() ?? '',
       signageCompany: branch.signageCompany ?? '',
       signageContactName: branch.signageContactName ?? '',
       signageContactPhone: branch.signageContactPhone ?? '',
@@ -248,10 +256,14 @@ export function ProjectDetailPage() {
       const contacts = branchDetailsDraft.contacts.filter((contact) => contact.name.trim());
       const updatedBranch = await updateBranch(branch.id, {
         name: branchDetailsDraft.name.trim(),
+        code: branchDetailsDraft.code.trim() || null,
         division: branchDetailsDraft.division,
         province: branchDetailsDraft.province.trim(),
+        city: branchDetailsDraft.city.trim() || null,
         town: branchDetailsDraft.town.trim(),
         physicalAddress: branchDetailsDraft.physicalAddress.trim(),
+        latitude: branchDetailsDraft.latitude.trim() ? Number(branchDetailsDraft.latitude) : null,
+        longitude: branchDetailsDraft.longitude.trim() ? Number(branchDetailsDraft.longitude) : null,
         signageCompany: branchDetailsDraft.signageCompany.trim() || null,
         signageContactName: branchDetailsDraft.signageContactName.trim() || null,
         signageContactPhone: branchDetailsDraft.signageContactPhone.trim() || null,
@@ -425,7 +437,7 @@ export function ProjectDetailPage() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ task, text, completed, status, startedDate, dueDate }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; startedDate?: string; dueDate?: string }) => {
+    mutationFn: ({ task, text, completed, status, assignees, startedDate, dueDate }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; assignees?: TaskItem['assignees']; startedDate?: string; dueDate?: string }) => {
       const nextText = text?.trim();
       return updateProjectTask({
         projectId: projectId ?? '',
@@ -433,6 +445,7 @@ export function ProjectDetailPage() {
         text: nextText,
         completed,
         status,
+        assignees,
         startedDate,
         dueDate,
         stage: nextText || undefined,
@@ -460,6 +473,9 @@ export function ProjectDetailPage() {
             ...task,
             status: variables.status ?? task.status,
             completed: variables.status === 'done' ? true : variables.status === undefined ? task.completed : false,
+            assigneeName: variables.assignees !== undefined ? variables.assignees[variables.assignees.length - 1]?.name : task.assigneeName,
+            assigneeEmail: variables.assignees !== undefined ? variables.assignees[variables.assignees.length - 1]?.email : task.assigneeEmail,
+            assignees: variables.assignees !== undefined ? variables.assignees : task.assignees,
             startedDate: variables.startedDate ?? task.startedDate,
             dueDate: variables.dueDate ?? task.dueDate,
           }
@@ -724,11 +740,17 @@ export function ProjectDetailPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Branch</h3>
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="grid gap-2">Branch<input value={branchDetailsDraft.name} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, name: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                    <label className="grid gap-2">Branch code<input value={branchDetailsDraft.code} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, code: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
                     <label className="grid gap-2">Division<select value={branchDetailsDraft.division} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, division: event.target.value as Division }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50"><option value="Wealth">Wealth</option><option value="Insure">Insure</option><option value="Wealth Insure">Wealth Insure</option></select></label>
                     <label className="grid gap-2">Province<input value={branchDetailsDraft.province} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, province: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                    <label className="grid gap-2">City<input value={branchDetailsDraft.city} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, city: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
                     <label className="grid gap-2">Town<input value={branchDetailsDraft.town} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, town: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
                   </div>
                   <label className="grid gap-2">Branch address<textarea value={branchDetailsDraft.physicalAddress} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, physicalAddress: event.target.value }))} rows={2} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="grid gap-2">Latitude<input type="number" step="0.000001" value={branchDetailsDraft.latitude} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, latitude: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                    <label className="grid gap-2">Longitude<input type="number" step="0.000001" value={branchDetailsDraft.longitude} onChange={(event) => setBranchDetailsDraft((current) => ({ ...current, longitude: event.target.value }))} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50" /></label>
+                  </div>
                   <div className="grid gap-3 border-t border-white/10 pt-4">
                     <h4 className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Branch contact persons</h4>
                     {branchDetailsDraft.contacts.map((contact, index) => (
@@ -949,6 +971,22 @@ export function ProjectDetailPage() {
                     {(['pending', 'open', 'busy', 'done'] as const).map((status) => (
                       <option key={status} value={status}>{statusLabels[status]}</option>
                     ))}
+                  </select>
+                  <select
+                    value={task.assigneeEmail ?? ''}
+                    disabled={updateTaskMutation.isPending}
+                    onChange={(event) => {
+                      const selectedUser = users.find((item) => item.email === event.target.value);
+                      updateTaskMutation.mutate({
+                        task,
+                        assignees: selectedUser ? [{ name: selectedUser.name, email: selectedUser.email, designation: selectedUser.profileTitle?.trim() || 'Assigned user' }] : [],
+                      });
+                    }}
+                    aria-label={`Assign ${task.text}`}
+                    className="max-w-full rounded-xl border border-white/10 bg-slate-950/40 px-3 py-1.5 text-xs font-semibold text-white outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Unassigned</option>
+                    {users.map((item) => <option key={item.email} value={item.email}>{item.name} · {item.email}</option>)}
                   </select>
                   {canUploadFiles ? (
                     <label

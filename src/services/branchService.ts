@@ -27,6 +27,7 @@ export function extractBranchName(fullName: string): string {
 
 export interface CreateBranchInput {
   name: string;
+  code?: string | null;
   division: Division;
   province: string;
   city?: string | null;
@@ -224,6 +225,7 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
 
   return {
     name: input.name,
+    code: input.code?.trim() || null,
     division: input.division,
     province: input.province,
     city: input.city?.trim() || null,
@@ -520,6 +522,7 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
     const updatedBranch: Branch = {
       ...existing,
       name: input.name ?? existing.name,
+      code: input.code !== undefined ? input.code?.trim() || undefined : existing.code,
       division: input.division ?? existing.division,
       province: input.province ?? existing.province,
       city: input.city !== undefined ? input.city ?? undefined : existing.city,
@@ -546,6 +549,7 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
   const syncedContactFields = getPrimaryContactFromContacts(input as Pick<CreateBranchInput, 'contactName' | 'contactEmail' | 'contactPhone' | 'contacts'>);
   const updates: Record<string, unknown> = {};
   if (input.name !== undefined) updates.name = input.name;
+  if (input.code !== undefined) updates.code = input.code?.trim() || null;
   if (input.division !== undefined) updates.division = input.division;
   if (input.province !== undefined) updates.province = input.province;
   if (input.city !== undefined) updates.city = input.city;
