@@ -157,7 +157,7 @@ export async function updateOwnProfileIdentity(email: string, identity: Editable
       logo_url: identity.logoUrl.trim() || null,
       updated_at: new Date().toISOString(),
     })
-    .eq('email', normalizedEmail)
+    .ilike('email', normalizedEmail)
     .select('name, role, branch, email, company, profile_title, avatar_url, logo_url, workspace_ids, permission_overrides')
     .single();
 
@@ -229,7 +229,7 @@ export async function createUserProfile(input: CreateUserProfileInput): Promise<
     .from('profiles')
     .insert({
       name: input.name,
-      email: input.email,
+      email: input.email.trim().toLowerCase(),
       role: input.role,
       branch: input.branch ?? null,
     })
@@ -265,7 +265,7 @@ export async function updateUserAccessControls(input: UpdateUserAccessControlsIn
       permission_overrides: permissionOverrides,
       updated_at: new Date().toISOString(),
     })
-    .eq('email', normalizedEmail)
+    .ilike('email', normalizedEmail)
     .select('name, role, branch, email, company, profile_title, avatar_url, logo_url, workspace_ids, permission_overrides')
     .single();
 

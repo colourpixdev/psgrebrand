@@ -25,6 +25,7 @@ const users = [
   { name: 'Kweku', email: 'gavor.kweku@psg.co.za' },
   { name: 'Aleza van Zyl', email: 'aleza.vanzyl@psg.co.za' },
   { name: 'Sheyaam Hill', email: 'sheyaam.hill@psg.co.za' },
+  { name: 'Judith Claassens', email: 'judith.claassens@psg.co.za' },
 ];
 
 if (!env.VITE_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {

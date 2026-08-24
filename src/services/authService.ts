@@ -57,7 +57,7 @@ export async function sessionToUser(session: Session | null): Promise<UserRecord
   const profileResult = await supabase
     .from('profiles')
     .select('name, role, branch, email, company, profile_title, avatar_url, logo_url, workspace_ids, permission_overrides')
-    .eq('email', email)
+    .ilike('email', email)
     .maybeSingle();
 
   let data: Partial<ProfileRow> | null = profileResult.data as Partial<ProfileRow> | null;
@@ -67,7 +67,7 @@ export async function sessionToUser(session: Session | null): Promise<UserRecord
     const fallbackResult = await supabase
       .from('profiles')
       .select('name, role, branch, email')
-      .eq('email', email)
+      .ilike('email', email)
       .maybeSingle();
 
     data = fallbackResult.data as Partial<ProfileRow> | null;

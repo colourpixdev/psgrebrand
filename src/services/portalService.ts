@@ -196,7 +196,7 @@ async function getCurrentProfileId() {
 
 async function getProfileIdByEmail(email?: string) {
   if (!email) return null;
-  const { data: profile } = await supabase?.from('profiles').select('id').eq('email', email).maybeSingle() ?? { data: null };
+  const { data: profile } = await supabase?.from('profiles').select('id').ilike('email', email.trim().toLowerCase()).maybeSingle() ?? { data: null };
   return profile?.id ?? null;
 }
 
