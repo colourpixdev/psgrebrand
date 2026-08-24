@@ -2364,10 +2364,11 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
   const projectUpdate: {
     current_stage: string;
     status: Project['status'];
+    tasks: TaskItem[];
     activity: ActivityItem[];
     updated_at: string;
     completion_date?: string;
-  } = { current_stage: currentStage, status: projectStatus, activity, updated_at: now };
+  } = { current_stage: currentStage, status: projectStatus, tasks, activity, updated_at: now };
   if (allTasksCompleted) {
     projectUpdate.completion_date = now.slice(0, 10);
   }

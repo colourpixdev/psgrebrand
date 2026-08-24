@@ -846,8 +846,13 @@ export function ProjectDetailPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2">Current stage<select value={currentStageDraft} onChange={(event) => setCurrentStageDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none"><option value={currentStageDraft}>{currentStageDraft}</option>{summaryStageOptions.filter((stage) => stage !== currentStageDraft).map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
                   <label className="grid gap-2">Status<select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none">{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                  <DatePickerInput label="Project start date" value={projectStartDateDraft} onChange={setProjectStartDateDraft} placeholder="Select project start date" />
-                  <DatePickerInput label="Project target completion" value={targetDateDraft} onChange={setTargetDateDraft} placeholder="Select project target completion" />
+                  </div>
+                </section>
+                <section className="grid gap-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Project schedule</h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <DatePickerInput label="Project start date" value={projectStartDateDraft} onChange={setProjectStartDateDraft} placeholder="Select project start date" />
+                    <DatePickerInput label="Project target completion" value={targetDateDraft} onChange={setTargetDateDraft} placeholder="Select project target completion" />
                   </div>
                 </section>
                 <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
