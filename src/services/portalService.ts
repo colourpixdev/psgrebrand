@@ -795,12 +795,30 @@ export type UploadVoiceUpdateAudioResult = {
 };
 
 function todayLabel() {
-  return new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' });
+  const date = new Date();
+  const formatter = new Intl.DateTimeFormat('en-ZA', {
+    timeZone: 'Africa/Johannesburg',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date);
+  const day = parts.find((part) => part.type === 'day')?.value ?? '01';
+  const month = parts.find((part) => part.type === 'month')?.value ?? 'August';
+  const year = parts.find((part) => part.type === 'year')?.value ?? '2026';
+  const hour = parts.find((part) => part.type === 'hour')?.value ?? '15';
+  const minute = parts.find((part) => part.type === 'minute')?.value ?? '32';
+
+  return `${day} ${month} ${year} • ${hour}:${minute} SAST`;
 }
 
 function createActivity(title: string, detail: string, type: ActivityItem['type'] = 'info'): ActivityItem {
   return {
-    date: 'Today',
+    date: todayLabel(),
     title,
     detail,
     type,
