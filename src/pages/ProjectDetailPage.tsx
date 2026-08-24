@@ -1088,7 +1088,11 @@ export function ProjectDetailPage() {
                     <button
                       type="button"
                       disabled={updateTaskMutation.isPending || ((taskStartedDateDrafts[task.id] ?? task.startedDate ?? '') === (task.startedDate ?? '') && (taskDueDateDrafts[task.id] ?? task.dueDate ?? '') === (task.dueDate ?? ''))}
-                      onClick={() => updateTaskMutation.mutate({ task, startedDate: taskStartedDateDrafts[task.id] ?? task.startedDate ?? '', dueDate: taskDueDateDrafts[task.id] ?? task.dueDate ?? '' })}
+                      onClick={() => updateTaskMutation.mutate({
+                        task,
+                        startedDate: taskStartedDateDrafts[task.id] ?? task.startedDate ?? undefined,
+                        dueDate: taskDueDateDrafts[task.id] ?? task.dueDate ?? undefined,
+                      })}
                       className="w-fit rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {updateTaskMutation.isPending ? 'Saving...' : 'Save date'}
