@@ -1092,10 +1092,7 @@ export async function getProjects(): Promise<Project[]> {
 
           const tasksByBranch = new Map<string, TaskItem[]>();
           workspaces.forEach((ws) => {
-            const relationalTasks = tasksByWorkspace.get(ws.id);
-            if (relationalTasks && relationalTasks.length > 0) {
-              tasksByBranch.set(ws.branch_id, relationalTasks);
-            }
+            tasksByBranch.set(ws.branch_id, tasksByWorkspace.get(ws.id) ?? []);
           });
 
           return hydrateProjectFiles(projects.map((project) => ({
@@ -1144,9 +1141,7 @@ export async function getProjectById(projectId: string): Promise<Project | undef
     if (workspaceData?.id) {
       project = { ...project, workspaceId: workspaceData.id };
       const relationalTasks = await getWorkspaceTasks(workspaceData.id);
-      if (relationalTasks.length > 0) {
-        project = { ...project, tasks: relationalTasks };
-      }
+      project = { ...project, tasks: relationalTasks };
 
       const relationalFiles = await getWorkspaceFiles(workspaceData.id);
       if (relationalFiles.length > 0) {
