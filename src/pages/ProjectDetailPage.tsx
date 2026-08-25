@@ -1237,8 +1237,7 @@ export function ProjectDetailPage() {
                     ) : null}
                   </div>
                 ) : null}
-                {normalizeRole(user?.role) !== 'psg_user' ? (
-                  <div className="mt-4">
+                <div className="mt-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100">Stage updates</p>
                     <div className="mt-2 space-y-2">
                       {taskUpdates.length > 0 ? taskUpdates.map((c, i) => (
@@ -1285,8 +1284,7 @@ export function ProjectDetailPage() {
                         </div>
                       </div>
                     ) : null}
-                  </div>
-                ) : null}
+                </div>
                   </div>
                 )}
               </div>
