@@ -305,7 +305,6 @@ export function ReportsPage() {
   const [province, setProvince] = useState('all');
   const [completion, setCompletion] = useState<'all' | 'completed' | 'outstanding'>('all');
   const [marketingCoordinator, setMarketingCoordinator] = useState('all');
-  const [signageCompany, setSignageCompany] = useState('all');
   const [query, setQuery] = useState('');
 
   const { data: projects = [], isLoading } = useQuery({
@@ -328,7 +327,6 @@ export function ReportsPage() {
   const branchByProject = useMemo(() => new Map<string, Branch>(branches.map((branch) => [branch.id, branch])), [branches]);
   const getProjectBranch = (project: Project) => branchByProject.get(project.branchId) ?? branches.find((branch) => branch.name === project.branch);
   const availableMarketingCoordinators = useMemo(() => uniqueSorted(users.filter((item) => item.role === 'psg_user').map((item) => item.name)), [users]);
-  const availableSignageCompanies = useMemo(() => uniqueSorted(scopedProjects.map((project) => getProjectBranch(project)?.signageCompany ?? '').filter(Boolean)), [scopedProjects, branchByProject, branches]);
   const branchSuggestions = useMemo(() => {
     if (!normalizedQuery) {
       return [];
@@ -368,10 +366,6 @@ export function ReportsPage() {
       return false;
     }
 
-    if (signageCompany !== 'all' && getProjectBranch(project)?.signageCompany !== signageCompany) {
-      return false;
-    }
-
     if (completion === 'completed' && project.status !== 'completed') {
       return false;
     }
@@ -385,7 +379,7 @@ export function ReportsPage() {
     }
 
     return true;
-  }), [branchName, completion, getProjectBranch, marketingCoordinator, normalizedQuery, province, reportType, scopedProjects, signageCompany, status]);
+  }), [branchName, completion, getProjectBranch, marketingCoordinator, normalizedQuery, province, reportType, scopedProjects, status]);
 
   const displayedProjects = useMemo(() => {
     if (reportType === 'single-branch-detail') {
@@ -461,14 +455,6 @@ export function ReportsPage() {
             <select value={marketingCoordinator} onChange={(event) => setMarketingCoordinator(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
               <option value="all">All coordinators</option>
               {availableMarketingCoordinators.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
-
-          <label className="grid gap-2 text-sm text-slate-300">
-            Signage Company
-            <select value={signageCompany} onChange={(event) => setSignageCompany(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-              <option value="all">All signage companies</option>
-              {availableSignageCompanies.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
 
