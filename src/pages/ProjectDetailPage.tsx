@@ -653,6 +653,7 @@ export function ProjectDetailPage() {
   const canEditStageDates = Boolean(rolePolicy?.workflow.canChangeTargetDates || rolePolicy?.workflow.canChangeStage || canAdministerProjectDetails);
   const canAddTasks = Boolean(rolePolicy?.tasks.canCreateTasks);
   const canCompleteTasks = Boolean(rolePolicy?.tasks.canCompleteTasks);
+  const isPsgUser = Boolean(user && normalizeRole(user.role) === 'psg_user');
   const isBranchContact = Boolean(branch && user && (
     (branch.contactEmail && user.email && branch.contactEmail.toLowerCase() === user.email.toLowerCase()) ||
     (branch.contacts && branch.contacts.some((c) => c.email && user.email && c.email.toLowerCase() === user.email.toLowerCase()))
@@ -1135,22 +1136,26 @@ export function ProjectDetailPage() {
                 ) : (
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-end">
                     <div className="flex shrink-0 flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={reorderTaskMutation.isPending || index === 0}
-                        onClick={() => reorderTaskMutation.mutate({ task, direction: 'up' })}
-                        className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Move up
-                      </button>
-                      <button
-                        type="button"
-                        disabled={reorderTaskMutation.isPending || index === mergedTasks.length - 1}
-                        onClick={() => reorderTaskMutation.mutate({ task, direction: 'down' })}
-                        className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Move down
-                      </button>
+                      {!isPsgUser ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={reorderTaskMutation.isPending || index === 0}
+                            onClick={() => reorderTaskMutation.mutate({ task, direction: 'up' })}
+                            className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Move up
+                          </button>
+                          <button
+                            type="button"
+                            disabled={reorderTaskMutation.isPending || index === mergedTasks.length - 1}
+                            onClick={() => reorderTaskMutation.mutate({ task, direction: 'down' })}
+                            className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Move down
+                          </button>
+                        </>
+                      ) : null}
                       {canAddTasks ? <button type="button" onClick={() => { setEditingTaskId(task.id); setEditingTaskText(task.text); }} className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600">Edit stage name</button> : null}
                       {canDeleteTasks ? <button type="button" disabled={deleteTaskMutation.isPending} onClick={() => deleteTaskMutation.mutate(task)} className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}
                     </div>
