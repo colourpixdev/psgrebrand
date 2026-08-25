@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { createProject, getProjects, type CreateProjectInput } from './portalService';
+import { createProject, deleteProject, getProjects, type CreateProjectInput } from './portalService';
 import type { Branch, ContactPerson, Division, Project } from '../types/domain';
 import { createNextBranchCode, createNextProjectId } from '../utils/branchProjectIds';
 
@@ -603,11 +603,37 @@ export async function deleteBranch(id: string): Promise<boolean> {
     return true;
   }
 
-  const { error } = await supabase.from('branches').delete().eq('id', id);
+  const { data: projects, error: projectsError } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('branch_id', id);
+
+  if (projectsError) {
+    throw new Error(projectsError.message || 'Unable to find projects for this branch.');
+  }
+
+  for (const project of projects ?? []) {
+    await deleteProject(project.id);
+  }
+
+  const { error: workspacesError } = await supabase
+    .from('rebrand_workspaces')
+    .delete()
+    .eq('branch_id', id);
+
+  if (workspacesError) {
+    throw new Error(workspacesError.message || 'Unable to remove branch workspaces.');
+  }
+
+  const { data, error } = await supabase.from('branches').delete().eq('id', id).select('id');
 
   if (error) {
     console.error('Failed to delete branch:', error);
     throw new Error(error.message || 'Failed to delete branch');
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error('The branch was not removed. Your account may not have permission to delete it.');
   }
 
   return true;
