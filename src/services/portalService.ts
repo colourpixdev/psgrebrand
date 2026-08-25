@@ -142,7 +142,7 @@ async function getWorkspaceTasks(workspaceId: string): Promise<RelationalReadRes
 
   return { data: (data as ProjectTaskRow[]).map((taskRow) => convertRelationalTaskToTaskItem({
     ...taskRow,
-    responsible_person: assigneeByTaskId.get(taskRow.id) ?? null,
+    responsible_person: assigneeByTaskId.get(taskRow.id) ?? taskRow.responsible_person ?? null,
   })), available: true };
 }
 
@@ -1181,7 +1181,7 @@ export async function getProjects(): Promise<Project[]> {
             const tasks = tasksByWorkspace.get(wsId) ?? [];
             tasks.push(convertRelationalTaskToTaskItem({
               ...(taskRow as ProjectTaskRow),
-              responsible_person: assigneeByTaskId.get((taskRow as ProjectTaskRow).id) ?? null,
+              responsible_person: assigneeByTaskId.get((taskRow as ProjectTaskRow).id) ?? (taskRow as ProjectTaskRow).responsible_person ?? null,
             }));
             tasksByWorkspace.set(wsId, tasks);
           });
