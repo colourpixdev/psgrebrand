@@ -161,10 +161,21 @@ export function DashboardPage() {
     const normalizedName = user?.name?.trim().toLowerCase();
     const branchById = new Map(branches.map((branch) => [branch.id, branch]));
 
-    scopedProjects.forEach((project) => {
+    const isAllocatedToUser = (project: Project) => {
       const coordinatorMatches = project.managerEmail?.trim().toLowerCase() === normalizedEmail
         || project.manager?.trim().toLowerCase() === normalizedName;
-      if (!coordinatorMatches || branchById.has(project.branchId)) {
+      const assignedToStage = project.tasks.some((task) => {
+        const emails = [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)];
+        const names = [task.assigneeName, ...(task.assignees ?? []).map((assignee) => assignee.name)];
+        return emails.some((email) => normalizedEmail && email?.trim().toLowerCase() === normalizedEmail)
+          || names.some((name) => normalizedName && name?.trim().toLowerCase() === normalizedName);
+      });
+
+      return coordinatorMatches || assignedToStage;
+    };
+
+    scopedProjects.forEach((project) => {
+      if (!isAllocatedToUser(project) || branchById.has(project.branchId)) {
         return;
       }
 
@@ -181,9 +192,7 @@ export function DashboardPage() {
     });
 
     return [...branchById.values()].filter((branch) => scopedProjects.some((project) => {
-      const coordinatorMatches = project.managerEmail?.trim().toLowerCase() === normalizedEmail
-        || project.manager?.trim().toLowerCase() === normalizedName;
-      return project.branchId === branch.id && coordinatorMatches;
+      return project.branchId === branch.id && isAllocatedToUser(project);
     }));
   }, [branches, scopedProjects, user]);
 
@@ -280,9 +289,9 @@ export function DashboardPage() {
             )}
           </section> : null}
 
-          {!canManageFollowedBranchesForUser ? <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-2">
-              <div><h3 className="text-lg font-semibold text-slate-900">My branches</h3><p className="mt-1 text-sm text-slate-600">Branches where you are the marketing coordinator.</p></div>
+              <div><h3 className="text-lg font-semibold text-slate-900">Branches allocated to me</h3><p className="mt-1 text-sm text-slate-600">Branches where you coordinate the project or are assigned to a stage.</p></div>
               <span className="text-sm text-slate-500">{myBranches.length}</span>
             </div>
             {myBranches.length > 0 ? (
@@ -305,7 +314,7 @@ export function DashboardPage() {
             ) : (
               <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">No branches are assigned to you as marketing coordinator.</p>
             )}
-          </section> : null}
+          </section>
 
           <section className="grid grid-cols-2 gap-3 md:grid-cols-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
