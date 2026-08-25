@@ -926,8 +926,7 @@ function mapProjectRow(row: ProjectRow): Project {
       ? row.branch_id
       : 'Unassigned';
 
-  const rawStatus = row.status;
-  const status: ProjectStatus = rawStatus === 'completed' ? 'completed' : rawStatus === 'delayed' ? 'delayed' : 'on_schedule';
+  const status: ProjectStatus = row.status;
 
   return {
     id: row.id ?? 'unknown-project',
