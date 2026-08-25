@@ -39,8 +39,6 @@ export interface CreateBranchInput {
   signageContactPhone?: string | null;
   signageContactEmail?: string | null;
   signageAddress?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
   contactName?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
@@ -61,8 +59,6 @@ type BranchRow = {
   signage_contact_phone?: string | null;
   signage_contact_email?: string | null;
   signage_address?: string | null;
-  latitude: number | null;
-  longitude: number | null;
   contact_name?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
@@ -90,8 +86,6 @@ function rowToBranch(row: BranchRow): Branch {
     signageContactPhone: row.signage_contact_phone ?? undefined,
     signageContactEmail: row.signage_contact_email ?? undefined,
     signageAddress: row.signage_address ?? undefined,
-    latitude: typeof row.latitude === 'number' ? row.latitude : null,
-    longitude: typeof row.longitude === 'number' ? row.longitude : null,
     contactName: row.contact_name ?? undefined,
     contactEmail: row.contact_email ?? undefined,
     contactPhone: row.contact_phone ?? undefined,
@@ -247,8 +241,6 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
     signage_contact_phone: input.signageContactPhone?.trim() || null,
     signage_contact_email: input.signageContactEmail?.trim() || null,
     signage_address: input.signageAddress?.trim() || null,
-    latitude: input.latitude ?? null,
-    longitude: input.longitude ?? null,
     contact_name: syncedContactFields.contactName,
     contact_email: syncedContactFields.contactEmail,
     contact_phone: syncedContactFields.contactPhone,
@@ -390,8 +382,6 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
       signageContactPhone: input.signageContactPhone?.trim() || undefined,
       signageContactEmail: input.signageContactEmail?.trim() || undefined,
       signageAddress: input.signageAddress?.trim() || undefined,
-      latitude: input.latitude ?? null,
-      longitude: input.longitude ?? null,
       contactName: input.contactName ?? undefined,
       contactEmail: input.contactEmail ?? undefined,
       contactPhone: input.contactPhone ?? undefined,
@@ -433,8 +423,6 @@ export async function createBranch(input: CreateBranchInput): Promise<Branch | n
       signageContactPhone: input.signageContactPhone?.trim() || undefined,
       signageContactEmail: input.signageContactEmail?.trim() || undefined,
       signageAddress: input.signageAddress?.trim() || undefined,
-      latitude: input.latitude ?? null,
-      longitude: input.longitude ?? null,
       contactName: input.contactName ?? undefined,
       contactEmail: input.contactEmail ?? undefined,
       contactPhone: input.contactPhone ?? undefined,
@@ -552,8 +540,6 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
       signageContactName: input.signageContactName !== undefined ? input.signageContactName?.trim() || undefined : existing.signageContactName,
       signageContactPhone: input.signageContactPhone !== undefined ? input.signageContactPhone?.trim() || undefined : existing.signageContactPhone,
       signageContactEmail: input.signageContactEmail !== undefined ? input.signageContactEmail?.trim() || undefined : existing.signageContactEmail,
-      latitude: input.latitude !== undefined ? input.latitude : existing.latitude,
-      longitude: input.longitude !== undefined ? input.longitude : existing.longitude,
       contactName: syncedContactFields.contactName ?? undefined,
       contactEmail: syncedContactFields.contactEmail ?? undefined,
       contactPhone: syncedContactFields.contactPhone ?? undefined,
@@ -580,8 +566,6 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
   if (input.signageContactPhone !== undefined) updates.signage_contact_phone = input.signageContactPhone?.trim() || null;
   if (input.signageContactEmail !== undefined) updates.signage_contact_email = input.signageContactEmail?.trim() || null;
   if (input.signageAddress !== undefined) updates.signage_address = input.signageAddress?.trim() || null;
-  if (input.latitude !== undefined) updates.latitude = input.latitude;
-  if (input.longitude !== undefined) updates.longitude = input.longitude;
   if (input.contactName !== undefined || input.contacts !== undefined) {
     updates.contact_name = syncedContactFields.contactName;
   }

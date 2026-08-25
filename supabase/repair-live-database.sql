@@ -14,8 +14,6 @@ create table if not exists public.branches (
   city text,
   town text not null,
   physical_address text not null,
-  latitude double precision,
-  longitude double precision,
   contact_name text,
   contact_email text,
   contact_phone text,
@@ -29,8 +27,6 @@ alter table public.branches alter column id set default (gen_random_uuid()::text
 alter table public.branches add column if not exists province text;
 alter table public.branches add column if not exists town text;
 alter table public.branches add column if not exists physical_address text;
-alter table public.branches add column if not exists latitude double precision;
-alter table public.branches add column if not exists longitude double precision;
 alter table public.branches add column if not exists contact_name text;
 alter table public.branches add column if not exists contact_email text;
 alter table public.branches add column if not exists contact_phone text;
@@ -40,14 +36,6 @@ alter table public.branches add column if not exists contacts jsonb not null def
 alter table public.branches alter column code set default ('PSG' || lpad(nextval('public.branch_code_sequence')::text, 3, '0'));
 alter table public.branches add column if not exists created_at timestamptz not null default now();
 alter table public.branches add column if not exists updated_at timestamptz not null default now();
-
-alter table public.branches drop constraint if exists branches_latitude_range;
-alter table public.branches add constraint branches_latitude_range
-  check (latitude is null or latitude between -90 and 90);
-
-alter table public.branches drop constraint if exists branches_longitude_range;
-alter table public.branches add constraint branches_longitude_range
-  check (longitude is null or longitude between -180 and 180);
 
 create table if not exists public.projects (
   id text primary key,

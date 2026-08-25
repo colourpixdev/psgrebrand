@@ -140,6 +140,11 @@ function getProjectPosition(project: Project): LatLngTuple {
   return branchCoordinates[project.id] ?? townCoordinates[coordinateKey(project)] ?? townOnlyCoordinates[townKey(project)] ?? provinceCoordinates[project.province.toLowerCase()] ?? [-28.4793, 24.6727];
 }
 
+function getBranchPosition(branch: Pick<Branch, 'id' | 'town' | 'province'>): LatLngTuple {
+  const branchLikeProject = { id: branch.id, town: branch.town, province: branch.province } as Project;
+  return branchCoordinates[branch.id] ?? townCoordinates[coordinateKey(branchLikeProject)] ?? townOnlyCoordinates[townKey(branchLikeProject)] ?? provinceCoordinates[branch.province.toLowerCase()] ?? [-28.4793, 24.6727];
+}
+
 function createProjectIcon(project: Project) {
   const style = statusStyles[project.status];
 
@@ -285,10 +290,9 @@ export function MapPage() {
             <FitProjectBounds locations={locations} />
             <MapDragGuard isActivated={mapActivated} />
             {branches.map((branch) => {
-              if (!branch.latitude || !branch.longitude) return null;
               const branchProjects = projectsByBranch[branch.name] || [];
               return (
-                <Marker key={`branch-${branch.id}`} position={[branch.latitude, branch.longitude]} icon={createBranchIcon()}>
+                <Marker key={`branch-${branch.id}`} position={getBranchPosition(branch)} icon={createBranchIcon()}>
                   <Popup>
                     <div className="min-w-64 text-slate-900">
                       <p className="text-lg font-bold">{branch.name}</p>

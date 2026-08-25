@@ -10,8 +10,6 @@ create table if not exists public.branches (
   city text,
   town text not null,
   physical_address text not null,
-  latitude double precision,
-  longitude double precision,
   contact_name text,
   contact_email text,
   contact_phone text,
@@ -27,16 +25,6 @@ alter table public.branches add column if not exists code text;
 alter table public.branches add column if not exists city text;
 alter table public.branches add column if not exists contacts jsonb not null default '[]'::jsonb;
 alter table public.branches alter column code set default ('PSG' || lpad(nextval('public.branch_code_sequence')::text, 3, '0'));
-
-do $$ begin
-  alter table public.branches add constraint branches_latitude_range check (latitude is null or latitude between -90 and 90);
-exception when duplicate_object then null;
-end $$;
-
-do $$ begin
-  alter table public.branches add constraint branches_longitude_range check (longitude is null or longitude between -180 and 180);
-exception when duplicate_object then null;
-end $$;
 
 create table if not exists public.projects (
   id text primary key,

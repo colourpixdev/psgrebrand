@@ -111,8 +111,6 @@ export function BranchesPage() {
     signageContactPhone: '',
     signageContactEmail: '',
     signageAddress: '',
-    latitude: '',
-    longitude: '',
     contactName: '',
     contactEmail: '',
     contactPhone: '',
@@ -130,8 +128,6 @@ export function BranchesPage() {
     signageContactPhone: '',
     signageContactEmail: '',
     signageAddress: '',
-    latitude: '',
-    longitude: '',
     contactName: '',
     contactEmail: '',
     contactPhone: '',
@@ -207,8 +203,6 @@ export function BranchesPage() {
         signageContactPhone: formData.signageContactPhone.trim() || null,
         signageContactEmail: formData.signageContactEmail.trim() || null,
         signageAddress: formData.signageAddress.trim() || null,
-        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
         contactName: formData.contactName.trim() || null,
         contactEmail: formData.contactEmail.trim() || null,
         contactPhone: formData.contactPhone.trim() || null,
@@ -234,8 +228,6 @@ export function BranchesPage() {
         signageContactPhone: '',
         signageContactEmail: '',
         signageAddress: '',
-        latitude: '',
-        longitude: '',
         contactName: '',
         contactEmail: '',
         contactPhone: '',
@@ -273,8 +265,6 @@ export function BranchesPage() {
       signageContactPhone: branch.signageContactPhone ?? '',
       signageContactEmail: branch.signageContactEmail ?? '',
       signageAddress: branch.signageAddress ?? '',
-      latitude: branch.latitude?.toString() ?? '',
-      longitude: branch.longitude?.toString() ?? '',
       contactName: primaryContact?.name ?? branch.contactName ?? '',
       contactEmail: primaryContact?.email ?? branch.contactEmail ?? '',
       contactPhone: primaryContact?.phone ?? branch.contactPhone ?? '',
@@ -298,8 +288,6 @@ export function BranchesPage() {
       signageContactPhone: '',
       signageContactEmail: '',
       signageAddress: '',
-      latitude: '',
-      longitude: '',
       contactName: '',
       contactEmail: '',
       contactPhone: '',
@@ -331,8 +319,6 @@ export function BranchesPage() {
         signageContactPhone: editData.signageContactPhone.trim() || null,
         signageContactEmail: editData.signageContactEmail.trim() || null,
         signageAddress: editData.signageAddress.trim() || null,
-        latitude: editData.latitude ? parseFloat(editData.latitude) : null,
-        longitude: editData.longitude ? parseFloat(editData.longitude) : null,
         contactName: editData.contactName.trim() || null,
         contactEmail: editData.contactEmail.trim() || null,
         contactPhone: editData.contactPhone.trim() || null,
@@ -628,31 +614,6 @@ export function BranchesPage() {
               <input type="text" value={formData.signageAddress} onChange={(e) => setFormData({ ...formData, signageAddress: e.target.value })} className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50" placeholder="Supplier physical address" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">Latitude</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={formData.latitude}
-                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
-                  placeholder="-90 to 90"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">Longitude</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={formData.longitude}
-                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
-                  placeholder="-180 to 180"
-                />
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-300">Contact Name</label>
@@ -784,7 +745,7 @@ export function BranchesPage() {
                       />
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_180px_180px]">
+                    <div className="mt-4">
                       <input
                         type="text"
                         value={editData.physicalAddress}
@@ -792,22 +753,6 @@ export function BranchesPage() {
                         placeholder="Physical address"
                         className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
                         required
-                      />
-                      <input
-                        type="number"
-                        step="0.000001"
-                        value={editData.latitude}
-                        onChange={(e) => setEditData({ ...editData, latitude: e.target.value })}
-                        placeholder="Latitude"
-                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
-                      />
-                      <input
-                        type="number"
-                        step="0.000001"
-                        value={editData.longitude}
-                        onChange={(e) => setEditData({ ...editData, longitude: e.target.value })}
-                        placeholder="Longitude"
-                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-700"
                       />
                     </div>
 
