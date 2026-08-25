@@ -341,6 +341,7 @@ export async function getAllBranches(): Promise<Branch[]> {
   }
 
   const serverBranches = data.map((row) => mergeLocalBranchMetadata(rowToBranch(row)));
+  writeLocalBranches(serverBranches);
   const localOnlyBranches = localBranches.filter((localBranch) => !serverBranches.some((serverBranch) => serverBranch.id === localBranch.id));
 
   return [...serverBranches, ...localOnlyBranches].sort((a, b) => a.name.localeCompare(b.name));
