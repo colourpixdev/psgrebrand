@@ -1190,7 +1190,11 @@ export async function getProjects(): Promise<Project[]> {
             const workspaceId = (data as ProjectRow[]).find((row) => row.id === project.id)?.rebrand_workspace_id;
             if (!workspaceId) return project;
             const relationalTasks = tasksByWorkspace.get(workspaceId) ?? [];
-            return applyRelationalProjectData(project, { workspaceId, tasks: relationalTasks, tasksAvailable: !allTasksError });
+            return applyRelationalProjectData(project, {
+              workspaceId,
+              tasks: relationalTasks,
+              tasksAvailable: !allTasksError && (relationalTasks.length > 0 || project.tasks.length === 0),
+            });
           }));
         }
       }
@@ -1233,8 +1237,12 @@ export async function getProjectById(projectId: string): Promise<Project | undef
         .is('rebrand_workspace_id', null);
     }
 
-    const relationalTasks = await getWorkspaceTasks(workspaceId);
-    project = applyRelationalProjectData(project, { workspaceId, tasks: relationalTasks.data, tasksAvailable: relationalTasks.available });
+      const relationalTasks = await getWorkspaceTasks(workspaceId);
+      project = applyRelationalProjectData(project, {
+        workspaceId,
+        tasks: relationalTasks.data,
+        tasksAvailable: relationalTasks.available && (relationalTasks.data.length > 0 || project.tasks.length === 0),
+      });
 
     const relationalFiles = await getWorkspaceFiles(workspaceId);
     project = applyRelationalProjectData(project, {
