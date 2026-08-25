@@ -70,7 +70,9 @@ export async function syncFollowedProjects(userEmail?: string): Promise<string[]
     const data = await readRemoteFollowedIds(userId);
     const remoteIds = data.map((row) => row.item_id).filter((id): id is string => typeof id === 'string');
     const shouldMigrateLocalIds = localStorage.getItem(syncMarkerKey(userEmail)) !== 'true';
-    const mergedIds = shouldMigrateLocalIds ? [...new Set([...remoteIds, ...localIds])] : remoteIds;
+    const mergedIds = shouldMigrateLocalIds && remoteIds.length === 0
+      ? [...new Set([...remoteIds, ...localIds])]
+      : remoteIds;
 
     if (shouldMigrateLocalIds && localIds.some((id) => !remoteIds.includes(id))) {
       const { error: upsertError } = await supabase!.from('user_followed_items').upsert(

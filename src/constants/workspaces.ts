@@ -9,7 +9,7 @@ export const privateRolloutRequestInbox = rolloutAppEmail;
 export const allWorkspaceAdminEmails = platformOwnerEmails;
 
 export function canManageFollowedBranches(email: string | undefined) {
-  return Boolean(email && platformOwnerEmails.includes(email.trim().toLowerCase()));
+  return Boolean(email?.trim());
 }
 
 export const workspaceAdminContact = {
