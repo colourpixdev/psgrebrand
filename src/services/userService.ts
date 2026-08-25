@@ -19,10 +19,7 @@ type ProfileRow = {
 
 export const removedUserEmails = new Set([
   'ops@abcsignage.co.za',
-  'beverley@colourpix.co.za',
   'john.smith@psg.co.za',
-  'head.office@psg.co.za',
-  'psg@psg.co.za',
 ]);
 
 export class UserProfilesNotConfiguredError extends Error {
