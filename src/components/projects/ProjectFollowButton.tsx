@@ -35,7 +35,7 @@ export function ProjectFollowButton({ projectId, legacyProjectIds = [], userEmai
         event.stopPropagation();
         setIsFollowed(toggleFollowedProject(userEmail, projectId, legacyProjectIds));
       }}
-      className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${unfollowOnly ? 'border-red-200 bg-white text-red-700 hover:border-red-300 hover:bg-red-50' : isFollowed ? 'border-amber-300 bg-amber-50 text-slate-900 hover:bg-amber-100' : 'border-slate-300 bg-white text-slate-600 hover:border-sky-300 hover:text-sky-700'}`}
+      className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${unfollowOnly ? 'border-red-200 bg-white text-red-700 hover:border-red-300 hover:bg-red-50' : isFollowed ? 'border-amber-300 bg-amber-50 !text-slate-900 hover:bg-amber-100' : 'border-slate-300 bg-white text-slate-600 hover:border-sky-300 hover:text-sky-700'}`}
     >
       {unfollowOnly ? 'Unfollow' : isFollowed ? (noun === 'branch' ? 'Tracking branch' : 'Following') : (noun === 'branch' ? 'Track branch' : 'Follow')}
     </button>
