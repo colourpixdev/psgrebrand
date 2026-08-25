@@ -48,10 +48,19 @@ export function DashboardPage() {
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
   useEffect(() => {
     const refreshFollowedProjects = () => setFollowedProjectIds(getFollowedProjectIds(user?.email));
+    const syncFromServer = () => void syncFollowedProjects(user?.email).then(setFollowedProjectIds);
     refreshFollowedProjects();
-    void syncFollowedProjects(user?.email).then(setFollowedProjectIds);
+    syncFromServer();
     window.addEventListener(getFollowChangedEventName(), refreshFollowedProjects);
-    return () => window.removeEventListener(getFollowChangedEventName(), refreshFollowedProjects);
+    window.addEventListener('focus', syncFromServer);
+    document.addEventListener('visibilitychange', syncFromServer);
+    const refreshInterval = window.setInterval(syncFromServer, 10000);
+    return () => {
+      window.removeEventListener(getFollowChangedEventName(), refreshFollowedProjects);
+      window.removeEventListener('focus', syncFromServer);
+      document.removeEventListener('visibilitychange', syncFromServer);
+      window.clearInterval(refreshInterval);
+    };
   }, [user?.email]);
   const isLoading = isLoadingBranches || isLoadingProjects;
   const loadError = isBranchesError ? branchesError : isProjectsError ? projectsError : null;
