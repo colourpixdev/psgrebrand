@@ -1162,27 +1162,26 @@ export function ProjectDetailPage() {
                         disabled={!canEditStageDates || updateTaskMutation.isPending}
                       />
                     </div>
-                    <button
-                      type="button"
-                      disabled={!canEditStageDates || updateTaskMutation.isPending || ((taskStartedDateDrafts[task.id] ?? task.startedDate ?? '') === (task.startedDate ?? '') && (taskDueDateDrafts[task.id] ?? task.dueDate ?? '') === (task.dueDate ?? ''))}
-                      onClick={() => {
-                        if (!canEditStageDates) {
-                          return;
-                        }
-                        setTaskDateSaveMessage(null);
-                        const nextStartedDate = taskStartedDateDrafts[task.id];
-                        const nextDueDate = taskDueDateDrafts[task.id];
-                        updateTaskMutation.mutate({
-                          task,
-                          startedDate: nextStartedDate !== undefined && nextStartedDate !== task.startedDate ? nextStartedDate : undefined,
-                          dueDate: nextDueDate !== undefined && nextDueDate !== task.dueDate ? nextDueDate : undefined,
-                        });
-                      }}
-                      className="w-fit rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {updateTaskMutation.isPending ? 'Saving...' : 'Save date'}
-                    </button>
-                    {taskDateSaveMessage ? <p className={taskDateSaveMessage === 'Saved' ? 'text-xs font-medium text-emerald-300' : 'text-xs font-medium text-red-300'}>{taskDateSaveMessage}</p> : null}
+                    {canEditStageDates ? <>
+                      <button
+                        type="button"
+                        disabled={updateTaskMutation.isPending || ((taskStartedDateDrafts[task.id] ?? task.startedDate ?? '') === (task.startedDate ?? '') && (taskDueDateDrafts[task.id] ?? task.dueDate ?? '') === (task.dueDate ?? ''))}
+                        onClick={() => {
+                          setTaskDateSaveMessage(null);
+                          const nextStartedDate = taskStartedDateDrafts[task.id];
+                          const nextDueDate = taskDueDateDrafts[task.id];
+                          updateTaskMutation.mutate({
+                            task,
+                            startedDate: nextStartedDate !== undefined && nextStartedDate !== task.startedDate ? nextStartedDate : undefined,
+                            dueDate: nextDueDate !== undefined && nextDueDate !== task.dueDate ? nextDueDate : undefined,
+                          });
+                        }}
+                        className="w-fit rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {updateTaskMutation.isPending ? 'Saving...' : 'Save date'}
+                      </button>
+                      {taskDateSaveMessage ? <p className={taskDateSaveMessage === 'Saved' ? 'text-xs font-medium text-emerald-300' : 'text-xs font-medium text-red-300'}>{taskDateSaveMessage}</p> : null}
+                    </> : null}
                     {taskFiles.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Attached files</p>
