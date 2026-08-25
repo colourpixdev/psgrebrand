@@ -7,7 +7,7 @@ import { getProjects, updateProjectTask } from '../services/portalService';
 import { getFollowChangedEventName, getFollowedProjectIds, syncFollowedProjects } from '../services/projectFollowService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
-import type { Project } from '../types/domain';
+import type { Branch, Project } from '../types/domain';
 
 
 function greeting() {
@@ -127,7 +127,27 @@ export function DashboardPage() {
 
   const followedBranches = useMemo(() => {
     const followed = new Set(followedProjectIds);
-    return branches.filter((branch) => followed.has(branch.id) || scopedProjects.some((project) => project.branchId === branch.id && followed.has(project.id)));
+    const branchById = new Map(branches.map((branch) => [branch.id, branch]));
+    scopedProjects.forEach((project) => {
+      if (!followed.has(project.branchId) && !followed.has(project.id)) {
+        return;
+      }
+
+      if (!branchById.has(project.branchId)) {
+        branchById.set(project.branchId, {
+          id: project.branchId,
+          name: project.branch,
+          division: 'Wealth',
+          province: project.province,
+          town: project.town,
+          physicalAddress: project.physicalAddress,
+          createdAt: project.updatedAt,
+          updatedAt: project.updatedAt,
+        } satisfies Branch);
+      }
+    });
+
+    return [...branchById.values()].filter((branch) => followed.has(branch.id) || scopedProjects.some((project) => project.branchId === branch.id && followed.has(project.id)));
   }, [branches, followedProjectIds, scopedProjects]);
 
   const branchList = useMemo(() => {
