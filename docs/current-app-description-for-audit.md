@@ -1,3 +1,6 @@
+## UI Notes
+
+- `oldStage` refers to the legacy Current stage container in `ProjectDetailPage`; it is intentionally hidden for all user roles.
 # PSG Rebrand: Current Application Description
 
 ## Purpose

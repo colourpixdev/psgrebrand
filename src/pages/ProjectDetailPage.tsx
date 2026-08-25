@@ -894,7 +894,7 @@ export function ProjectDetailPage() {
           </div>
         ) : null}
 
-        {!isEditingDetails ? <section className="mt-6 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
+        {false && !isEditingDetails && currentStageTask ? <section className="mt-6 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
             <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Current stage</h2>
             {currentStageTask ? <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${displayedStageStatusTone}`}>{displayedStageStatus}</span> : null}
