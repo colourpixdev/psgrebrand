@@ -191,8 +191,8 @@ export function DashboardPage() {
                         <p className="mt-1 text-sm text-slate-600">{project.currentStage} · {project.status}</p>
                       </Link>
                       <div className="flex shrink-0 items-center gap-2">
-                        <ProjectFollowButton projectId={project.id} userEmail={user?.email} />
-                        <ProjectFollowButton projectId={project.id} userEmail={user?.email} unfollowOnly />
+                        <ProjectFollowButton projectId={project.branchId} legacyProjectIds={[project.id]} userEmail={user?.email} noun="branch" />
+                        <ProjectFollowButton projectId={project.branchId} legacyProjectIds={[project.id]} userEmail={user?.email} noun="branch" unfollowOnly />
                       </div>
                     </div>
                   </div>
