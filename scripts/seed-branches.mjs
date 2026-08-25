@@ -91,14 +91,34 @@ const branches = [
   { id: 'psg-042', name: 'PSG George Olympus Insure', division: 'Insure', province: 'Western Cape', town: 'George', physical_address: 'York Street, George, 6529', latitude: -33.963, longitude: 22.4617 },
   { id: 'psg-043', name: 'PSG Knysna Olympus Insure', division: 'Insure', province: 'Western Cape', town: 'Knysna', physical_address: 'Main Road, Knysna, 6570', latitude: -34.0363, longitude: 23.0471 },
   { id: 'psg-044', name: 'PSG Johannesburg Hyde Park Wealth', division: 'Wealth', province: 'Gauteng', town: 'Johannesburg', physical_address: 'Hyde Park Lane, Jan Smuts Avenue, Hyde Park, Johannesburg, 2196', latitude: -26.1242, longitude: 28.0375 },
+  { id: 'psg-045', name: 'PSG Steenberg Wealth Insure', division: 'Wealth Insure', province: 'Western Cape', town: 'Tokai', physical_address: 'The Terraces 1, Silverwood Close, Steenberg Office Park, Tokai, Cape Town, 7945', contact_name: 'Thomas Torocsik', contact_email: 'thomas.torocsik@psg.co.za', contact_phone: '021 701 0854', latitude: -34.0676, longitude: 18.4373 },
 ];
 
 async function seedBranches() {
   console.log(`Seeding ${branches.length} branches...`);
 
+  const { data: existingBranches, error: lookupError } = await supabase
+    .from('branches')
+    .select('id, name')
+    .in('name', branches.map((branch) => branch.name));
+
+  if (lookupError) {
+    console.error('Failed to look up existing branches:', lookupError.message);
+    process.exit(1);
+  }
+
+  const existingIdsByName = new Map((existingBranches ?? []).map((branch) => [branch.name, branch.id]));
+  const branchesToUpsert = [...new Map(branches.map((branch) => {
+    const resolvedBranch = {
+      ...branch,
+      id: existingIdsByName.get(branch.name) ?? branch.id,
+    };
+    return [resolvedBranch.id, resolvedBranch];
+  })).values()];
+
   const { data, error } = await supabase
     .from('branches')
-    .upsert(branches, { onConflict: 'id' })
+    .upsert(branchesToUpsert, { onConflict: 'id' })
     .select('id, name');
 
   if (error) {
