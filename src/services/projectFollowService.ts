@@ -16,8 +16,8 @@ async function getAuthenticatedUserId() {
     return null;
   }
 
-  const { data } = await supabase.auth.getUser();
-  return data.user?.id ?? null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
 }
 
 export function getFollowedProjectIds(userEmail?: string): string[] {
@@ -70,7 +70,26 @@ export async function syncFollowedProjects(userEmail?: string): Promise<string[]
   }
 }
 
-export async function toggleFollowedProject(userEmail: string | undefined, projectId: string, legacyProjectIds: string[] = []): Promise<boolean> {
+async function persistFollowChange(userEmail: string | undefined, userId: string, projectId: string, followedIds: string[], isFollowed: boolean) {
+  if (isFollowed) {
+    const { error } = await supabase!.from('user_followed_items').upsert(
+      { user_id: userId, item_id: projectId },
+      { onConflict: 'user_id,item_id' },
+    );
+    if (error) {
+      throw error;
+    }
+  } else {
+    const { error } = await supabase!.from('user_followed_items').delete().eq('user_id', userId).in('item_id', followedIds);
+    if (error) {
+      throw error;
+    }
+  }
+
+  window.dispatchEvent(new CustomEvent(followChangedEvent, { detail: { userEmail } }));
+}
+
+export function toggleFollowedProject(userEmail: string | undefined, projectId: string, legacyProjectIds: string[] = []): boolean {
   if (typeof localStorage === 'undefined') {
     return false;
   }
@@ -86,24 +105,17 @@ export async function toggleFollowedProject(userEmail: string | undefined, proje
   }
 
   localStorage.setItem(storageKey(userEmail), JSON.stringify([...followed]));
-  const userId = await getAuthenticatedUserId();
-
-  if (userId) {
-    try {
-      if (isFollowed) {
-        await supabase!.from('user_followed_items').delete().eq('user_id', userId).in('item_id', followedIds);
-      } else {
-        await supabase!.from('user_followed_items').upsert(
-          { user_id: userId, item_id: projectId },
-          { onConflict: 'user_id,item_id' },
-        );
-      }
-    } catch {
-      // Local storage remains the fallback when the follows table is unavailable.
-    }
-  }
-
   window.dispatchEvent(new CustomEvent(followChangedEvent, { detail: { userEmail } }));
+  void getAuthenticatedUserId().then((userId) => {
+    if (!userId || !supabase) {
+      return;
+    }
+
+    return persistFollowChange(userEmail, userId, projectId, followedIds, !isFollowed).catch((error) => {
+      console.error('Failed to sync followed item:', error);
+    });
+  });
+
   return !isFollowed;
 }
 
