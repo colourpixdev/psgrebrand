@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { createProject, deleteProject, getProjects, type CreateProjectInput } from './portalService';
+import { createProject, getProjects, type CreateProjectInput } from './portalService';
 import type { Branch, ContactPerson, Division, Project } from '../types/domain';
 import { createNextBranchCode, createNextProjectId } from '../utils/branchProjectIds';
 
@@ -65,6 +65,7 @@ type BranchRow = {
   contacts?: ContactPerson[] | null;
   created_at: string;
   updated_at: string;
+  archived_at?: string | null;
 };
 
 function isDivision(value: unknown): value is Division {
@@ -92,6 +93,7 @@ function rowToBranch(row: BranchRow): Branch {
     contacts: Array.isArray(row.contacts) ? row.contacts : undefined,
     createdAt: row.created_at ?? new Date().toISOString(),
     updatedAt: row.updated_at ?? new Date().toISOString(),
+    archivedAt: row.archived_at ?? undefined,
   };
 }
 
@@ -340,7 +342,7 @@ export async function getAllBranches(): Promise<Branch[]> {
     throw error;
   }
 
-  const serverBranches = data.map((row) => mergeLocalBranchMetadata(rowToBranch(row)));
+  const serverBranches = data.filter((row) => !row.archived_at).map((row) => mergeLocalBranchMetadata(rowToBranch(row)));
   writeLocalBranches(serverBranches);
   const localOnlyBranches = localBranches.filter((localBranch) => !serverBranches.some((serverBranch) => serverBranch.id === localBranch.id));
 
@@ -603,37 +605,20 @@ export async function deleteBranch(id: string): Promise<boolean> {
     return true;
   }
 
-  const { data: projects, error: projectsError } = await supabase
-    .from('projects')
-    .select('id')
-    .eq('branch_id', id);
-
-  if (projectsError) {
-    throw new Error(projectsError.message || 'Unable to find projects for this branch.');
-  }
-
-  for (const project of projects ?? []) {
-    await deleteProject(project.id);
-  }
-
-  const { error: workspacesError } = await supabase
-    .from('rebrand_workspaces')
-    .delete()
-    .eq('branch_id', id);
-
-  if (workspacesError) {
-    throw new Error(workspacesError.message || 'Unable to remove branch workspaces.');
-  }
-
-  const { data, error } = await supabase.from('branches').delete().eq('id', id).select('id');
+  const { data, error } = await supabase
+    .from('branches')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', id)
+    .is('archived_at', null)
+    .select('id');
 
   if (error) {
     console.error('Failed to delete branch:', error);
-    throw new Error(error.message || 'Failed to delete branch');
+    throw new Error(error.message || 'Failed to archive branch');
   }
 
   if (!data || data.length === 0) {
-    throw new Error('The branch was not removed. Your account may not have permission to delete it.');
+    throw new Error('The branch was not removed. Apply the branch archive migration or check your permissions.');
   }
 
   return true;

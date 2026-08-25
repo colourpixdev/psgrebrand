@@ -67,6 +67,7 @@ export interface Branch {
   contacts?: ContactPerson[];
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string;
 }
 
 export interface Project {
