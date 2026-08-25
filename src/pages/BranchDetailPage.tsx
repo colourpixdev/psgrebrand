@@ -84,6 +84,8 @@ export function BranchDetailPage() {
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery({
     queryKey: ['projects'],
     queryFn: getProjects,
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const normalizedParam = String(branchId ?? '').trim();
