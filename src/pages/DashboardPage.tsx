@@ -43,7 +43,7 @@ export function DashboardPage() {
     isLoading: isLoadingProjects,
     isError: isProjectsError,
     error: projectsError,
-  } = useQuery({ queryKey: ['projects'], queryFn: getProjects });
+  } = useQuery({ queryKey: ['projects'], queryFn: getProjects, refetchInterval: 10000, refetchOnWindowFocus: true });
 
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
   useEffect(() => {
