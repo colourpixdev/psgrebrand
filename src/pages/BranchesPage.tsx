@@ -157,15 +157,21 @@ export function BranchesPage() {
   async function loadPageData() {
     setLoading(true);
     setError(null);
-    try {
-      const [branchData, projectData] = await Promise.all([getAllBranches(), getProjects()]);
-      setBranches(branchData);
-      setProjects(filterProjectsForUser(projectData, user));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load branches');
-    } finally {
-      setLoading(false);
+    const [branchesResult, projectsResult] = await Promise.allSettled([getAllBranches(), getProjects()]);
+
+    if (branchesResult.status === 'fulfilled') {
+      setBranches(branchesResult.value);
+    } else {
+      setError(branchesResult.reason instanceof Error ? branchesResult.reason.message : 'Failed to load branches');
     }
+
+    if (projectsResult.status === 'fulfilled') {
+      setProjects(filterProjectsForUser(projectsResult.value, user));
+    } else if (branchesResult.status === 'fulfilled') {
+      setError(projectsResult.reason instanceof Error ? projectsResult.reason.message : 'Failed to load projects');
+    }
+
+    setLoading(false);
   }
 
   async function loadBranches() {
