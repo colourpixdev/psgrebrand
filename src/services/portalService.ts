@@ -282,6 +282,23 @@ async function getWorkspaceFiles(workspaceId: string): Promise<ProjectFile[] | n
   return (data as RelationalProjectFileRow[]).map((file) => convertRelationalFileToProjectFile(file, file.current_version_id ? versionsById.get(file.current_version_id) : undefined));
 }
 
+async function resolveProjectWorkspaceId(projectRow: ProjectRow): Promise<string | null> {
+  const client = supabase;
+  if (!client) return projectRow.rebrand_workspace_id ?? null;
+  if (projectRow.rebrand_workspace_id) return projectRow.rebrand_workspace_id;
+  if (!projectRow.branch_id) return null;
+
+  const { data, error } = await client
+    .from('rebrand_workspaces')
+    .select('id')
+    .eq('branch_id', projectRow.branch_id)
+    .eq('is_primary', true)
+    .maybeSingle();
+
+  if (error || !data?.id) return null;
+  return data.id;
+}
+
 async function hydrateProjectFiles(projects: Project[]): Promise<Project[]> {
   const client = supabase;
   if (!client || projects.length === 0) return projects;
@@ -1201,21 +1218,22 @@ export async function getProjectById(projectId: string): Promise<Project | undef
   const projectRow = data as ProjectRow;
   let project = mapProjectRow(projectRow);
 
-  // Read relational data only through the project's explicit workspace link.
-  if (projectRow.rebrand_workspace_id) {
-    const { data: workspaceData } = await client
-      .from('rebrand_workspaces')
-      .select('id')
-      .eq('id', projectRow.rebrand_workspace_id)
-      .maybeSingle();
+  const workspaceId = projectRow.rebrand_workspace_id ?? await resolveProjectWorkspaceId(projectRow);
 
-    if (workspaceData?.id) {
-      const relationalTasks = await getWorkspaceTasks(workspaceData.id);
-      project = applyRelationalProjectData(project, { workspaceId: workspaceData.id, tasks: relationalTasks.data, tasksAvailable: relationalTasks.available });
-
-      const relationalFiles = await getWorkspaceFiles(workspaceData.id);
-      project = applyRelationalProjectData(project, { workspaceId: workspaceData.id, files: relationalFiles, filesAvailable: relationalFiles !== null });
+  if (workspaceId) {
+    if (!projectRow.rebrand_workspace_id) {
+      await client
+        .from('projects')
+        .update({ rebrand_workspace_id: workspaceId, updated_at: new Date().toISOString() })
+        .eq('id', projectId)
+        .is('rebrand_workspace_id', null);
     }
+
+    const relationalTasks = await getWorkspaceTasks(workspaceId);
+    project = applyRelationalProjectData(project, { workspaceId, tasks: relationalTasks.data, tasksAvailable: relationalTasks.available });
+
+    const relationalFiles = await getWorkspaceFiles(workspaceId);
+    project = applyRelationalProjectData(project, { workspaceId, files: relationalFiles, filesAvailable: relationalFiles !== null });
   }
 
   return project;
@@ -1454,7 +1472,7 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
 
   const { data: projectRow, error: projectError } = await client
     .from('projects')
-    .select('branch_id')
+    .select('branch_id, rebrand_workspace_id')
     .eq('id', projectId)
     .single();
 
@@ -1463,12 +1481,19 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     throw projectError ?? new Error('Project branch is missing.');
   }
 
-  const { data: workspace, error: workspaceError } = await client
-    .from('rebrand_workspaces')
-    .select('id')
-    .eq('branch_id', projectRow.branch_id)
-    .eq('is_primary', true)
-    .maybeSingle();
+  const workspaceId = projectRow.rebrand_workspace_id ?? await resolveProjectWorkspaceId(projectRow as ProjectRow);
+  const { data: workspace, error: workspaceError } = workspaceId
+    ? await client
+      .from('rebrand_workspaces')
+      .select('id')
+      .eq('id', workspaceId)
+      .maybeSingle()
+    : await client
+      .from('rebrand_workspaces')
+      .select('id')
+      .eq('branch_id', projectRow.branch_id)
+      .eq('is_primary', true)
+      .maybeSingle();
   const uploadedBy = await getCurrentProfileId();
   if (workspaceError || !workspace?.id) {
     await client.storage.from(projectFilesBucket).remove([path]);
@@ -1477,6 +1502,14 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
   if (!uploadedBy) {
     await client.storage.from(projectFilesBucket).remove([path]);
     throw new Error('Your authenticated account is not linked to a workspace profile. Sign out and back in, then try again.');
+  }
+
+  if (!projectRow.rebrand_workspace_id) {
+    await client
+      .from('projects')
+      .update({ rebrand_workspace_id: workspace.id, updated_at: new Date().toISOString() })
+      .eq('id', projectId)
+      .is('rebrand_workspace_id', null);
   }
 
   const { data: category } = await client.from('file_categories').select('id').eq('category_key', 'other').maybeSingle();
