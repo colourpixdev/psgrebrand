@@ -31,17 +31,6 @@ $$;
 revoke all on function public.user_can_access_rebrand_workspace(uuid) from public;
 grant execute on function public.user_can_access_rebrand_workspace(uuid) to authenticated;
 
-drop policy if exists rebrand_profiles_assignee_read on public.profiles;
-create policy rebrand_profiles_assignee_read
-on public.profiles for select to authenticated
-using (exists (
-  select 1
-  from public.project_tasks task
-  where task.responsible_person_id = profiles.id
-    and task.deleted_at is null
-    and public.user_can_access_rebrand_workspace(task.workspace_id)
-));
-
 -- PSG users who can access a workspace must also be able to read its files.
 -- Mutations remain controlled by the existing internal-user policies and app permissions.
 drop policy if exists rebrand_project_files_psg_read on public.project_files;
