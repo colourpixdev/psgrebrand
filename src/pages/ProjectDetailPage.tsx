@@ -919,16 +919,16 @@ export function ProjectDetailPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Leave an update on this stage</p>
             <div className="mt-3 grid gap-2">
               <textarea
-                value={taskCommentDrafts[currentStageTask.id] ?? ''}
-                onChange={(event) => setTaskCommentDrafts((current) => ({ ...current, [currentStageTask.id]: event.target.value }))}
+                value={taskCommentDrafts[currentStageTask?.id ?? ''] ?? ''}
+                onChange={(event) => setTaskCommentDrafts((current) => ({ ...current, [currentStageTask?.id ?? '']: event.target.value }))}
                 rows={2}
                 placeholder="Add an update for this stage"
                 className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-300 focus:border-sky-400/50"
               />
               <button
                 type="button"
-                disabled={!taskCommentDrafts[currentStageTask.id]?.trim() || taskCommentMutation.isPending}
-                onClick={() => taskCommentMutation.mutate({ projectId: projectId ?? '', taskId: currentStageTask.id, message: taskCommentDrafts[currentStageTask.id] ?? '' })}
+                disabled={!taskCommentDrafts[currentStageTask?.id ?? '']?.trim() || taskCommentMutation.isPending}
+                onClick={() => taskCommentMutation.mutate({ projectId: projectId ?? '', taskId: currentStageTask?.id ?? '', message: taskCommentDrafts[currentStageTask?.id ?? ''] ?? '' })}
                 className="w-fit rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {taskCommentMutation.isPending ? 'Posting...' : 'Add stage update'}
