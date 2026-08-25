@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { FileText, Search } from 'lucide-react';
 import { getProjects } from '../services/portalService';
 import { getAllBranches } from '../services/branchService';
+import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import { isTaskOutstanding } from '../utils/taskStatus';
@@ -317,6 +318,10 @@ export function ReportsPage() {
     queryKey: ['branches'],
     queryFn: getAllBranches,
   });
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: getUsers,
+  });
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
   const selectedReport = reportTypes.find((report) => report.value === reportType) ?? reportTypes[0];
   const normalizedQuery = query.trim().toLowerCase();
@@ -324,7 +329,7 @@ export function ReportsPage() {
   const availableProvinces = useMemo(() => uniqueSorted(scopedProjects.map((project) => project.province)), [scopedProjects]);
   const branchByProject = useMemo(() => new Map<string, Branch>(branches.map((branch) => [branch.id, branch])), [branches]);
   const getProjectBranch = (project: Project) => branchByProject.get(project.branchId) ?? branches.find((branch) => branch.name === project.branch);
-  const availableMarketingCoordinators = useMemo(() => uniqueSorted(scopedProjects.map((project) => project.manager).filter((manager) => manager && manager.toLowerCase() !== 'not captured')), [scopedProjects]);
+  const availableMarketingCoordinators = useMemo(() => uniqueSorted(users.filter((item) => item.role === 'psg_user').map((item) => item.name)), [users]);
   const availableSignageCompanies = useMemo(() => uniqueSorted(scopedProjects.map((project) => getProjectBranch(project)?.signageCompany ?? '').filter(Boolean)), [scopedProjects, branchByProject, branches]);
   const branchSuggestions = useMemo(() => {
     if (!normalizedQuery) {
