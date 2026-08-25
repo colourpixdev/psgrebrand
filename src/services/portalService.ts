@@ -2354,11 +2354,9 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
   const allTasksCompleted = tasks.length > 0 && tasks.every((task) => task.completed);
   const projectStatus = nextStatus === 'done' || allTasksCompleted
     ? 'completed'
-    : nextStatus === 'pending' || nextStatus === 'open' || nextStatus === 'busy'
-      ? 'in_progress'
-      : existingProject.status === 'completed'
-        ? 'in_progress'
-        : existingProject.status;
+    : existingProject.status === 'delayed'
+      ? 'delayed'
+      : 'on_schedule';
   const currentStage = text && (existingTask.stage ?? existingTask.text).trim() === existingProject.currentStage.trim()
     ? text
     : existingProject.currentStage;
