@@ -759,6 +759,8 @@ export function ProjectDetailPage() {
   const currentStageTaskStatus = currentStageTask ? getTaskStatus(currentStageTask) : null;
   const displayedStatus = statusLabels[selectedProject.status];
   const displayedStatusTone = statusTones[selectedProject.status];
+  const displayedStageStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : 'Pending';
+  const displayedStageStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : stageStatusTones.pending;
   const currentStageAssigneeNames = currentStageTask?.assignees?.map((assignee) => assignee.name).filter(Boolean) ?? [];
   const currentStageAssigneeDisplay = currentStageAssigneeNames.length > 0
     ? currentStageAssigneeNames.join(', ')
@@ -923,11 +925,11 @@ export function ProjectDetailPage() {
         {!isEditingDetails ? <section className="mt-6 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
             <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Current stage</h2>
-            {currentStageTask ? <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${displayedStatusTone}`}>{displayedStatus}</span> : null}
+            {currentStageTask ? <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${displayedStageStatusTone}`}>{displayedStageStatus}</span> : null}
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_minmax(150px,1fr)_minmax(170px,1fr)]">
             <label className="grid min-w-0 gap-1"><span className="text-xs uppercase tracking-[0.16em] text-slate-400">{canChangeStage ? 'Current stage' : 'View stage'}</span><select value={viewedStageValue} disabled={stagePlan.length === 0 || currentStageMutation.isPending} onChange={(event) => { const nextStage = event.target.value; setViewedStage(nextStage); if (canChangeStage) { currentStageMutation.mutate(nextStage); } }} className="mt-1 w-full min-w-0 max-w-full truncate rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-lg font-semibold text-white outline-none focus:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-60" aria-label={canChangeStage ? 'Current stage' : 'View stage'}><option value="" disabled>No stage set</option>{stagePlan.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select></label>
-            <div className="min-w-0"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 truncate text-lg font-semibold text-white">{displayedStatus}</p></div>
+            <div className="min-w-0"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</p><p className="mt-1 truncate text-lg font-semibold text-white">{displayedStageStatus}</p></div>
             <div className="min-w-0 overflow-hidden"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Assignee</p><p className="mt-1 truncate whitespace-nowrap text-sm font-semibold text-white" title={currentStageAssigneeDisplay}>{currentStageAssigneeDisplay}</p></div>
             <div className="min-w-0 overflow-hidden"><p className="text-xs uppercase tracking-[0.16em] text-slate-400">Stage dates</p><p className="mt-1 truncate whitespace-nowrap text-sm font-semibold text-white" title={`Started: ${formatWorkspaceDate(currentStageTask?.startedDate ?? '')}`}>Started: {formatWorkspaceDate(currentStageTask?.startedDate ?? '')}</p><p className="mt-1 truncate whitespace-nowrap text-sm font-semibold text-white" title={`Target completion: ${formatWorkspaceDate(currentStageTask?.dueDate ?? '')}`}>Target completion: {formatWorkspaceDate(currentStageTask?.dueDate ?? '')}</p></div>
           </div>
