@@ -2354,11 +2354,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     }
     : task);
   const allTasksCompleted = tasks.length > 0 && tasks.every((task) => task.completed);
-  const projectStatus = nextStatus === 'done' || allTasksCompleted
-    ? 'completed'
-    : existingProject.status === 'delayed'
-      ? 'delayed'
-      : 'on_schedule';
+  const projectStatus = existingProject.status;
   const currentStage = text && (existingTask.stage ?? existingTask.text).trim() === existingProject.currentStage.trim()
     ? text
     : existingProject.currentStage;
@@ -2424,10 +2420,6 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     updated_at: string;
     completion_date?: string;
   } = { current_stage: currentStage, status: projectStatus, tasks, activity, updated_at: now };
-  if (allTasksCompleted) {
-    projectUpdate.completion_date = now.slice(0, 10);
-  }
-
   const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
     .update(projectUpdate)
@@ -2446,7 +2438,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     status: projectStatus,
     activity,
     updatedAt: now,
-    completionDate: allTasksCompleted ? now.slice(0, 10) : existingProject.completionDate,
+    completionDate: existingProject.completionDate,
   };
 }
 

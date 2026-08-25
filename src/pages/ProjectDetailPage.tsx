@@ -757,8 +757,8 @@ export function ProjectDetailPage() {
   const viewedStageValue = viewedStage || selectedProject.currentStage;
   const currentStageTask = findStageTask(selectedProject.tasks, viewedStageValue);
   const currentStageTaskStatus = currentStageTask ? getTaskStatus(currentStageTask) : null;
-  const displayedStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : statusLabels[selectedProject.status];
-  const displayedStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : statusTones[selectedProject.status];
+  const displayedStatus = statusLabels[selectedProject.status];
+  const displayedStatusTone = statusTones[selectedProject.status];
   const currentStageAssigneeNames = currentStageTask?.assignees?.map((assignee) => assignee.name).filter(Boolean) ?? [];
   const currentStageAssigneeDisplay = currentStageAssigneeNames.length > 0
     ? currentStageAssigneeNames.join(', ')
