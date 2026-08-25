@@ -125,10 +125,10 @@ export function DashboardPage() {
       .slice(0, 5);
   }, [scopedProjects, user]);
 
-  const followedProjects = useMemo(() => {
+  const followedBranches = useMemo(() => {
     const followed = new Set(followedProjectIds);
-    return scopedProjects.filter((project) => followed.has(project.id) || followed.has(project.branchId));
-  }, [followedProjectIds, scopedProjects]);
+    return branches.filter((branch) => followed.has(branch.id) || scopedProjects.some((project) => project.branchId === branch.id && followed.has(project.id)));
+  }, [branches, followedProjectIds, scopedProjects]);
 
   const branchList = useMemo(() => {
     const uniqueBranches = [...new Set(scopedProjects.map((project) => project.branch).filter(Boolean))];
@@ -197,24 +197,26 @@ export function DashboardPage() {
           <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-2">
               <div><h3 className="text-lg font-semibold text-slate-900">Followed branches</h3><p className="mt-1 text-sm text-slate-600">Branches you are tracking appear here.</p></div>
-              <span className="text-sm text-slate-500">{followedProjects.length} tracked</span>
+              <span className="text-sm text-slate-500">{followedBranches.length} tracked</span>
             </div>
-            {followedProjects.length > 0 ? (
+            {followedBranches.length > 0 ? (
               <div className="grid gap-3 md:grid-cols-2">
-                {followedProjects.map((project) => (
-                  <div key={project.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                {followedBranches.map((branch) => {
+                  const project = scopedProjects.find((candidate) => candidate.branchId === branch.id);
+                  const legacyProjectIds = scopedProjects.filter((candidate) => candidate.branchId === branch.id).map((candidate) => candidate.id);
+                  return <div key={branch.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <div className="flex items-start justify-between gap-3">
-                      <Link to={`/projects/${project.id}`} className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-slate-900 hover:text-sky-700">{project.branch}</p>
-                        <p className="mt-1 text-sm text-slate-600">{project.currentStage} · {project.status}</p>
+                      <Link to={project ? `/projects/${project.id}` : `/branches/${branch.id}`} className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-slate-900 hover:text-sky-700">{branch.name}</p>
+                        {project ? <p className="mt-1 text-sm text-slate-600">{project.currentStage} · {project.status}</p> : null}
                       </Link>
                       <div className="flex shrink-0 items-center gap-2">
-                        <ProjectFollowButton projectId={project.branchId} legacyProjectIds={[project.id]} userEmail={user?.email} noun="branch" />
-                        <ProjectFollowButton projectId={project.branchId} legacyProjectIds={[project.id]} userEmail={user?.email} noun="branch" unfollowOnly />
+                        <ProjectFollowButton projectId={branch.id} legacyProjectIds={legacyProjectIds} userEmail={user?.email} noun="branch" />
+                        <ProjectFollowButton projectId={branch.id} legacyProjectIds={legacyProjectIds} userEmail={user?.email} noun="branch" unfollowOnly />
                       </div>
                     </div>
                   </div>
-                ))}
+                })}
               </div>
             ) : (
               <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Follow branches from the Branches or Projects page to keep them here.</p>
