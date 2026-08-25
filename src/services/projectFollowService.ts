@@ -17,7 +17,32 @@ async function getAuthenticatedUserId() {
   }
 
   const { data } = await supabase.auth.getSession();
-  return data.session?.user.id ?? null;
+  if (data.session?.user.id) {
+    return data.session.user.id;
+  }
+
+  const refreshed = await supabase.auth.refreshSession();
+  return refreshed.data.session?.user.id ?? null;
+}
+
+async function readRemoteFollowedIds(userId: string) {
+  const result = await supabase!.from('user_followed_items').select('item_id').eq('user_id', userId);
+  if (!result.error) {
+    return result.data ?? [];
+  }
+
+  const refreshed = await supabase!.auth.refreshSession();
+  const refreshedUserId = refreshed.data.session?.user.id;
+  if (!refreshedUserId) {
+    throw result.error;
+  }
+
+  const retry = await supabase!.from('user_followed_items').select('item_id').eq('user_id', refreshedUserId);
+  if (retry.error) {
+    throw retry.error;
+  }
+
+  return retry.data ?? [];
 }
 
 export function getFollowedProjectIds(userEmail?: string): string[] {
@@ -42,12 +67,8 @@ export async function syncFollowedProjects(userEmail?: string): Promise<string[]
   }
 
   try {
-    const { data, error } = await supabase!.from('user_followed_items').select('item_id').eq('user_id', userId);
-    if (error) {
-      throw error;
-    }
-
-    const remoteIds = (data ?? []).map((row) => row.item_id).filter((id): id is string => typeof id === 'string');
+    const data = await readRemoteFollowedIds(userId);
+    const remoteIds = data.map((row) => row.item_id).filter((id): id is string => typeof id === 'string');
     const shouldMigrateLocalIds = localStorage.getItem(syncMarkerKey(userEmail)) !== 'true';
     const mergedIds = shouldMigrateLocalIds ? [...new Set([...remoteIds, ...localIds])] : remoteIds;
 
