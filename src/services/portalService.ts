@@ -1048,6 +1048,11 @@ function applyRelationalProjectData(project: Project, data: RelationalProjectDat
     }
   });
 
+  const nextFiles = data.filesAvailable === false || data.files === undefined || data.files === null ? project.files : data.files;
+  const remapFileTaskIds = (files: ProjectFile[]) => files.map((file) => file.taskId && legacyTaskIdToRelationalId.has(file.taskId)
+    ? { ...file, taskId: legacyTaskIdToRelationalId.get(file.taskId) }
+    : file);
+
   return {
     ...project,
     workspaceId: data.workspaceId,
@@ -1057,9 +1062,7 @@ function applyRelationalProjectData(project: Project, data: RelationalProjectDat
         ? { ...comment, taskId: legacyTaskIdToRelationalId.get(comment.taskId) }
         : comment)
       : project.comments,
-    files: data.filesAvailable === false || data.files === undefined || data.files === null
-      ? project.files
-      : data.files,
+    files: remapFileTaskIds(nextFiles),
   };
 }
 

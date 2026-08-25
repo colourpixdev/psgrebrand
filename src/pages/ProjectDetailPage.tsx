@@ -1446,12 +1446,12 @@ export function ProjectDetailPage() {
 
       </section>}
 
-      {!isPsgUser ? <section>
+      {false ? <section>
         <FileGrid
           files={selectedProject.files}
           taskFolders={selectedProject.tasks.map((task) => ({ id: task.id, label: task.text }))}
           isUploading={uploadMutation.isPending || previewMutation.isPending || downloadMutation.isPending}
-          uploadError={fileError instanceof Error ? fileError.message : null}
+          uploadError={null}
           canUpload={canUploadFiles}
           canDelete={canDeleteFiles}
           canRename={canRenameProjectFiles}
