@@ -49,11 +49,11 @@ const statusTones: Record<ProjectStatus, string> = {
 
 const stageStatusLabels: Record<NonNullable<TaskItem['status']>, string> = {
   pending: 'Pending',
-  open: 'Started',
+  open: 'Delayed',
   busy: 'Busy',
   done: 'Completed',
-  waiting: 'Waiting',
-  blocked: 'Blocked',
+  waiting: 'Delayed',
+  blocked: 'Delayed',
 };
 
 const stageStatusTones: Record<NonNullable<TaskItem['status']>, string> = {
@@ -1011,7 +1011,7 @@ export function ProjectDetailPage() {
                 waiting: 'border-blue-400/30 bg-blue-500/15 text-blue-100 hover:bg-blue-500/25',
                 blocked: 'border-red-400/30 bg-red-500/15 text-red-100 hover:bg-red-500/25',
               };
-              const statusLabels: Record<NonNullable<TaskItem['status']>, string> = { pending: 'Pending', open: 'Started', busy: 'Busy', done: 'Completed', waiting: 'Waiting', blocked: 'Blocked' };
+              const statusLabels: Record<NonNullable<TaskItem['status']>, string> = { pending: 'Pending', open: 'Delayed', busy: 'Busy', done: 'Completed', waiting: 'Delayed', blocked: 'Delayed' };
               const isAccordionExpanded = expandedAccordionTaskIds.includes(task.id);
               const taskBodyId = `task-body-${task.id}`;
 
@@ -1041,13 +1041,13 @@ export function ProjectDetailPage() {
 
                 {isAccordionExpanded && <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-3">
                   <select
-                    value={taskStatus}
+                    value={taskStatus === 'open' || taskStatus === 'waiting' ? 'blocked' : taskStatus}
                     disabled={!canCurrentUserCompleteTask(task) || updateTaskMutation.isPending}
                     onChange={(event) => updateTaskMutation.mutate({ task, status: event.target.value as TaskItem['status'] })}
                     aria-label={`Status for ${task.text}`}
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${statusStyles[taskStatus]}`}
                   >
-                    {(['pending', 'open', 'busy', 'waiting', 'blocked', 'done'] as const).map((status) => (
+                    {(['pending', 'busy', 'blocked', 'done'] as const).map((status) => (
                       <option key={status} value={status}>{statusLabels[status]}</option>
                     ))}
                   </select>
@@ -1308,7 +1308,7 @@ export function ProjectDetailPage() {
               return (
                 <div key={stageTask.id} className={`flex flex-wrap items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold ${taskStatus === 'done' ? 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100' : current ? 'border-cyan-300/50 bg-cyan-400/20 text-cyan-100' : 'border-white/10 bg-white/5 text-slate-300'}`}>
                   <button type="button" onClick={() => setExpandedAccordionTaskIds((currentIds) => currentIds.includes(stageTask.id) ? currentIds.filter((id) => id !== stageTask.id) : [...currentIds, stageTask.id])} className="text-white hover:underline">{taskStatus === 'done' ? '✓ ' : current ? '● ' : '○ '}{stage}</button>
-                  {canCurrentUserCompleteTask(stageTask) ? <select value={taskStatus} disabled={updateTaskMutation.isPending} onChange={(event) => updateTaskMutation.mutate({ task: stageTask, status: event.target.value as TaskItem['status'] })} aria-label={`Status for ${stage}`} className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px] font-semibold text-white outline-none"><option value="pending">Pending</option><option value="open">Started</option><option value="busy">Busy</option><option value="done">Completed</option></select> : <span className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px]">{taskStatus === 'pending' ? 'Pending' : taskStatus === 'open' ? 'Started' : taskStatus === 'busy' ? 'Busy' : 'Completed'}</span>}
+                  {canCurrentUserCompleteTask(stageTask) ? <select value={taskStatus === 'open' || taskStatus === 'waiting' ? 'blocked' : taskStatus} disabled={updateTaskMutation.isPending} onChange={(event) => updateTaskMutation.mutate({ task: stageTask, status: event.target.value as TaskItem['status'] })} aria-label={`Status for ${stage}`} className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px] font-semibold text-white outline-none"><option value="pending">Pending</option><option value="busy">Busy</option><option value="blocked">Delayed</option><option value="done">Completed</option></select> : <span className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px]">{stageStatusLabels[taskStatus]}</span>}
                 </div>
               );
             }) : <p className="w-full rounded-xl border border-dashed border-white/15 bg-slate-950/40 p-3 text-xs text-slate-400">No stages yet. Add the first stage below to begin tracking this branch.</p>}
