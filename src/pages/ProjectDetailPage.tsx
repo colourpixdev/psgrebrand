@@ -13,21 +13,16 @@ import { can, canViewProject, canAddTaskComments, canDeleteComment, canEditOwnCo
 import { getTaskStatus } from '../utils/taskStatus';
 import type { CommentItem, ContactPerson, Division, Project, ProjectFile, ProjectStatus, ProjectStage, TaskItem } from '../types/domain';
 import { normalizeRole } from '../types/domain';
-import { isPlatformOwnerEmail } from '../constants/workspaces';
+import { isAccessControlAdmin, isPlatformOwnerEmail } from '../constants/workspaces';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'open', label: 'Started' },
-  { value: 'busy', label: 'Busy' },
-  { value: 'in_progress', label: 'In progress' },
-  { value: 'awaiting_approval', label: 'Awaiting approval' },
+  { value: 'on_schedule', label: 'On Schedule' },
   { value: 'completed', label: 'Completed' },
   { value: 'delayed', label: 'Delayed' },
-  { value: 'on_hold', label: 'On hold' },
-  { value: 'cancelled', label: 'Cancelled' },
 ];
 
 const statusLabels: Record<ProjectStatus, string> = {
+  on_schedule: 'On Schedule',
   pending: 'Pending',
   open: 'Started',
   completed: 'Completed',
@@ -40,6 +35,7 @@ const statusLabels: Record<ProjectStatus, string> = {
 };
 
 const statusTones: Record<ProjectStatus, string> = {
+  on_schedule: 'border-sky-300/40 bg-sky-400/15 text-sky-100',
   pending: 'border-slate-300/30 bg-slate-400/15 text-slate-100',
   open: 'border-sky-300/40 bg-sky-400/15 text-sky-100',
   completed: 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100',
@@ -701,6 +697,7 @@ export function ProjectDetailPage() {
   const canCreateAssignedUpdate = canAddComments;
   const canUseConversationComposer = canCreateAssignedUpdate || canAskColourpix;
   const canEditDetails = canAdministerProjectDetails;
+  const canEditProjectStatus = Boolean(user && (isPlatformOwnerEmail(user.email) || isAccessControlAdmin(user.email)));
 
   function canCurrentUserCompleteTask(task: TaskItem) {
     if (!canCompleteTasks) {
@@ -871,6 +868,7 @@ export function ProjectDetailPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <DatePickerInput label="Project start date" value={projectStartDateDraft} onChange={setProjectStartDateDraft} placeholder="Select project start date" />
                     <DatePickerInput label="Project target completion" value={targetDateDraft} onChange={setTargetDateDraft} placeholder="Select project target completion" />
+                    {canEditProjectStatus ? <label className="grid gap-2">Project status<select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50">{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label> : null}
                   </div>
                 </section>
                 <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
@@ -935,7 +933,7 @@ export function ProjectDetailPage() {
               {currentStageFiles.length > 0 ? <ul className="mt-3 space-y-2 text-sm text-slate-200">{currentStageFiles.map((file) => <li key={`${file.id ?? file.path ?? file.name}-${file.name}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2">{file.path && stageImageUrls[file.path] ? <img src={stageImageUrls[file.path]} alt={file.name} className="mb-2 max-h-48 w-full rounded-lg object-contain" /> : null}<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><span className="truncate font-medium text-white">{file.name}</span><div className="flex flex-wrap items-center gap-2">{file.path ? <button type="button" disabled={previewMutation.isPending} onClick={() => previewMutation.mutate(file)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">Preview</button> : null}<button type="button" disabled={downloadMutation.isPending} onClick={() => downloadMutation.mutate(file)} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">Download</button><button type="button" onClick={() => { const nextName = window.prompt('Rename file', file.name)?.trim(); if (nextName && nextName !== file.name) renameFileMutation.mutate({ file, nextName }); }} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-200 transition hover:bg-white/10">Rename</button>{canDeleteFiles ? <button type="button" disabled={deleteFileMutation.isPending} onClick={() => deleteFileMutation.mutate(file)} className="rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50">Delete</button> : null}</div></div></li>)}</ul> : <p className="mt-2 text-xs text-slate-500">No files attached to this stage.</p>}
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Comments for this stage</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Updates for this stage:</p>
               {currentStageComments.length > 0 ? <div className="mt-3 space-y-2">{currentStageComments.map((comment, index) => <div key={`${comment.id ?? comment.date}-${index}`} className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2"><div className="flex items-start justify-between gap-2"><p className="text-xs text-slate-500">{comment.author} · {comment.date}</p>{comment.id && canEditOwnComment(user, comment.author) && editingCommentId !== comment.id ? <button type="button" onClick={() => { setEditingCommentId(comment.id ?? null); setEditingCommentDraft(comment.message); }} className="rounded-xl border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20 hover:text-white">Edit</button> : null}</div>{editingCommentId === comment.id ? <div className="mt-2 grid gap-2"><textarea value={editingCommentDraft} onChange={(event) => setEditingCommentDraft(event.target.value)} rows={3} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50" /><div className="flex gap-2"><button type="button" disabled={!editingCommentDraft.trim() || updateCommentMutation.isPending} onClick={() => updateCommentMutation.mutate({ commentId: comment.id ?? '', message: editingCommentDraft })} className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{updateCommentMutation.isPending ? 'Saving...' : 'Save'}</button><button type="button" onClick={() => { setEditingCommentId(null); setEditingCommentDraft(''); }} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">Cancel</button></div></div> : <p className="mt-1 text-sm text-slate-200">{comment.message}</p>}</div>)}</div> : <p className="mt-3 text-sm text-slate-500">No stage updates.</p>}
             </div>
           </div> : null}

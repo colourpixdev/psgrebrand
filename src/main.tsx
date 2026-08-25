@@ -5,6 +5,7 @@ import { HashRouter } from 'react-router-dom';
 import App from './App';
 import './styles.css';
 import { reloadOnVitePreloadError } from './utils/chunkRecovery';
+import './lib/monitoring';
 
 const queryClient = new QueryClient({
   defaultOptions: {

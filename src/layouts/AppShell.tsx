@@ -59,7 +59,6 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
             <RolloutLogo />
             <div>
               <p className="text-xs uppercase tracking-[0.32em] text-teal-200/80">{productBrand.name}</p>
-              <h1 className="text-sm font-semibold leading-5 text-white">{productBrand.description}</h1>
             </div>
           </div>
 

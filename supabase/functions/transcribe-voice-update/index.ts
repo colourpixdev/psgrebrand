@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.7';
+import { getRequestId, logFunctionEvent } from '../_shared/monitoring.ts';
 
 type TranscribePayload = {
   path?: unknown;
@@ -13,10 +14,10 @@ const corsHeaders = {
 const allowedRoles = new Set(['colourpix_admin', 'psg_head_office']);
 const voiceUpdatesBucket = 'voice-updates';
 
-function jsonResponse(body: unknown, status = 200) {
+function jsonResponse(body: unknown, status = 200, requestId?: string) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json', ...(requestId ? { 'x-request-id': requestId } : {}) },
   });
 }
 
@@ -35,6 +36,10 @@ function fileNameFromPath(path: string) {
 }
 
 Deno.serve(async (request) => {
+  const requestId = getRequestId(request);
+  const startedAt = Date.now();
+  logFunctionEvent('transcribe-voice-update', 'request_started', { requestId, method: request.method });
+
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -50,16 +55,19 @@ Deno.serve(async (request) => {
   const transcriptionModel = Deno.env.get('OPENAI_TRANSCRIPTION_MODEL') || 'gpt-4o-mini-transcribe';
 
   if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
-    return jsonResponse({ error: 'Supabase function environment is not configured.' }, 500);
+    logFunctionEvent('transcribe-voice-update', 'configuration_error', { requestId, missing: 'supabase' });
+    return jsonResponse({ error: 'Supabase function environment is not configured.' }, 500, requestId);
   }
 
   if (!openAiApiKey) {
-    return jsonResponse({ error: 'OPENAI_API_KEY is not configured for voice transcription.' }, 500);
+    logFunctionEvent('transcribe-voice-update', 'configuration_error', { requestId, missing: 'openai' });
+    return jsonResponse({ error: 'OPENAI_API_KEY is not configured for voice transcription.' }, 500, requestId);
   }
 
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) {
-    return jsonResponse({ error: 'Authentication is required.' }, 401);
+    logFunctionEvent('transcribe-voice-update', 'authentication_failed', { requestId, reason: 'missing_authorization' });
+    return jsonResponse({ error: 'Authentication is required.' }, 401, requestId);
   }
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -72,7 +80,8 @@ Deno.serve(async (request) => {
 
   const { data: callerData, error: callerError } = await userClient.auth.getUser();
   if (callerError || !callerData.user?.email) {
-    return jsonResponse({ error: 'Your session could not be verified.' }, 401);
+    logFunctionEvent('transcribe-voice-update', 'authentication_failed', { requestId, reason: 'invalid_session' });
+    return jsonResponse({ error: 'Your session could not be verified.' }, 401, requestId);
   }
 
   const callerEmail = callerData.user.email.toLowerCase();
@@ -83,11 +92,13 @@ Deno.serve(async (request) => {
     .maybeSingle();
 
   if (profileError) {
-    return jsonResponse({ error: profileError.message }, 500);
+    logFunctionEvent('transcribe-voice-update', 'database_error', { requestId, operation: 'load_caller_profile', error: profileError.message });
+    return jsonResponse({ error: profileError.message }, 500, requestId);
   }
 
   if (!allowedRoles.has(callerProfile?.role ?? '')) {
-    return jsonResponse({ error: 'Only Colourpix administrators and PSG head office can transcribe voice updates.' }, 403);
+    logFunctionEvent('transcribe-voice-update', 'authorization_denied', { requestId, role: callerProfile?.role ?? 'unknown' });
+    return jsonResponse({ error: 'Only Colourpix administrators and PSG head office can transcribe voice updates.' }, 403, requestId);
   }
 
   let payload;
@@ -102,7 +113,8 @@ Deno.serve(async (request) => {
     .download(payload.path);
 
   if (downloadError || !audioFile) {
-    return jsonResponse({ error: downloadError?.message ?? 'Voice note could not be loaded.' }, 404);
+    logFunctionEvent('transcribe-voice-update', 'storage_download_failed', { requestId, error: downloadError?.message ?? 'missing_file' });
+    return jsonResponse({ error: downloadError?.message ?? 'Voice note could not be loaded.' }, 404, requestId);
   }
 
   const formData = new FormData();
@@ -121,14 +133,17 @@ Deno.serve(async (request) => {
   const transcriptionBody = await transcriptionResponse.json().catch(() => null);
 
   if (!transcriptionResponse.ok) {
-    return jsonResponse({ error: transcriptionBody?.error?.message ?? 'Voice transcription failed.' }, transcriptionResponse.status);
+    logFunctionEvent('transcribe-voice-update', 'openai_request_failed', { requestId, status: transcriptionResponse.status, durationMs: Date.now() - startedAt });
+    return jsonResponse({ error: transcriptionBody?.error?.message ?? 'Voice transcription failed.' }, transcriptionResponse.status, requestId);
   }
 
   const transcript = typeof transcriptionBody?.text === 'string' ? transcriptionBody.text.trim() : '';
 
   if (!transcript) {
-    return jsonResponse({ error: 'No transcript was returned for this voice note.' }, 502);
+    logFunctionEvent('transcribe-voice-update', 'empty_transcript', { requestId, durationMs: Date.now() - startedAt });
+    return jsonResponse({ error: 'No transcript was returned for this voice note.' }, 502, requestId);
   }
 
-  return jsonResponse({ transcript });
+  logFunctionEvent('transcribe-voice-update', 'request_completed', { requestId, status: 200, durationMs: Date.now() - startedAt });
+  return jsonResponse({ transcript }, 200, requestId);
 });

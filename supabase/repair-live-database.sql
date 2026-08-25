@@ -154,8 +154,12 @@ alter table public.projects add constraint projects_longitude_range
   check (longitude is null or longitude between -180 and 180);
 
 alter table public.projects drop constraint if exists projects_status_check;
+update public.projects
+set status = 'on_schedule'
+where status not in ('completed', 'delayed', 'on_schedule');
+
 alter table public.projects add constraint projects_status_check
-  check (status in ('completed', 'busy', 'in_progress', 'awaiting_approval', 'delayed', 'on_hold', 'cancelled'));
+  check (status in ('on_schedule', 'completed', 'delayed'));
 
 alter table public.projects drop constraint if exists projects_progress_check;
 alter table public.projects add constraint projects_progress_check

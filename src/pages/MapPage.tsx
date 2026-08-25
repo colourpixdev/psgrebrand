@@ -113,6 +113,7 @@ const provinceCoordinates: Record<string, LatLngTuple> = {
 };
 
 const statusStyles: Record<Project['status'], { color: string; label: string }> = {
+  on_schedule: { color: '#38bdf8', label: 'On Schedule' },
   pending: { color: '#94a3b8', label: 'Pending' },
   open: { color: '#38bdf8', label: 'Started' },
   awaiting_approval: { color: '#f59e0b', label: 'Awaiting approval' },
@@ -253,6 +254,7 @@ export function MapPage() {
     counts[project.status] += 1;
     return counts;
   }, {
+    on_schedule: 0,
     pending: 0,
     open: 0,
     awaiting_approval: 0,

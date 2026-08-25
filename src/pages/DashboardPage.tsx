@@ -189,7 +189,10 @@ export function DashboardPage() {
                         <p className="truncate font-medium text-slate-900 hover:text-sky-700">{project.branch}</p>
                         <p className="mt-1 text-sm text-slate-600">{project.currentStage} · {project.status}</p>
                       </Link>
-                      <ProjectFollowButton projectId={project.id} userEmail={user?.email} />
+                      <div className="flex shrink-0 items-center gap-2">
+                        <ProjectFollowButton projectId={project.id} userEmail={user?.email} />
+                        <ProjectFollowButton projectId={project.id} userEmail={user?.email} unfollowOnly />
+                      </div>
                     </div>
                   </div>
                 ))}

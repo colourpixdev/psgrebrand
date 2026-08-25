@@ -27,6 +27,7 @@ export default defineConfig(function (_a) {
                         query: ['@tanstack/react-query'],
                         react: ['react', 'react-dom', 'react-router-dom'],
                         supabase: ['@supabase/supabase-js', '@supabase/ssr'],
+                        spreadsheets: ['xlsx-js-style'],
                     },
                 },
             },

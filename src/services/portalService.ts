@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectTemplateId, Role, TaskAssignee, TaskItem, TaskStatus, UserRecord } from '../types/domain';
+import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectStatus, ProjectTemplateId, Role, TaskAssignee, TaskItem, TaskStatus, UserRecord } from '../types/domain';
 import { defaultWorkspace, isPlatformOwnerEmail, rolloutAppEmail } from '../constants/workspaces';
 import { defaultProjectTemplate, getProjectTemplate } from '../constants/projectTemplates';
 import { createTaskFromPool } from '../constants/taskPool';
@@ -921,6 +921,9 @@ function mapProjectRow(row: ProjectRow): Project {
       ? row.branch_id
       : 'Unassigned';
 
+  const rawStatus = row.status;
+  const status: ProjectStatus = rawStatus === 'completed' ? 'completed' : rawStatus === 'delayed' ? 'delayed' : 'on_schedule';
+
   return {
     id: row.id ?? 'unknown-project',
     branchId: mappedBranchId,
@@ -942,7 +945,7 @@ function mapProjectRow(row: ProjectRow): Project {
     managerEmail: row.manager_email ?? '',
     designer: row.designer ?? '',
     currentStage: typeof row.current_stage === 'string' ? row.current_stage as Project['currentStage'] : template.name,
-    status: row.status ?? 'busy',
+    status,
     projectStartDate: row.project_start_date ?? '',
     targetDate: row.target_date ?? '',
     briefRequestedDate: row.brief_requested_date ?? '',

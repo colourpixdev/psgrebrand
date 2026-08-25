@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getMonitoringFetch } from './monitoring';
 
 declare global {
   interface Window {
@@ -62,5 +63,5 @@ export const hasSupabaseConfig = Boolean(effective.supabaseUrl && effective.supa
 
 export const supabase =
   hasSupabaseConfig
-    ? createClient(effective.supabaseUrl!, effective.supabaseKey!)
+    ? createClient(effective.supabaseUrl!, effective.supabaseKey!, { global: { fetch: getMonitoringFetch() } })
     : null;

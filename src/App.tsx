@@ -10,6 +10,7 @@ import { checkSupabaseReachability } from './lib/supabaseHealth';
 import { canAccessRoute } from './utils/permissions';
 import { productBrand } from './constants/branding';
 import { lazyWithChunkReload } from './utils/chunkRecovery';
+import { reportError } from './lib/monitoring';
 
 const DashboardPage = lazyWithChunkReload('dashboard', () => import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const MapPage = lazyWithChunkReload('map', () => import('./pages/MapPage').then((module) => ({ default: module.MapPage })));
@@ -74,6 +75,7 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Route render failed:', error, errorInfo);
+    reportError(error, { surface: 'route', componentStack: errorInfo.componentStack ?? undefined });
   }
 
   render() {

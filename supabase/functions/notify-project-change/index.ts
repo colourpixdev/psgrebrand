@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.7';
+import { getRequestId, logFunctionEvent } from '../_shared/monitoring.ts';
 
 type NotifyProjectChangePayload = {
   to?: unknown;
@@ -26,10 +27,10 @@ const corsHeaders = {
 const defaultRecipient = 'rollout@colourpix.co.za';
 const validChangeTypes = new Set(['note', 'voice_note', 'voice_update']);
 
-function jsonResponse(body: unknown, status = 200) {
+function jsonResponse(body: unknown, status = 200, requestId?: string) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json', ...(requestId ? { 'x-request-id': requestId } : {}) },
   });
 }
 
@@ -90,6 +91,10 @@ function changeLabel(changeType: string) {
 }
 
 Deno.serve(async (request) => {
+  const requestId = getRequestId(request);
+  const startedAt = Date.now();
+  logFunctionEvent('notify-project-change', 'request_started', { requestId, method: request.method });
+
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -100,14 +105,16 @@ Deno.serve(async (request) => {
 
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) {
-    return jsonResponse({ error: 'Authentication is required.' }, 401);
+    logFunctionEvent('notify-project-change', 'authentication_failed', { requestId, reason: 'missing_authorization' });
+    return jsonResponse({ error: 'Authentication is required.' }, 401, requestId);
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    return jsonResponse({ error: 'Supabase function environment is not configured.' }, 500);
+    logFunctionEvent('notify-project-change', 'configuration_error', { requestId });
+    return jsonResponse({ error: 'Supabase function environment is not configured.' }, 500, requestId);
   }
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -116,7 +123,8 @@ Deno.serve(async (request) => {
 
   const { data: callerData, error: callerError } = await userClient.auth.getUser();
   if (callerError || !callerData.user?.email) {
-    return jsonResponse({ error: 'Your session could not be verified.' }, 401);
+    logFunctionEvent('notify-project-change', 'authentication_failed', { requestId, reason: 'invalid_session' });
+    return jsonResponse({ error: 'Your session could not be verified.' }, 401, requestId);
   }
 
   let payload;
@@ -128,7 +136,8 @@ Deno.serve(async (request) => {
 
   const resendApiKey = Deno.env.get('RESEND_API_KEY');
   if (!resendApiKey) {
-    return jsonResponse({ error: 'RESEND_API_KEY is not configured for project change notifications.' }, 500);
+    logFunctionEvent('notify-project-change', 'configuration_error', { requestId, missing: 'resend' });
+    return jsonResponse({ error: 'RESEND_API_KEY is not configured for project change notifications.' }, 500, requestId);
   }
 
   const to = Deno.env.get('PROJECT_NOTIFICATION_TO') || defaultRecipient;
@@ -165,8 +174,10 @@ Deno.serve(async (request) => {
 
   const body = await response.json().catch(() => null);
   if (!response.ok) {
-    return jsonResponse({ error: body?.message ?? 'Project change notification email failed.' }, response.status);
+    logFunctionEvent('notify-project-change', 'email_delivery_failed', { requestId, status: response.status, durationMs: Date.now() - startedAt });
+    return jsonResponse({ error: body?.message ?? 'Project change notification email failed.' }, response.status, requestId);
   }
 
-  return jsonResponse({ ok: true });
+  logFunctionEvent('notify-project-change', 'request_completed', { requestId, status: 200, durationMs: Date.now() - startedAt });
+  return jsonResponse({ ok: true }, 200, requestId);
 });

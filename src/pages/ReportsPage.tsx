@@ -2,16 +2,17 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FileText, Search } from 'lucide-react';
-import * as XLSX from 'xlsx-js-style';
 import { getProjects } from '../services/portalService';
+import { getAllBranches } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import { isTaskOutstanding } from '../utils/taskStatus';
-import type { Project, ProjectStatus } from '../types/domain';
+import type { Branch, Project, ProjectStatus } from '../types/domain';
 
 type ReportType = 'single-branch-detail' | 'multi-branch-overview' | 'operational-blockers';
 
 const statusLabels: Record<ProjectStatus, string> = {
+  on_schedule: 'On Schedule',
   pending: 'Pending',
   open: 'Started',
   completed: 'Completed',
@@ -131,7 +132,8 @@ function projectSpreadsheetRows(projects: Project[]) {
   });
 }
 
-function downloadExcel(projects: Project[], reportName: string) {
+async function downloadExcel(projects: Project[], reportName: string) {
+  const XLSX = await import('xlsx-js-style');
   const headers = ['Branch reference', 'Branch', 'Town', 'Province', 'Manager', 'Project Start Date', 'Project Target Completion', 'Stage', 'Stage Status', 'Stage Start Date', 'Stage Target Date', 'Pending tasks', 'Files', 'Participants', 'Updated'];
   const rows = projectSpreadsheetRows(projects);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -303,17 +305,27 @@ export function ReportsPage() {
   const [branchName, setBranchName] = useState('all');
   const [province, setProvince] = useState('all');
   const [completion, setCompletion] = useState<'all' | 'completed' | 'outstanding'>('all');
+  const [marketingCoordinator, setMarketingCoordinator] = useState('all');
+  const [signageCompany, setSignageCompany] = useState('all');
   const [query, setQuery] = useState('');
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: getProjects,
   });
+  const { data: branches = [] } = useQuery({
+    queryKey: ['branches'],
+    queryFn: getAllBranches,
+  });
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
   const selectedReport = reportTypes.find((report) => report.value === reportType) ?? reportTypes[0];
   const normalizedQuery = query.trim().toLowerCase();
   const availableBranches = useMemo(() => uniqueSorted(scopedProjects.map((project) => project.branch)), [scopedProjects]);
   const availableProvinces = useMemo(() => uniqueSorted(scopedProjects.map((project) => project.province)), [scopedProjects]);
+  const branchByProject = useMemo(() => new Map<string, Branch>(branches.map((branch) => [branch.id, branch])), [branches]);
+  const getProjectBranch = (project: Project) => branchByProject.get(project.branchId) ?? branches.find((branch) => branch.name === project.branch);
+  const availableMarketingCoordinators = useMemo(() => uniqueSorted(scopedProjects.map((project) => project.manager).filter((manager) => manager && manager.toLowerCase() !== 'not captured')), [scopedProjects]);
+  const availableSignageCompanies = useMemo(() => uniqueSorted(scopedProjects.map((project) => getProjectBranch(project)?.signageCompany ?? '').filter(Boolean)), [scopedProjects, branchByProject, branches]);
   const branchSuggestions = useMemo(() => {
     if (!normalizedQuery) {
       return [];
@@ -349,6 +361,14 @@ export function ReportsPage() {
       return false;
     }
 
+    if (marketingCoordinator !== 'all' && project.manager !== marketingCoordinator) {
+      return false;
+    }
+
+    if (signageCompany !== 'all' && getProjectBranch(project)?.signageCompany !== signageCompany) {
+      return false;
+    }
+
     if (completion === 'completed' && project.status !== 'completed') {
       return false;
     }
@@ -362,7 +382,7 @@ export function ReportsPage() {
     }
 
     return true;
-  }), [branchName, completion, normalizedQuery, province, reportType, scopedProjects, status]);
+  }), [branchName, completion, getProjectBranch, marketingCoordinator, normalizedQuery, province, reportType, scopedProjects, signageCompany, status]);
 
   const displayedProjects = useMemo(() => {
     if (reportType === 'single-branch-detail') {
@@ -412,7 +432,7 @@ export function ReportsPage() {
             Status
             <select value={status} onChange={(event) => setStatus(event.target.value as ProjectStatus | 'all')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
               <option value="all">All statuses</option>
-              {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              {(['on_schedule', 'completed', 'delayed'] as const).map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}
             </select>
           </label>
 
@@ -430,6 +450,22 @@ export function ReportsPage() {
               <option value="all">All projects</option>
               <option value="outstanding">Outstanding</option>
               <option value="completed">Completed</option>
+            </select>
+          </label>
+
+          <label className="grid gap-2 text-sm text-slate-300">
+            Marketing Coordinator
+            <select value={marketingCoordinator} onChange={(event) => setMarketingCoordinator(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
+              <option value="all">All coordinators</option>
+              {availableMarketingCoordinators.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+
+          <label className="grid gap-2 text-sm text-slate-300">
+            Signage Company
+            <select value={signageCompany} onChange={(event) => setSignageCompany(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
+              <option value="all">All signage companies</option>
+              {availableSignageCompanies.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
 

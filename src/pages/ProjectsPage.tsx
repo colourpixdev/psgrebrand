@@ -8,6 +8,7 @@ import { filterProjectsForUser } from '../utils/permissions';
 import type { ProjectStatus } from '../types/domain';
 
 const statusLabels: Record<ProjectStatus, string> = {
+  on_schedule: 'On Schedule',
   pending: 'Pending',
   open: 'Started',
   completed: 'Completed',
@@ -20,6 +21,7 @@ const statusLabels: Record<ProjectStatus, string> = {
 };
 
 const statusTone: Record<ProjectStatus, string> = {
+  on_schedule: 'bg-sky-100 text-sky-800',
   pending: 'bg-slate-200 text-slate-700',
   open: 'bg-sky-100 text-sky-800',
   completed: 'bg-emerald-100 text-emerald-800',

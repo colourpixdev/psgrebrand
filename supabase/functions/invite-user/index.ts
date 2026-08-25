@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.7';
+import { getRequestId, logFunctionEvent } from '../_shared/monitoring.ts';
 
 type Role = 'colourpix_admin' | 'psg_head_office' | 'psg_branch_manager' | 'sign_company';
 
@@ -17,10 +18,10 @@ const corsHeaders = {
 
 const validRoles: Role[] = ['colourpix_admin', 'psg_head_office', 'psg_branch_manager', 'sign_company'];
 
-function jsonResponse(body: unknown, status = 200) {
+function jsonResponse(body: unknown, status = 200, requestId?: string) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json', ...(requestId ? { 'x-request-id': requestId } : {}) },
   });
 }
 
@@ -46,6 +47,10 @@ function parsePayload(payload: InvitePayload) {
 }
 
 Deno.serve(async (request) => {
+  const requestId = getRequestId(request);
+  const startedAt = Date.now();
+  logFunctionEvent('invite-user', 'request_started', { requestId, method: request.method });
+
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -59,12 +64,14 @@ Deno.serve(async (request) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
   if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
-    return jsonResponse({ error: 'Supabase function environment is not configured.' }, 500);
+    logFunctionEvent('invite-user', 'configuration_error', { requestId });
+    return jsonResponse({ error: 'Supabase function environment is not configured.' }, 500, requestId);
   }
 
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) {
-    return jsonResponse({ error: 'Authentication is required.' }, 401);
+    logFunctionEvent('invite-user', 'authentication_failed', { requestId, reason: 'missing_authorization' });
+    return jsonResponse({ error: 'Authentication is required.' }, 401, requestId);
   }
 
   const userClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -77,7 +84,8 @@ Deno.serve(async (request) => {
 
   const { data: callerData, error: callerError } = await userClient.auth.getUser();
   if (callerError || !callerData.user?.email) {
-    return jsonResponse({ error: 'Your session could not be verified.' }, 401);
+    logFunctionEvent('invite-user', 'authentication_failed', { requestId, reason: 'invalid_session' });
+    return jsonResponse({ error: 'Your session could not be verified.' }, 401, requestId);
   }
 
   const callerEmail = callerData.user.email.toLowerCase();
@@ -88,11 +96,13 @@ Deno.serve(async (request) => {
     .maybeSingle();
 
   if (profileError) {
-    return jsonResponse({ error: profileError.message }, 500);
+    logFunctionEvent('invite-user', 'database_error', { requestId, operation: 'load_caller_profile', error: profileError.message });
+    return jsonResponse({ error: profileError.message }, 500, requestId);
   }
 
   if (callerProfile?.role !== 'colourpix_admin') {
-    return jsonResponse({ error: 'Only Colourpix administrators can invite users.' }, 403);
+    logFunctionEvent('invite-user', 'authorization_denied', { requestId, role: callerProfile?.role ?? 'unknown' });
+    return jsonResponse({ error: 'Only Colourpix administrators can invite users.' }, 403, requestId);
   }
 
   let payload;
@@ -115,7 +125,8 @@ Deno.serve(async (request) => {
   });
 
   if (inviteError) {
-    return jsonResponse({ error: inviteError.message }, 400);
+    logFunctionEvent('invite-user', 'auth_invite_failed', { requestId, error: inviteError.message });
+    return jsonResponse({ error: inviteError.message }, 400, requestId);
   }
 
   const { data: profile, error: upsertError } = await adminClient
@@ -131,13 +142,15 @@ Deno.serve(async (request) => {
     .single();
 
   if (upsertError) {
-    return jsonResponse({ error: upsertError.message }, 400);
+    logFunctionEvent('invite-user', 'database_error', { requestId, operation: 'upsert_profile', error: upsertError.message });
+    return jsonResponse({ error: upsertError.message }, 400, requestId);
   }
 
+  logFunctionEvent('invite-user', 'request_completed', { requestId, status: 200, durationMs: Date.now() - startedAt });
   return jsonResponse({
     name: profile.name,
     role: profile.role,
     branch: profile.branch ?? undefined,
     email: profile.email,
-  });
+  }, 200, requestId);
 });

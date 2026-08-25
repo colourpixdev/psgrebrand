@@ -458,7 +458,7 @@ export async function createBranchProject(input: CreateBranchInput): Promise<{ b
     managerEmail: branch.contactEmail,
     projectType: 'signage_rollout',
     currentStage: 'New Project',
-    status: 'in_progress',
+    status: 'on_schedule',
     progress: 0,
     selectedTaskIds: [],
   };
