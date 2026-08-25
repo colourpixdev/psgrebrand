@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 
 const followStoragePrefix = 'psg-rebrand:followed-projects:';
 const followChangedEvent = 'psg-rebrand:followed-projects-changed';
+let localChangeRevision = 0;
 
 function storageKey(userEmail?: string) {
   return `${followStoragePrefix}${userEmail?.trim().toLowerCase() || 'anonymous'}`;
@@ -60,6 +61,7 @@ export function getFollowedProjectIds(userEmail?: string): string[] {
 
 export async function syncFollowedProjects(userEmail?: string): Promise<string[]> {
   const localIds = getFollowedProjectIds(userEmail);
+  const revisionAtStart = localChangeRevision;
   const userId = await getAuthenticatedUserId();
 
   if (!userId) {
@@ -74,6 +76,10 @@ export async function syncFollowedProjects(userEmail?: string): Promise<string[]
       ? [...new Set([...remoteIds, ...localIds])]
       : remoteIds;
 
+    if (revisionAtStart !== localChangeRevision) {
+      return getFollowedProjectIds(userEmail);
+    }
+
     if (shouldMigrateLocalIds && localIds.some((id) => !remoteIds.includes(id))) {
       const { error: upsertError } = await supabase!.from('user_followed_items').upsert(
         mergedIds.map((itemId) => ({ user_id: userId, item_id: itemId })),
@@ -85,10 +91,11 @@ export async function syncFollowedProjects(userEmail?: string): Promise<string[]
     }
 
     localStorage.setItem(storageKey(userEmail), JSON.stringify(mergedIds));
-  localStorage.setItem(syncMarkerKey(userEmail), 'true');
+    localStorage.setItem(syncMarkerKey(userEmail), 'true');
     window.dispatchEvent(new CustomEvent(followChangedEvent, { detail: { userEmail } }));
     return mergedIds;
-  } catch {
+  } catch (error) {
+    console.error('Failed to sync followed branches:', error);
     return localIds;
   }
 }
@@ -127,6 +134,7 @@ export function toggleFollowedProject(userEmail: string | undefined, projectId: 
     followed.add(projectId);
   }
 
+  localChangeRevision += 1;
   localStorage.setItem(storageKey(userEmail), JSON.stringify([...followed]));
   window.dispatchEvent(new CustomEvent(followChangedEvent, { detail: { userEmail } }));
   void getAuthenticatedUserId().then((userId) => {
