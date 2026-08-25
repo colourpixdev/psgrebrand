@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { FileGrid } from '../components/uploads/FileGrid';
 import { DatePickerInput } from '../components/DatePickerInput';
 import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectActivity, deleteProjectComment, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectActivity, updateProjectComment, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
@@ -96,6 +96,7 @@ function getStagePlan(project: Project): ProjectStage[] {
 export function ProjectDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { showError, showSuccess } = useSaveFeedback();
   const queryClient = useQueryClient();
@@ -164,7 +165,9 @@ export function ProjectDetailPage() {
   useEffect(() => {
     if (project) {
       const matchingCurrentStageTask = project.tasks.find((task) => (task.stage ?? task.text).trim().toLowerCase() === project.currentStage.trim().toLowerCase());
-      const nextViewedTaskId = matchingCurrentStageTask?.id ?? project.tasks.find((task) => !task.completed)?.id ?? project.tasks[0]?.id ?? '';
+      const requestedTaskId = searchParams.get('task');
+      const requestedTask = requestedTaskId ? project.tasks.find((task) => task.id === requestedTaskId) : undefined;
+      const nextViewedTaskId = requestedTask?.id ?? matchingCurrentStageTask?.id ?? project.tasks.find((task) => !task.completed)?.id ?? project.tasks[0]?.id ?? '';
 
       setCurrentStageDraft(project.currentStage);
       setViewedTaskId(nextViewedTaskId);
@@ -173,7 +176,7 @@ export function ProjectDetailPage() {
       setProjectStartDateDraft(project.projectStartDate ?? '');
       setMarketingCoordinatorEmailDraft(project.managerEmail);
     }
-  }, [project]);
+  }, [project, searchParams]);
 
   useEffect(() => {
     if (!branch) {

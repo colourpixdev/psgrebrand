@@ -355,7 +355,7 @@ export function DashboardPage() {
                   return (
                     <div key={project.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:border-sky-200 hover:bg-sky-50">
                       <div className="flex items-start justify-between gap-3">
-                        <Link to={`/projects/${project.id}`} className="min-w-0 flex-1">
+                        <Link to={`/projects/${project.id}?task=${encodeURIComponent(assignedTask?.id ?? '')}`} className="min-w-0 flex-1">
                           <p className="font-medium text-slate-900">{project.branch}</p>
                           <p className="mt-1 text-sm text-slate-600">{assignedTask?.text} · {project.currentStage}</p>
                         </Link>
