@@ -163,8 +163,11 @@ export function ProjectDetailPage() {
 
   useEffect(() => {
     if (project) {
+      const matchingCurrentStageTask = project.tasks.find((task) => (task.stage ?? task.text).trim().toLowerCase() === project.currentStage.trim().toLowerCase());
+      const nextViewedTaskId = matchingCurrentStageTask?.id ?? project.tasks.find((task) => !task.completed)?.id ?? project.tasks[0]?.id ?? '';
+
       setCurrentStageDraft(project.currentStage);
-      setViewedTaskId(project.tasks.find((task) => !task.completed)?.id ?? project.tasks[0]?.id ?? '');
+      setViewedTaskId(nextViewedTaskId);
       setStatusDraft(project.status);
       setTargetDateDraft(project.targetDate);
       setProjectStartDateDraft(project.projectStartDate ?? '');
