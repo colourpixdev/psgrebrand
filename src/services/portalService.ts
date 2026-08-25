@@ -217,9 +217,9 @@ async function recordProjectFileActivity(workspaceId: string, eventType: string,
   });
 }
 
-async function getWorkspaceFiles(workspaceId: string): Promise<ProjectFile[]> {
+async function getWorkspaceFiles(workspaceId: string): Promise<ProjectFile[] | null> {
   const client = supabase;
-  if (!client) return [];
+  if (!client) return null;
 
   const { data, error } = await client
     .from('project_files')
@@ -228,7 +228,8 @@ async function getWorkspaceFiles(workspaceId: string): Promise<ProjectFile[]> {
     .is('deleted_at', null)
     .order('created_at', { ascending: true });
 
-  if (error || !data || data.length === 0) return [];
+  if (error || !data) return null;
+  if (data.length === 0) return [];
 
   const versionIds = data.map((file) => file.current_version_id).filter((id): id is string => Boolean(id));
   const { data: versions } = versionIds.length > 0
@@ -255,7 +256,11 @@ async function hydrateProjectFiles(projects: Project[]): Promise<Project[]> {
     if (!workspace?.id) return project;
 
     const files = await getWorkspaceFiles(workspace.id);
-    return { ...project, workspaceId: workspace.id, files };
+    return {
+      ...project,
+      workspaceId: workspace.id,
+      files: files === null || (files.length === 0 && project.files.length > 0) ? project.files : files,
+    };
   }));
 }
 
@@ -1164,7 +1169,7 @@ export async function getProjectById(projectId: string): Promise<Project | undef
       project = { ...project, tasks: relationalTasks };
 
       const relationalFiles = await getWorkspaceFiles(workspaceData.id);
-      if (relationalFiles.length > 0) {
+      if (relationalFiles && relationalFiles.length > 0) {
         project = { ...project, files: relationalFiles };
       }
     }
