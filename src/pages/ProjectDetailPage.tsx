@@ -508,7 +508,6 @@ export function ProjectDetailPage() {
         tasks: updatedProject.tasks.map((task) => task.id === variables.task.id
           ? {
             ...task,
-            status: variables.status ?? task.status,
             completed: variables.status === 'done' ? true : variables.status === undefined ? task.completed : false,
             assigneeName: variables.assignees !== undefined ? variables.assignees[variables.assignees.length - 1]?.name : task.assigneeName,
             assigneeEmail: variables.assignees !== undefined ? variables.assignees[variables.assignees.length - 1]?.email : task.assigneeEmail,
@@ -727,10 +726,10 @@ export function ProjectDetailPage() {
   const displayedStageStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : 'Pending';
   const displayedStageStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : stageStatusTones.pending;
   const currentStageAssigneeNames = currentStageTask
-    ? [
-      ...(currentStageTask.assignees ?? []).map((assignee) => assignee.name),
-      currentStageTask.assigneeName,
-    ].filter((name): name is string => Boolean(name?.trim()))
+    ? [...new Map([
+      ...(currentStageTask.assignees ?? []).map((assignee) => [assignee.name.trim().toLowerCase(), assignee.name.trim()] as const),
+      ...(currentStageTask.assigneeName?.trim() ? [[currentStageTask.assigneeName.trim().toLowerCase(), currentStageTask.assigneeName.trim()] as const] : []),
+    ]).values()]
     : [];
   const currentStageAssigneeDisplay = currentStageAssigneeNames.length > 0
     ? currentStageAssigneeNames.join(', ')
