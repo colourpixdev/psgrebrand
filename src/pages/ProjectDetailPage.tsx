@@ -1449,7 +1449,7 @@ export function ProjectDetailPage() {
 
       </section>}
 
-      <section>
+      {!isPsgUser ? <section>
         <FileGrid
           files={selectedProject.files}
           taskFolders={selectedProject.tasks.map((task) => ({ id: task.id, label: task.text }))}
@@ -1465,7 +1465,7 @@ export function ProjectDetailPage() {
           onDelete={(file: ProjectFile) => deleteFileMutation.mutate(file)}
           getThumbnailUrl={(file: ProjectFile) => getProjectFileUrl(file)}
         />
-      </section>
+      </section> : null}
 
     </div>
   );
