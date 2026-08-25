@@ -1036,10 +1036,27 @@ type RelationalProjectData = {
 };
 
 function applyRelationalProjectData(project: Project, data: RelationalProjectData): Project {
+  const nextTasks = data.tasksAvailable === false || data.tasks === undefined ? project.tasks : data.tasks;
+  const legacyTaskIdToRelationalId = new Map<string, string>();
+  const unmatchedTasks = [...nextTasks];
+
+  project.tasks.forEach((legacyTask) => {
+    const legacyTaskIndex = unmatchedTasks.findIndex((task) => task.text.trim().toLowerCase() === legacyTask.text.trim().toLowerCase());
+    if (legacyTaskIndex >= 0) {
+      legacyTaskIdToRelationalId.set(legacyTask.id, unmatchedTasks[legacyTaskIndex].id);
+      unmatchedTasks.splice(legacyTaskIndex, 1);
+    }
+  });
+
   return {
     ...project,
     workspaceId: data.workspaceId,
-    tasks: data.tasksAvailable === false || data.tasks === undefined ? project.tasks : data.tasks,
+    tasks: nextTasks,
+    comments: legacyTaskIdToRelationalId.size > 0
+      ? project.comments.map((comment) => comment.taskId && legacyTaskIdToRelationalId.has(comment.taskId)
+        ? { ...comment, taskId: legacyTaskIdToRelationalId.get(comment.taskId) }
+        : comment)
+      : project.comments,
     files: data.filesAvailable === false || data.files === undefined || data.files === null
       ? project.files
       : data.files,
