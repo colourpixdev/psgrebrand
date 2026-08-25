@@ -1063,10 +1063,12 @@ export async function getProjects(): Promise<Project[]> {
 
   const { data, error } = await client.from('projects').select('*').order('updated_at', { ascending: false });
 
-  if (error || !data) {
-    return readLocalProjects()
-      .sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
-      .map(mapProjectRow);
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw new Error('Supabase returned no project data.');
   }
 
   // Fetch relational tasks for all projects in parallel

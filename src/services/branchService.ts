@@ -337,7 +337,7 @@ export async function getAllBranches(): Promise<Branch[]> {
 
   if (error) {
     console.error('Failed to fetch branches:', error);
-    return localBranches.sort((a, b) => a.name.localeCompare(b.name));
+    throw error;
   }
 
   const serverBranches = data.map((row) => mergeLocalBranchMetadata(rowToBranch(row)));
