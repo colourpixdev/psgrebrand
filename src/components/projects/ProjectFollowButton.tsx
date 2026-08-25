@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { getFollowChangedEventName, getFollowedProjectIds, syncFollowedProjects, toggleFollowedProject } from '../../services/projectFollowService';
 import { canManageFollowedBranches } from '../../constants/workspaces';
 
-export function ProjectFollowButton({ projectId, legacyProjectIds = [], userEmail, noun = 'project', unfollowOnly = false }: { projectId: string; legacyProjectIds?: string[]; userEmail?: string; noun?: 'project' | 'branch'; unfollowOnly?: boolean }) {
-  const canManageFollowedBranchesForUser = canManageFollowedBranches(userEmail);
+export function ProjectFollowButton({ projectId, legacyProjectIds = [], userEmail, userRole, noun = 'project', unfollowOnly = false }: { projectId: string; legacyProjectIds?: string[]; userEmail?: string; userRole?: string; noun?: 'project' | 'branch'; unfollowOnly?: boolean }) {
+  const canManageFollowedBranchesForUser = canManageFollowedBranches(userEmail, userRole);
   const isTracked = (ids: string[]) => ids.some((id) => getFollowedProjectIds(userEmail).includes(id));
   const [isFollowed, setIsFollowed] = useState(() => isTracked([projectId, ...legacyProjectIds]));
 

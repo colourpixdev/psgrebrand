@@ -321,7 +321,7 @@ export function BranchDetailPage() {
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <h2 className="text-3xl font-semibold text-white">{branch.name}</h2>
-                <ProjectFollowButton projectId={branch.id} legacyProjectIds={branchProjects.map((project) => project.id)} userEmail={user?.email} noun="branch" />
+                <ProjectFollowButton projectId={branch.id} legacyProjectIds={branchProjects.map((project) => project.id)} userEmail={user?.email} userRole={user?.role} noun="branch" />
               </div>
               <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
               <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>

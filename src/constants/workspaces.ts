@@ -8,8 +8,8 @@ export const accessControlAdminEmails = [platformOwnerEmail, 'bd@colourpix.co.za
 export const privateRolloutRequestInbox = rolloutAppEmail;
 export const allWorkspaceAdminEmails = platformOwnerEmails;
 
-export function canManageFollowedBranches(email: string | undefined) {
-  return Boolean(email?.trim());
+export function canManageFollowedBranches(email: string | undefined, role?: string) {
+  return Boolean(email?.trim()) && !role?.trim().toLowerCase().startsWith('psg_');
 }
 
 export const workspaceAdminContact = {

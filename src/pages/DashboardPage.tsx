@@ -56,7 +56,7 @@ export function DashboardPage() {
   } = useQuery({ queryKey: ['projects'], queryFn: getProjects, refetchInterval: 10000, refetchOnWindowFocus: true });
 
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
-  const canManageFollowedBranchesForUser = canManageFollowedBranches(user?.email);
+  const canManageFollowedBranchesForUser = canManageFollowedBranches(user?.email, user?.role);
   useEffect(() => {
     if (!canManageFollowedBranchesForUser) {
       return undefined;
@@ -277,8 +277,8 @@ export function DashboardPage() {
                         {project ? <p className="mt-1 text-sm text-slate-600">{project.currentStage} · {project.status}</p> : null}
                       </Link>
                       <div className="flex shrink-0 items-center gap-2">
-                        <ProjectFollowButton projectId={branch.id} legacyProjectIds={legacyProjectIds} userEmail={user?.email} noun="branch" />
-                        <ProjectFollowButton projectId={branch.id} legacyProjectIds={legacyProjectIds} userEmail={user?.email} noun="branch" unfollowOnly />
+                        <ProjectFollowButton projectId={branch.id} legacyProjectIds={legacyProjectIds} userEmail={user?.email} userRole={user?.role} noun="branch" />
+                        <ProjectFollowButton projectId={branch.id} legacyProjectIds={legacyProjectIds} userEmail={user?.email} userRole={user?.role} noun="branch" unfollowOnly />
                       </div>
                     </div>
                   </div>
@@ -305,7 +305,7 @@ export function DashboardPage() {
                           <p className="truncate font-medium text-slate-900 hover:text-sky-700">{branch.name}</p>
                           {project ? <p className="mt-1 text-sm text-slate-600">{project.currentStage} · {project.status}</p> : null}
                         </Link>
-                        <ProjectFollowButton projectId={branch.id} userEmail={user?.email} noun="branch" />
+                        <ProjectFollowButton projectId={branch.id} userEmail={user?.email} userRole={user?.role} noun="branch" />
                       </div>
                     </div>
                   );

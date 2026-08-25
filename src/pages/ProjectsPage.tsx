@@ -135,7 +135,7 @@ export function ProjectsPage() {
                   <td className="px-4 py-4 text-slate-700">{project.currentStage}</td>
                   <td className="px-4 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusTone[project.status]}`}>{statusLabels[project.status]}</span></td>
                   <td className="px-4 py-4 text-slate-700">{formatTargetDate(project.targetDate)}</td>
-                  <td className="px-4 py-4 text-right"><div className="flex items-center justify-end gap-3"><ProjectFollowButton projectId={project.id} userEmail={user?.email} /><Link to={`/projects/${project.id}`} className="inline-flex items-center rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-100 hover:text-sky-800">Open</Link></div></td>
+                  <td className="px-4 py-4 text-right"><div className="flex items-center justify-end gap-3"><ProjectFollowButton projectId={project.id} userEmail={user?.email} userRole={user?.role} /><Link to={`/projects/${project.id}`} className="inline-flex items-center rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-100 hover:text-sky-800">Open</Link></div></td>
                 </tr>
               ))}
             </tbody>
