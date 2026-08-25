@@ -42,6 +42,7 @@ export interface ContactPerson {
 }
 
 export interface TaskAssignee {
+  id?: string;
   name: string;
   email: string;
   designation: string;
@@ -117,13 +118,14 @@ export interface ProjectFile {
   taskId?: string;
 }
 
-export type TaskStatus = 'pending' | 'open' | 'busy' | 'done';
+export type TaskStatus = 'pending' | 'open' | 'busy' | 'done' | 'waiting' | 'blocked';
 
 export interface TaskItem {
   id: string;
   text: string;
   completed: boolean;
   status?: TaskStatus;
+  assigneeId?: string;
   stage?: ProjectStage;
   assigneeName?: string;
   assigneeEmail?: string;

@@ -4,6 +4,7 @@ import { defaultWorkspace, isPlatformOwnerEmail, rolloutAppEmail } from '../cons
 import { defaultProjectTemplate, getProjectTemplate } from '../constants/projectTemplates';
 import { createTaskFromPool } from '../constants/taskPool';
 import { createNextProjectId } from '../utils/branchProjectIds';
+import { taskStatusFromDatabase, taskStatusToDatabase } from '../utils/taskStatus';
 
 export interface PortalSummary {
   metrics: Array<{ label: string; value: number }>;
@@ -14,6 +15,7 @@ export interface PortalSummary {
 type ProjectRow = {
   id: string;
   workspace_id?: string | null;
+  rebrand_workspace_id?: string | null;
   workspace_name?: string | null;
   client_company?: string | null;
   graphics_partner?: string | null;
@@ -77,6 +79,7 @@ type ProjectTaskRow = {
 
 type TaskAssigneeRow = {
   task_id: string;
+  profile_id?: string | null;
   name?: string | null;
   email?: string | null;
   profile_title?: string | null;
@@ -93,12 +96,13 @@ function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
     id: taskRow.id,
     text: taskRow.title || '<Untitled Task>',
     completed,
-    status: status === 'not_started' ? 'pending' : status === 'in_progress' ? 'busy' : status === 'complete' ? 'done' : 'open',
+    status: taskStatusFromDatabase(status),
     stage: taskRow.title || undefined,
     dueDate: taskRow.due_date ?? undefined,
+    assigneeId: taskRow.responsible_person_id ?? undefined,
     assigneeName: responsiblePerson?.name ?? undefined,
     assigneeEmail: responsiblePerson?.email ?? undefined,
-    assignees: responsiblePerson?.email ? [{ name: responsiblePerson.name ?? responsiblePerson.email, email: responsiblePerson.email, designation: responsiblePerson.profile_title ?? 'Assigned user' }] : undefined,
+    assignees: responsiblePerson?.name && responsiblePerson.email ? [{ id: taskRow.responsible_person_id ?? undefined, name: responsiblePerson.name, email: responsiblePerson.email, designation: responsiblePerson.profile_title ?? '' }] : undefined,
     startedDate: taskRow.started_date ?? undefined,
     installationRequest: isWaiting ? (taskRow.waiting_reason || 'Waiting for details') : isBlocked ? (taskRow.blocker_reason || 'Blocked') : undefined,
     createdAt: taskRow.created_at,
@@ -108,11 +112,16 @@ function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
   };
 }
 
-async function getWorkspaceTasks(workspaceId: string): Promise<TaskItem[]> {
+type RelationalReadResult<T> = {
+  data: T;
+  available: boolean;
+};
+
+async function getWorkspaceTasks(workspaceId: string): Promise<RelationalReadResult<TaskItem[]>> {
   const client = supabase;
 
   if (!client) {
-    return [];
+    return { data: [], available: false };
   }
 
   await hydrateAuthSession();
@@ -125,16 +134,16 @@ async function getWorkspaceTasks(workspaceId: string): Promise<TaskItem[]> {
     .order('sort_order', { ascending: true });
 
   if (error || !data) {
-    return [];
+    return { data: [], available: false };
   }
 
   const { data: assignees } = await client.rpc('get_rebrand_task_assignees', { workspace_uuid: workspaceId });
   const assigneeByTaskId = new Map(((assignees ?? []) as TaskAssigneeRow[]).map((assignee) => [assignee.task_id, assignee]));
 
-  return (data as ProjectTaskRow[]).map((taskRow) => convertRelationalTaskToTaskItem({
+  return { data: (data as ProjectTaskRow[]).map((taskRow) => convertRelationalTaskToTaskItem({
     ...taskRow,
     responsible_person: assigneeByTaskId.get(taskRow.id) ?? null,
-  }));
+  })), available: true };
 }
 
 const projectFilesBucket = 'project-files';
@@ -216,18 +225,38 @@ async function getProfileIdByEmail(email?: string) {
   return profile?.id ?? null;
 }
 
-async function recordProjectFileActivity(workspaceId: string, eventType: string, fileId: string, actor: string, metadata: Record<string, unknown> = {}) {
+type ProjectActivityInput = {
+  eventType: 'project_updated' | 'task_status_changed' | 'file_uploaded' | 'file_updated';
+  entityType: string;
+  entityId?: string;
+  workspaceId: string;
+  projectId: string;
+  taskId?: string;
+  actorId?: string | null;
+  oldValues?: Record<string, unknown>;
+  newValues?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+};
+
+async function recordProjectActivity(input: ProjectActivityInput) {
   const client = supabase;
   if (!client) return;
 
   await client.from('project_activity').insert({
-    workspace_id: workspaceId,
-    event_type: eventType,
-    entity_type: 'project_file',
-    entity_id: fileId,
+    workspace_id: input.workspaceId,
+    actor_id: input.actorId ?? null,
+    event_type: input.eventType,
+    entity_type: input.entityType,
+    entity_id: input.entityId ?? null,
     source: 'user',
-    metadata: { ...metadata, actor },
+    old_values: input.oldValues ?? null,
+    new_values: input.newValues ?? null,
+    metadata: { ...input.metadata, project_id: input.projectId, ...(input.taskId ? { task_id: input.taskId } : {}) },
   });
+}
+
+async function recordProjectFileActivity(projectId: string, workspaceId: string, eventType: 'file_uploaded' | 'file_updated', fileId: string, taskId?: string, metadata: Record<string, unknown> = {}) {
+  await recordProjectActivity({ eventType, entityType: 'project_file', entityId: fileId, workspaceId, projectId, taskId, metadata });
 }
 
 async function getWorkspaceFiles(workspaceId: string): Promise<ProjectFile[] | null> {
@@ -258,22 +287,10 @@ async function hydrateProjectFiles(projects: Project[]): Promise<Project[]> {
   if (!client || projects.length === 0) return projects;
 
   return Promise.all(projects.map(async (project) => {
-    if (!project.branchId || project.branchId === 'unassigned') return project;
+    if (!project.workspaceId || project.workspaceId === defaultWorkspace.id) return project;
 
-    const { data: workspace } = await client
-      .from('rebrand_workspaces')
-      .select('id')
-      .eq('branch_id', project.branchId)
-      .eq('is_primary', true)
-      .maybeSingle();
-    if (!workspace?.id) return project;
-
-    const files = await getWorkspaceFiles(workspace.id);
-    return {
-      ...project,
-      workspaceId: workspace.id,
-      files: files === null || (files.length === 0 && project.files.length > 0) ? project.files : files,
-    };
+    const files = await getWorkspaceFiles(project.workspaceId);
+    return applyRelationalProjectData(project, { workspaceId: project.workspaceId, files, filesAvailable: files !== null });
   }));
 }
 
@@ -664,6 +681,7 @@ export type UpdateProjectSummaryInput = {
   projectId: string;
   actor: string;
   currentStage: Project['currentStage'];
+  currentTaskId?: string;
   status: Project['status'];
   progress?: number;
   projectStartDate?: string;
@@ -779,6 +797,7 @@ export type ReorderProjectTaskInput = {
 
 export type UpsertProjectStageTaskInput = {
   projectId: string;
+  taskId?: string;
   stage: Project['currentStage'];
   actor: string;
   completed?: boolean;
@@ -946,7 +965,7 @@ function mapProjectRow(row: ProjectRow): Project {
     branchId: mappedBranchId,
     branchCode: typeof row.branch_code === 'string' ? row.branch_code : undefined,
     branch: mappedBranch,
-    workspaceId: row.workspace_id ?? defaultWorkspace.id,
+    workspaceId: row.rebrand_workspace_id ?? defaultWorkspace.id,
     workspaceName: row.workspace_name ?? defaultWorkspace.name,
     clientCompany: row.client_company ?? defaultWorkspace.clientCompany,
     graphicsPartner: row.graphics_partner ?? defaultWorkspace.graphicsPartner,
@@ -981,6 +1000,25 @@ function mapProjectRow(row: ProjectRow): Project {
       }))
       : [],
     activity: Array.isArray(row.activity) ? row.activity : [],
+  };
+}
+
+type RelationalProjectData = {
+  workspaceId: string;
+  tasks?: TaskItem[];
+  tasksAvailable?: boolean;
+  files?: ProjectFile[] | null;
+  filesAvailable?: boolean;
+};
+
+function applyRelationalProjectData(project: Project, data: RelationalProjectData): Project {
+  return {
+    ...project,
+    workspaceId: data.workspaceId,
+    tasks: data.tasksAvailable === false || data.tasks === undefined ? project.tasks : data.tasks,
+    files: data.filesAvailable === false || data.files === undefined || data.files === null
+      ? project.files
+      : data.files,
   };
 }
 
@@ -1093,32 +1131,27 @@ export async function getProjects(): Promise<Project[]> {
   
   if (client && projects.length > 0) {
     try {
-      // Collect all branch IDs
-      const branchIds = [...new Set(
-        projects
-          .filter((p) => p.branchId && p.branchId !== 'unassigned')
-          .map((p) => p.branchId)
+      const workspaceIds = [...new Set(
+        (data as ProjectRow[])
+          .map((row) => row.rebrand_workspace_id)
+          .filter((workspaceId): workspaceId is string => Boolean(workspaceId))
       )];
 
-      if (branchIds.length > 0) {
-        // Fetch all workspaces for these branches in one query
+      if (workspaceIds.length > 0) {
         const { data: workspaces } = await client
           .from('rebrand_workspaces')
-          .select('id, branch_id')
-          .in('branch_id', branchIds)
-          .eq('is_primary', true);
+          .select('id')
+          .in('id', workspaceIds);
 
         if (workspaces && workspaces.length > 0) {
-          // Fetch all tasks for these workspaces in one query
-          const workspaceIds = workspaces.map((w) => w.id);
-          const { data: allTasks } = await client
+          const { data: allTasks, error: allTasksError } = await client
             .from('project_tasks')
             .select('*, responsible_person:profiles!project_tasks_responsible_person_id_fkey(name, email, profile_title)')
             .in('workspace_id', workspaceIds)
             .is('deleted_at', null)
             .order('sort_order', { ascending: true });
 
-          // Group tasks by workspace and map them back to their branch IDs.
+          // Keep each project's relational tasks keyed by its explicit workspace ID.
           const assigneeResults = await Promise.all(workspaceIds.map((workspaceId) => client.rpc('get_rebrand_task_assignees', { workspace_uuid: workspaceId })));
           const assigneeByTaskId = new Map(assigneeResults.flatMap((result) => (result.data ?? []) as TaskAssigneeRow[]).map((assignee) => [assignee.task_id, assignee]));
           const tasksByWorkspace = new Map<string, TaskItem[]>();
@@ -1132,17 +1165,11 @@ export async function getProjects(): Promise<Project[]> {
             tasksByWorkspace.set(wsId, tasks);
           });
 
-          const tasksByBranch = new Map<string, TaskItem[]>();
-          workspaces.forEach((ws) => {
-            tasksByBranch.set(ws.branch_id, tasksByWorkspace.get(ws.id) ?? []);
-          });
-
           return hydrateProjectFiles(projects.map((project) => {
-            const relationalTasks = tasksByBranch.get(project.branchId);
-            return {
-              ...project,
-              tasks: relationalTasks && relationalTasks.length > 0 ? relationalTasks : project.tasks,
-            };
+            const workspaceId = (data as ProjectRow[]).find((row) => row.id === project.id)?.rebrand_workspace_id;
+            if (!workspaceId) return project;
+            const relationalTasks = tasksByWorkspace.get(workspaceId) ?? [];
+            return applyRelationalProjectData(project, { workspaceId, tasks: relationalTasks, tasksAvailable: !allTasksError });
           }));
         }
       }
@@ -1174,26 +1201,20 @@ export async function getProjectById(projectId: string): Promise<Project | undef
   const projectRow = data as ProjectRow;
   let project = mapProjectRow(projectRow);
 
-  // Attempt to fetch relational tasks from workspace
-  if (projectRow.branch_id) {
+  // Read relational data only through the project's explicit workspace link.
+  if (projectRow.rebrand_workspace_id) {
     const { data: workspaceData } = await client
       .from('rebrand_workspaces')
       .select('id')
-      .eq('branch_id', projectRow.branch_id)
-      .eq('is_primary', true)
+      .eq('id', projectRow.rebrand_workspace_id)
       .maybeSingle();
 
     if (workspaceData?.id) {
-      project = { ...project, workspaceId: workspaceData.id };
       const relationalTasks = await getWorkspaceTasks(workspaceData.id);
-      if (relationalTasks.length > 0) {
-        project = { ...project, tasks: relationalTasks };
-      }
+      project = applyRelationalProjectData(project, { workspaceId: workspaceData.id, tasks: relationalTasks.data, tasksAvailable: relationalTasks.available });
 
       const relationalFiles = await getWorkspaceFiles(workspaceData.id);
-      if (relationalFiles && relationalFiles.length > 0) {
-        project = { ...project, files: relationalFiles };
-      }
+      project = applyRelationalProjectData(project, { workspaceId: workspaceData.id, files: relationalFiles, filesAvailable: relationalFiles !== null });
     }
   }
 
@@ -1492,7 +1513,7 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     throw currentVersionError;
   }
 
-  await recordProjectFileActivity(workspace.id, 'file_uploaded', projectFile.id, 'upload', { display_name: file.name });
+  await recordProjectFileActivity(projectId, workspace.id, 'file_uploaded', projectFile.id, taskId, { display_name: file.name, actor: 'upload' });
   const updatedProject = await getProjectById(projectId);
   return updatedProject?.files ?? [...currentFiles, { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId }];
 }
@@ -1604,7 +1625,9 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     createActivity('Project summary updated', `${input.actor} updated stage, status, and schedule dates.`),
     ...existingProject.activity,
   ];
-  const currentStageTask = existingProject.tasks.find((task) => (task.stage ?? task.text).trim() === currentStage);
+  const currentStageTask = input.currentTaskId
+    ? existingProject.tasks.find((task) => task.id === input.currentTaskId)
+    : undefined;
   const nextTaskStatus: TaskItem['status'] = input.status === 'completed' ? 'done' : 'busy';
   const completedBy = nextTaskStatus === 'done' ? await getCurrentProfileId() : null;
   if (nextTaskStatus === 'done' && !completedBy) {
@@ -1674,6 +1697,28 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     if (taskError) {
       throw taskError;
     }
+
+    await recordProjectActivity({
+      eventType: 'task_status_changed',
+      entityType: 'project_task',
+      entityId: currentStageTask.id,
+      workspaceId: existingProject.workspaceId,
+      projectId: input.projectId,
+      taskId: currentStageTask.id,
+      newValues: { status: nextTaskStatus },
+      metadata: { actor: input.actor },
+    });
+  }
+
+  if (existingProject.workspaceId) {
+    await recordProjectActivity({
+      eventType: 'project_updated',
+      entityType: 'project',
+      workspaceId: existingProject.workspaceId,
+      projectId: input.projectId,
+      newValues: { status: input.status, current_stage: currentStage },
+      metadata: { actor: input.actor },
+    });
   }
 
   return {
@@ -2243,12 +2288,10 @@ export async function reorderProjectTask(input: ReorderProjectTaskInput): Promis
   const now = new Date().toISOString();
 
   // Soft-delete the relational task when this project has a relational workspace.
-  const branchId = existingProject.branchId || existingProject.branch;
   const { data: workspaceData } = await client
     .from('rebrand_workspaces')
     .select('id')
-    .eq('branch_id', branchId)
-    .eq('is_primary', true)
+    .eq('id', existingProject.workspaceId)
     .maybeSingle();
 
   if (!workspaceData?.id) {
@@ -2357,7 +2400,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     : existingTask.assignees;
   const primaryAssignee = assignees?.[assignees.length - 1];
   const assignedProfileId = await getProfileIdByEmail(primaryAssignee?.email);
-  const relationalStatus = nextStatus === 'done' ? 'complete' : nextStatus === 'busy' ? 'in_progress' : nextStatus === 'pending' ? 'not_started' : nextStatus === 'open' ? 'waiting' : 'not_started';
+  const relationalStatus = taskStatusToDatabase(nextStatus);
   const relationalPriority = 'normal'; // Default priority for updates
   const completedBy = relationalStatus === 'complete' ? await getCurrentProfileId() : null;
   if (relationalStatus === 'complete' && !completedBy) {
@@ -2387,12 +2430,10 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     : existingProject.currentStage;
 
   // Keep the legacy JSON task source in sync while relational workspaces are rolled out.
-  const branchId = existingProject.branchId || existingProject.branch;
   const { data: workspaceData } = await client
     .from('rebrand_workspaces')
     .select('id')
-    .eq('branch_id', branchId)
-    .eq('is_primary', true)
+    .eq('id', existingProject.workspaceId)
     .maybeSingle();
 
   if (workspaceData?.id) {
@@ -2407,6 +2448,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
       completed_by: completedBy,
       responsible_person_id: assignedProfileId,
       waiting_reason: relationalStatus === 'waiting' ? (existingTask.installationRequest || 'Waiting for details') : null,
+      blocker_reason: relationalStatus === 'blocked' ? (existingTask.installationRequest || 'Blocked') : null,
     };
     const { data: updatedTask, error: updateError } = await client
       .from('project_tasks')
@@ -2419,6 +2461,18 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     if (updateError || !updatedTask) {
       throw new Error(updateError?.message ?? 'Unable to update project task. The task may be read-only or no longer exists.');
     }
+
+    await recordProjectActivity({
+      eventType: 'task_status_changed',
+      entityType: 'project_task',
+      entityId: input.taskId,
+      workspaceId: workspaceData.id,
+      projectId: input.projectId,
+      taskId: input.taskId,
+      oldValues: { status: existingTask.status },
+      newValues: { status: nextStatus, assignee_id: assignedProfileId },
+      metadata: { actor: input.actor },
+    });
   }
 
   // Record activity
@@ -2484,7 +2538,9 @@ export async function upsertProjectStageTask(input: UpsertProjectStageTaskInput)
   }
 
   const now = new Date().toISOString();
-  const existingTask = existingProject.tasks.find((task) => task.stage === input.stage);
+  const existingTask = input.taskId
+    ? existingProject.tasks.find((task) => task.id === input.taskId)
+    : undefined;
   const completed = input.completed ?? existingTask?.completed ?? false;
   const assignees = input.assignees !== undefined
     ? (input.assignees.length > 0 ? input.assignees : undefined)
@@ -2635,7 +2691,7 @@ export async function renameProjectFile(input: RenameProjectFileInput): Promise<
   if (relationalFile?.id && existingProject.workspaceId) {
     const { error } = await client.from('project_files').update({ display_name: nextName, updated_at: new Date().toISOString() }).eq('id', relationalFile.id).is('deleted_at', null);
     if (error) throw error;
-    await recordProjectFileActivity(existingProject.workspaceId, 'file_renamed', relationalFile.id, input.actor, { from: input.currentName, to: nextName });
+    await recordProjectFileActivity(input.projectId, existingProject.workspaceId, 'file_updated', relationalFile.id, relationalFile.taskId, { action: 'renamed', actor: input.actor, from: input.currentName, to: nextName });
     return getProjectById(input.projectId) as Promise<Project>;
   }
 
@@ -2667,7 +2723,7 @@ export async function deleteProjectFile(input: DeleteProjectFileInput): Promise<
     const deletedBy = await getCurrentProfileId();
     const { error } = await client.from('project_files').update({ deleted_at: new Date().toISOString(), deleted_by: deletedBy, updated_at: new Date().toISOString() }).eq('id', relationalFile.id).is('deleted_at', null);
     if (error) throw error;
-    await recordProjectFileActivity(existingProject.workspaceId, 'file_deleted', relationalFile.id, input.actor, { display_name: input.fileName });
+    await recordProjectFileActivity(input.projectId, existingProject.workspaceId, 'file_updated', relationalFile.id, relationalFile.taskId, { action: 'deleted', actor: input.actor, display_name: input.fileName });
     return getProjectById(input.projectId) as Promise<Project>;
   }
 

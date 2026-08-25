@@ -44,7 +44,7 @@ function byUpdatedAtDesc(a: Project, b: Project) {
 }
 
 function taskStatusLabel(status: ReturnType<typeof getTaskStatus>) {
-  return status === 'done' ? 'Done' : status === 'busy' ? 'Busy' : status === 'pending' ? 'Pending' : 'Open';
+  return status === 'done' ? 'Done' : status === 'busy' ? 'Busy' : status === 'pending' ? 'Pending' : status === 'waiting' ? 'Waiting' : status === 'blocked' ? 'Blocked' : 'Open';
 }
 
 function projectParticipants(project: Project) {

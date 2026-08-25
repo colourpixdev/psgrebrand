@@ -8,7 +8,7 @@ import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import { isTaskOutstanding } from '../utils/taskStatus';
-import type { Branch, Project, ProjectStatus } from '../types/domain';
+import type { Branch, Project, ProjectStatus, TaskItem } from '../types/domain';
 
 type ReportType = 'single-branch-detail' | 'multi-branch-overview' | 'operational-blockers';
 
@@ -25,12 +25,10 @@ const statusLabels: Record<ProjectStatus, string> = {
   cancelled: 'Cancelled',
 };
 
-const taskStatusLabels = { pending: 'Pending', open: 'Started', busy: 'Busy', done: 'Completed' };
+const taskStatusLabels: Record<NonNullable<TaskItem['status']>, string> = { pending: 'Pending', open: 'Started', busy: 'Busy', done: 'Completed', waiting: 'Waiting', blocked: 'Blocked' };
 
 function currentStageTask(project: Project) {
-  const stage = project.currentStage.trim().toLowerCase();
-  return project.tasks.find((task) => (task.stage ?? task.text).trim().toLowerCase() === stage)
-    ?? project.tasks.find((task) => !task.completed);
+  return project.tasks.find((task) => !task.completed) ?? project.tasks[project.tasks.length - 1];
 }
 
 const reportTypes: Array<{ value: ReportType; label: string; description: string }> = [
