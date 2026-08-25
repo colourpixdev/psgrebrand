@@ -869,26 +869,6 @@ export function BranchesPage() {
                       ) : <span className="text-xs text-slate-500">Create a new branch to start another project</span>}
                     </div>
 
-                    {isAdmin ? (
-                      <div className="flex gap-2 lg:justify-end">
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); beginEdit(branch); }}
-                          className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-900"
-                          disabled={saving}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); requestDelete(branch); }}
-                          className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200 transition hover:bg-red-500/20"
-                          disabled={saving}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ) : null}
                   </div>
 
                 </div>
