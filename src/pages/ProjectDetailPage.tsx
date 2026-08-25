@@ -1068,12 +1068,12 @@ export function ProjectDetailPage() {
                   ); }}
                   className="w-full px-4 py-3 text-sm text-slate-200 hover:bg-slate-900/40 transition text-left focus:outline-none focus:ring-2 focus:ring-sky-400/50 rounded-2xl"
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <span className="shrink-0 text-slate-400">{isAccordionExpanded ? '▼' : '▶'}</span>
-                      <span className={`truncate ${taskStatus === 'done' ? 'text-slate-500 line-through' : 'text-slate-200 font-medium'}`}>{task.text}</span>
+                      <span className={`min-w-0 break-words ${taskStatus === 'done' ? 'text-slate-500 line-through' : 'text-slate-200 font-medium'}`}>{task.text}</span>
                     </div>
-                    <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 text-xs text-slate-500">
+                    <div className="flex flex-wrap items-center justify-start gap-2 text-xs text-slate-500 sm:shrink-0 sm:justify-end">
                       <span className="rounded-full bg-white/5 px-2 py-1">{statusLabels[taskStatus]}</span>
                       <span>Started: {task.startedDate || 'Not set'} · Target: {task.dueDate || 'Not set'}</span>
                     </div>
