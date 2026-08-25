@@ -307,7 +307,11 @@ async function hydrateProjectFiles(projects: Project[]): Promise<Project[]> {
     if (!project.workspaceId || project.workspaceId === defaultWorkspace.id) return project;
 
     const files = await getWorkspaceFiles(project.workspaceId);
-    return applyRelationalProjectData(project, { workspaceId: project.workspaceId, files, filesAvailable: files !== null });
+    return applyRelationalProjectData(project, {
+      workspaceId: project.workspaceId,
+      files,
+      filesAvailable: files !== null && (files.length > 0 || project.files.length === 0),
+    });
   }));
 }
 
@@ -1233,7 +1237,11 @@ export async function getProjectById(projectId: string): Promise<Project | undef
     project = applyRelationalProjectData(project, { workspaceId, tasks: relationalTasks.data, tasksAvailable: relationalTasks.available });
 
     const relationalFiles = await getWorkspaceFiles(workspaceId);
-    project = applyRelationalProjectData(project, { workspaceId, files: relationalFiles, filesAvailable: relationalFiles !== null });
+    project = applyRelationalProjectData(project, {
+      workspaceId,
+      files: relationalFiles,
+      filesAvailable: relationalFiles !== null && (relationalFiles.length > 0 || project.files.length === 0),
+    });
   }
 
   return project;
