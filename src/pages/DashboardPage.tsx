@@ -280,7 +280,7 @@ export function DashboardPage() {
             )}
           </section> : null}
 
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+          {!canManageFollowedBranchesForUser ? <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-2">
               <div><h3 className="text-lg font-semibold text-slate-900">My branches</h3><p className="mt-1 text-sm text-slate-600">Branches where you are the marketing coordinator.</p></div>
               <span className="text-sm text-slate-500">{myBranches.length}</span>
@@ -305,7 +305,7 @@ export function DashboardPage() {
             ) : (
               <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">No branches are assigned to you as marketing coordinator.</p>
             )}
-          </section>
+          </section> : null}
 
           <section className="grid grid-cols-2 gap-3 md:grid-cols-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
