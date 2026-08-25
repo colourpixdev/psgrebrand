@@ -763,7 +763,9 @@ export function ProjectDetailPage() {
   const currentStageAssigneeDisplay = currentStageAssigneeNames.length > 0
     ? currentStageAssigneeNames.join(', ')
     : currentStageTask?.assigneeName?.trim() || 'Unassigned';
-  const currentStageFiles = currentStageTask ? selectedProject.files.filter((file) => file.taskId === currentStageTask.id) : [];
+  const currentStageFiles = currentStageTask
+    ? selectedProject.files.filter((file) => !file.taskId || file.taskId === currentStageTask.id)
+    : [];
   const currentStageComments = currentStageTask ? projectComments.filter((comment) => comment.taskId === currentStageTask.id) : [];
   const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
   const isInternalUser = canAdministerProjectDetails;
