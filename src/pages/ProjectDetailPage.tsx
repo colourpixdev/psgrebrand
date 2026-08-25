@@ -937,7 +937,7 @@ export function ProjectDetailPage() {
           </div> : null}
         </section> : null}
 
-        {user && projectHistory.length > 0 ? <div className="mt-4 border-t border-white/10 pt-4">
+        {false && user && projectHistory.length > 0 ? <div className="mt-4 border-t border-white/10 pt-4">
           <div className="flex flex-wrap items-center gap-3">
             <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h4>
             <button type="button" onClick={() => setIsProjectHistoryExpanded((expanded) => !expanded)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">{isProjectHistoryExpanded ? 'Hide' : 'Show'}</button>
@@ -1464,6 +1464,25 @@ export function ProjectDetailPage() {
           onDelete={(file: ProjectFile) => deleteFileMutation.mutate(file)}
           getThumbnailUrl={(file: ProjectFile) => getProjectFileUrl(file)}
         />
+      </section> : null}
+
+      {user && projectHistory.length > 0 ? <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Project history</h3>
+          <button type="button" onClick={() => setIsProjectHistoryExpanded((expanded) => !expanded)} className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-400/20">{isProjectHistoryExpanded ? 'Hide' : 'Show'}</button>
+        </div>
+        {isProjectHistoryExpanded ? <div className="mt-4 space-y-3">
+          {projectHistory.map((item) => (
+            <div key={item.id} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-medium text-white">{item.title}</p>
+                <p className="shrink-0 text-xs text-slate-500">{item.date}</p>
+              </div>
+              {item.author ? <p className="mt-2 text-xs text-cyan-200">{item.author}</p> : null}
+              <p className="mt-2 text-sm text-slate-200">{item.detail}</p>
+            </div>
+          ))}
+        </div> : null}
       </section> : null}
 
     </div>
