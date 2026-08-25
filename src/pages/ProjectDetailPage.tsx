@@ -761,7 +761,12 @@ export function ProjectDetailPage() {
   const displayedStatusTone = statusTones[selectedProject.status];
   const displayedStageStatus = currentStageTaskStatus ? stageStatusLabels[currentStageTaskStatus] : 'Pending';
   const displayedStageStatusTone = currentStageTaskStatus ? stageStatusTones[currentStageTaskStatus] : stageStatusTones.pending;
-  const currentStageAssigneeNames = currentStageTask?.assignees?.map((assignee) => assignee.name).filter(Boolean) ?? [];
+  const currentStageAssigneeNames = currentStageTask
+    ? [
+      ...(currentStageTask.assignees ?? []).map((assignee) => assignee.name),
+      currentStageTask.assigneeName,
+    ].filter((name): name is string => Boolean(name?.trim()))
+    : [];
   const currentStageAssigneeDisplay = currentStageAssigneeNames.length > 0
     ? currentStageAssigneeNames.join(', ')
     : currentStageTask?.assigneeName?.trim() || 'Unassigned';
