@@ -150,6 +150,37 @@ export function DashboardPage() {
     return [...branchById.values()].filter((branch) => followed.has(branch.id) || scopedProjects.some((project) => project.branchId === branch.id && followed.has(project.id)));
   }, [branches, followedProjectIds, scopedProjects]);
 
+  const myBranches = useMemo(() => {
+    const normalizedEmail = user?.email?.trim().toLowerCase();
+    const normalizedName = user?.name?.trim().toLowerCase();
+    const branchById = new Map(branches.map((branch) => [branch.id, branch]));
+
+    scopedProjects.forEach((project) => {
+      const coordinatorMatches = project.managerEmail?.trim().toLowerCase() === normalizedEmail
+        || project.manager?.trim().toLowerCase() === normalizedName;
+      if (!coordinatorMatches || branchById.has(project.branchId)) {
+        return;
+      }
+
+      branchById.set(project.branchId, {
+        id: project.branchId,
+        name: project.branch,
+        division: 'Wealth',
+        province: project.province,
+        town: project.town,
+        physicalAddress: project.physicalAddress,
+        createdAt: project.updatedAt,
+        updatedAt: project.updatedAt,
+      } satisfies Branch);
+    });
+
+    return [...branchById.values()].filter((branch) => scopedProjects.some((project) => {
+      const coordinatorMatches = project.managerEmail?.trim().toLowerCase() === normalizedEmail
+        || project.manager?.trim().toLowerCase() === normalizedName;
+      return project.branchId === branch.id && coordinatorMatches;
+    }));
+  }, [branches, scopedProjects, user]);
+
   const branchList = useMemo(() => {
     const uniqueBranches = [...new Set(scopedProjects.map((project) => project.branch).filter(Boolean))];
     return uniqueBranches.slice(0, 6);
@@ -240,6 +271,33 @@ export function DashboardPage() {
               </div>
             ) : (
               <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Follow branches from the Branches or Projects page to keep them here.</p>
+            )}
+          </section>
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <div><h3 className="text-lg font-semibold text-slate-900">My branches</h3><p className="mt-1 text-sm text-slate-600">Branches where you are the marketing coordinator.</p></div>
+              <span className="text-sm text-slate-500">{myBranches.length}</span>
+            </div>
+            {myBranches.length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {myBranches.map((branch) => {
+                  const project = scopedProjects.find((candidate) => candidate.branchId === branch.id && (candidate.managerEmail?.trim().toLowerCase() === user?.email?.trim().toLowerCase() || candidate.manager?.trim().toLowerCase() === user?.name?.trim().toLowerCase()));
+                  return (
+                    <div key={branch.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <Link to={project ? `/projects/${project.id}` : `/branches/${branch.id}`} className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-slate-900 hover:text-sky-700">{branch.name}</p>
+                          {project ? <p className="mt-1 text-sm text-slate-600">{project.currentStage} · {project.status}</p> : null}
+                        </Link>
+                        <ProjectFollowButton projectId={branch.id} userEmail={user?.email} noun="branch" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">No branches are assigned to you as marketing coordinator.</p>
             )}
           </section>
 
