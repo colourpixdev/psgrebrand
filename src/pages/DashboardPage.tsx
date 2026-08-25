@@ -21,10 +21,19 @@ function greeting() {
   return 'Good evening';
 }
 
-function getAssignedAttentionStage(project: Project, userEmail: string | undefined) {
-  return userEmail
-    ? project.tasks.find((task) => [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)].some((email) => email?.trim().toLowerCase() === userEmail))
-    : undefined;
+function getAssignedAttentionStage(project: Project, userEmail: string | undefined, userName?: string) {
+  const normalizedEmail = userEmail?.trim().toLowerCase();
+  const normalizedName = userName?.trim().toLowerCase();
+  if (!normalizedEmail && !normalizedName) {
+    return undefined;
+  }
+
+  return project.tasks.find((task) => {
+    const emails = [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)];
+    const names = [task.assigneeName, ...(task.assignees ?? []).map((assignee) => assignee.name)];
+    return emails.some((email) => normalizedEmail && email?.trim().toLowerCase() === normalizedEmail)
+      || names.some((name) => normalizedName && name?.trim().toLowerCase() === normalizedName);
+  });
 }
 
 export function DashboardPage() {
@@ -111,7 +120,7 @@ export function DashboardPage() {
   const attentionProjects = useMemo(() => {
     const userEmail = user?.email?.trim().toLowerCase();
     return scopedProjects
-      .filter((project) => Boolean(getAssignedAttentionStage(project, userEmail)))
+      .filter((project) => Boolean(getAssignedAttentionStage(project, userEmail, user?.name)))
       .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
       .slice(0, 5);
   }, [scopedProjects, user]);
@@ -129,7 +138,7 @@ export function DashboardPage() {
   const markTaskDoneMutation = useMutation({
     mutationFn: async (project: Project) => {
       setMarkDoneMessage(null);
-      const assignedTask = getAssignedAttentionStage(project, user?.email?.trim().toLowerCase());
+      const assignedTask = getAssignedAttentionStage(project, user?.email?.trim().toLowerCase(), user?.name);
       if (!assignedTask) {
         throw new Error('This project has no stage assigned to you.');
       }
@@ -247,7 +256,7 @@ export function DashboardPage() {
 
               <div className="space-y-3">
                 {attentionProjects.length > 0 ? attentionProjects.map((project) => {
-                  const assignedTask = getAssignedAttentionStage(project, user?.email?.trim().toLowerCase());
+                  const assignedTask = getAssignedAttentionStage(project, user?.email?.trim().toLowerCase(), user?.name);
                   return (
                     <div key={project.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:border-sky-200 hover:bg-sky-50">
                       <div className="flex items-start justify-between gap-3">
