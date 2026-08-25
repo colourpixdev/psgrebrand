@@ -65,16 +65,32 @@ function findStageTask(tasks: TaskItem[], stage: string) {
   const stageKey = stage.trim().toLowerCase();
   const normalizeStage = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ');
   const normalizedStage = normalizeStage(stage);
-  const exactTask = [...tasks].reverse().find((task) => (task.stage ?? task.text).trim().toLowerCase() === stageKey)
-    ?? [...tasks].reverse().find((task) => task.text.trim().toLowerCase() === stageKey);
-  if (exactTask) {
-    return exactTask;
-  }
-
-  return [...tasks].reverse().find((task) => {
+  const matchingTasks = tasks.filter((task) => {
+    const taskStage = (task.stage ?? task.text).trim().toLowerCase();
+    const taskText = task.text.trim().toLowerCase();
+    return taskStage === stageKey || taskText === stageKey;
+  });
+  const fuzzyTasks = tasks.filter((task) => {
     const taskName = normalizeStage(task.stage ?? task.text);
     return taskName.includes(normalizedStage) || normalizedStage.includes(taskName);
   });
+
+  const candidates = matchingTasks.length > 0 ? matchingTasks : fuzzyTasks;
+  return [...candidates].sort((left, right) => {
+    const leftHasAssignee = Boolean(left.assigneeEmail || left.assigneeName || left.assignees?.length);
+    const rightHasAssignee = Boolean(right.assigneeEmail || right.assigneeName || right.assignees?.length);
+    if (leftHasAssignee !== rightHasAssignee) {
+      return leftHasAssignee ? -1 : 1;
+    }
+
+    const leftIsActive = getTaskStatus(left) !== 'pending';
+    const rightIsActive = getTaskStatus(right) !== 'pending';
+    if (leftIsActive !== rightIsActive) {
+      return leftIsActive ? -1 : 1;
+    }
+
+    return tasks.indexOf(right) - tasks.indexOf(left);
+  })[0];
 }
 
 function findCurrentStageTask(project: Project) {
