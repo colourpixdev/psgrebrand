@@ -75,6 +75,13 @@ type ProjectTaskRow = {
   deleted_at?: string | null;
 };
 
+type TaskAssigneeRow = {
+  task_id: string;
+  name?: string | null;
+  email?: string | null;
+  profile_title?: string | null;
+};
+
 function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
   const status = taskRow.status;
   const completed = status === 'complete';
@@ -112,7 +119,7 @@ async function getWorkspaceTasks(workspaceId: string): Promise<TaskItem[]> {
 
   const { data, error } = await client
     .from('project_tasks')
-    .select('*, responsible_person:profiles!project_tasks_responsible_person_id_fkey(name, email, profile_title)')
+    .select('*')
     .eq('workspace_id', workspaceId)
     .is('deleted_at', null)
     .order('sort_order', { ascending: true });
@@ -121,7 +128,13 @@ async function getWorkspaceTasks(workspaceId: string): Promise<TaskItem[]> {
     return [];
   }
 
-  return (data as ProjectTaskRow[]).map(convertRelationalTaskToTaskItem);
+  const { data: assignees } = await client.rpc('get_rebrand_task_assignees', { workspace_uuid: workspaceId });
+  const assigneeByTaskId = new Map(((assignees ?? []) as TaskAssigneeRow[]).map((assignee) => [assignee.task_id, assignee]));
+
+  return (data as ProjectTaskRow[]).map((taskRow) => convertRelationalTaskToTaskItem({
+    ...taskRow,
+    responsible_person: assigneeByTaskId.get(taskRow.id) ?? null,
+  }));
 }
 
 const projectFilesBucket = 'project-files';
@@ -1100,17 +1113,22 @@ export async function getProjects(): Promise<Project[]> {
           const workspaceIds = workspaces.map((w) => w.id);
           const { data: allTasks } = await client
             .from('project_tasks')
-            .select('*, responsible_person:profiles!project_tasks_responsible_person_id_fkey(name, email, profile_title)')
+            .select('*')
             .in('workspace_id', workspaceIds)
             .is('deleted_at', null)
             .order('sort_order', { ascending: true });
 
           // Group tasks by workspace and map them back to their branch IDs.
+          const assigneeResults = await Promise.all(workspaceIds.map((workspaceId) => client.rpc('get_rebrand_task_assignees', { workspace_uuid: workspaceId })));
+          const assigneeByTaskId = new Map(assigneeResults.flatMap((result) => (result.data ?? []) as TaskAssigneeRow[]).map((assignee) => [assignee.task_id, assignee]));
           const tasksByWorkspace = new Map<string, TaskItem[]>();
           (allTasks ?? []).forEach((taskRow) => {
             const wsId = (taskRow as ProjectTaskRow).workspace_id;
             const tasks = tasksByWorkspace.get(wsId) ?? [];
-            tasks.push(convertRelationalTaskToTaskItem(taskRow as ProjectTaskRow));
+            tasks.push(convertRelationalTaskToTaskItem({
+              ...(taskRow as ProjectTaskRow),
+              responsible_person: assigneeByTaskId.get((taskRow as ProjectTaskRow).id) ?? null,
+            }));
             tasksByWorkspace.set(wsId, tasks);
           });
 
