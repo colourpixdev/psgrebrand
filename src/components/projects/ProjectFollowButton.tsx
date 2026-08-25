@@ -1,16 +1,26 @@
 import { useEffect, useState } from 'react';
 import { getFollowChangedEventName, getFollowedProjectIds, syncFollowedProjects, toggleFollowedProject } from '../../services/projectFollowService';
+import { canManageFollowedBranches } from '../../constants/workspaces';
 
 export function ProjectFollowButton({ projectId, legacyProjectIds = [], userEmail, noun = 'project', unfollowOnly = false }: { projectId: string; legacyProjectIds?: string[]; userEmail?: string; noun?: 'project' | 'branch'; unfollowOnly?: boolean }) {
+  const canManageFollowedBranchesForUser = canManageFollowedBranches(userEmail);
   const isTracked = (ids: string[]) => ids.some((id) => getFollowedProjectIds(userEmail).includes(id));
   const [isFollowed, setIsFollowed] = useState(() => isTracked([projectId, ...legacyProjectIds]));
 
   useEffect(() => {
+    if (!canManageFollowedBranchesForUser) {
+      return undefined;
+    }
+
     const refresh = () => setIsFollowed(isTracked([projectId, ...legacyProjectIds]));
     void syncFollowedProjects(userEmail).then(refresh);
     window.addEventListener(getFollowChangedEventName(), refresh);
     return () => window.removeEventListener(getFollowChangedEventName(), refresh);
-  }, [legacyProjectIds, projectId, userEmail]);
+  }, [canManageFollowedBranchesForUser, legacyProjectIds, projectId, userEmail]);
+
+  if (!canManageFollowedBranchesForUser) {
+    return null;
+  }
 
   if (unfollowOnly && !isFollowed) {
     return null;

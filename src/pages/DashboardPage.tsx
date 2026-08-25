@@ -7,6 +7,7 @@ import { getProjects, updateProjectTask } from '../services/portalService';
 import { getFollowChangedEventName, getFollowedProjectIds, syncFollowedProjects } from '../services/projectFollowService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
+import { canManageFollowedBranches } from '../constants/workspaces';
 import type { Branch, Project } from '../types/domain';
 
 
@@ -55,7 +56,12 @@ export function DashboardPage() {
   } = useQuery({ queryKey: ['projects'], queryFn: getProjects, refetchInterval: 10000, refetchOnWindowFocus: true });
 
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
+  const canManageFollowedBranchesForUser = canManageFollowedBranches(user?.email);
   useEffect(() => {
+    if (!canManageFollowedBranchesForUser) {
+      return undefined;
+    }
+
     const refreshFollowedProjects = () => setFollowedProjectIds(getFollowedProjectIds(user?.email));
     const syncFromServer = () => void syncFollowedProjects(user?.email).then(setFollowedProjectIds);
     refreshFollowedProjects();
@@ -70,7 +76,7 @@ export function DashboardPage() {
       document.removeEventListener('visibilitychange', syncFromServer);
       window.clearInterval(refreshInterval);
     };
-  }, [user?.email]);
+  }, [canManageFollowedBranchesForUser, user?.email]);
   const isLoading = isLoadingBranches || isLoadingProjects;
   const loadError = isBranchesError ? branchesError : isProjectsError ? projectsError : null;
   const isInternalManagement = user ? ['colourpix_admin', 'psg_head_office'].includes(user.role) : true;
@@ -245,7 +251,7 @@ export function DashboardPage() {
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">Loading dashboard...</div>
       ) : (
         <>
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+          {canManageFollowedBranchesForUser ? <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-2">
               <div><h3 className="text-lg font-semibold text-slate-900">Followed branches</h3><p className="mt-1 text-sm text-slate-600">Branches you are tracking appear here.</p></div>
               <span className="text-sm text-slate-500">{followedBranches.length} tracked</span>
@@ -272,7 +278,7 @@ export function DashboardPage() {
             ) : (
               <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Follow branches from the Branches or Projects page to keep them here.</p>
             )}
-          </section>
+          </section> : null}
 
           <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-2">
