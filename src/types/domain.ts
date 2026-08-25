@@ -122,6 +122,7 @@ export type TaskStatus = 'pending' | 'open' | 'busy' | 'done' | 'waiting' | 'blo
 
 export interface TaskItem {
   id: string;
+  legacyTaskId?: string;
   text: string;
   completed: boolean;
   status?: TaskStatus;

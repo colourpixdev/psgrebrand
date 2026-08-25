@@ -1043,8 +1043,16 @@ function applyRelationalProjectData(project: Project, data: RelationalProjectDat
   project.tasks.forEach((legacyTask) => {
     const legacyTaskIndex = unmatchedTasks.findIndex((task) => task.text.trim().toLowerCase() === legacyTask.text.trim().toLowerCase());
     if (legacyTaskIndex >= 0) {
-      legacyTaskIdToRelationalId.set(legacyTask.id, unmatchedTasks[legacyTaskIndex].id);
+      const relationalTask = unmatchedTasks[legacyTaskIndex];
+      legacyTaskIdToRelationalId.set(legacyTask.legacyTaskId ?? legacyTask.id, relationalTask.id);
+      relationalTask.legacyTaskId = legacyTask.legacyTaskId ?? legacyTask.id;
       unmatchedTasks.splice(legacyTaskIndex, 1);
+    }
+  });
+
+  nextTasks.forEach((task) => {
+    if (task.legacyTaskId) {
+      legacyTaskIdToRelationalId.set(task.legacyTaskId, task.id);
     }
   });
 
