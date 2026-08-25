@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ProjectFollowButton } from '../components/projects/ProjectFollowButton';
 import { getAllBranches } from '../services/branchService';
 import { getProjects, updateProjectTask } from '../services/portalService';
-import { getFollowChangedEventName, getFollowedProjectIds } from '../services/projectFollowService';
+import { getFollowChangedEventName, getFollowedProjectIds, syncFollowedProjects } from '../services/projectFollowService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
 import type { Project } from '../types/domain';
@@ -49,6 +49,7 @@ export function DashboardPage() {
   useEffect(() => {
     const refreshFollowedProjects = () => setFollowedProjectIds(getFollowedProjectIds(user?.email));
     refreshFollowedProjects();
+    void syncFollowedProjects(user?.email).then(setFollowedProjectIds);
     window.addEventListener(getFollowChangedEventName(), refreshFollowedProjects);
     return () => window.removeEventListener(getFollowChangedEventName(), refreshFollowedProjects);
   }, [user?.email]);
@@ -108,7 +109,7 @@ export function DashboardPage() {
 
   const followedProjects = useMemo(() => {
     const followed = new Set(followedProjectIds);
-    return scopedProjects.filter((project) => followed.has(project.id));
+    return scopedProjects.filter((project) => followed.has(project.id) || followed.has(project.branchId));
   }, [followedProjectIds, scopedProjects]);
 
   const branchList = useMemo(() => {

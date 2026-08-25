@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import { getFollowChangedEventName, getFollowedProjectIds, toggleFollowedProject } from '../../services/projectFollowService';
+import { getFollowChangedEventName, getFollowedProjectIds, syncFollowedProjects, toggleFollowedProject } from '../../services/projectFollowService';
 
-export function ProjectFollowButton({ projectId, userEmail, noun = 'project', unfollowOnly = false }: { projectId: string; userEmail?: string; noun?: 'project' | 'branch'; unfollowOnly?: boolean }) {
-  const [isFollowed, setIsFollowed] = useState(() => getFollowedProjectIds(userEmail).includes(projectId));
+export function ProjectFollowButton({ projectId, legacyProjectIds = [], userEmail, noun = 'project', unfollowOnly = false }: { projectId: string; legacyProjectIds?: string[]; userEmail?: string; noun?: 'project' | 'branch'; unfollowOnly?: boolean }) {
+  const isTracked = (ids: string[]) => ids.some((id) => getFollowedProjectIds(userEmail).includes(id));
+  const [isFollowed, setIsFollowed] = useState(() => isTracked([projectId, ...legacyProjectIds]));
 
   useEffect(() => {
-    const refresh = () => setIsFollowed(getFollowedProjectIds(userEmail).includes(projectId));
+    const refresh = () => setIsFollowed(isTracked([projectId, ...legacyProjectIds]));
+    void syncFollowedProjects(userEmail).then(refresh);
     window.addEventListener(getFollowChangedEventName(), refresh);
     return () => window.removeEventListener(getFollowChangedEventName(), refresh);
-  }, [projectId, userEmail]);
+  }, [legacyProjectIds, projectId, userEmail]);
 
   if (unfollowOnly && !isFollowed) {
     return null;
@@ -21,7 +23,7 @@ export function ProjectFollowButton({ projectId, userEmail, noun = 'project', un
       aria-label={unfollowOnly ? `Unfollow ${noun}` : isFollowed ? `Remove ${noun} from dashboard` : `Add ${noun} to dashboard`}
       onClick={(event) => {
         event.stopPropagation();
-        setIsFollowed(toggleFollowedProject(userEmail, projectId));
+        void toggleFollowedProject(userEmail, projectId, legacyProjectIds).then(setIsFollowed);
       }}
       className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${unfollowOnly ? 'border-red-200 bg-white text-red-700 hover:border-red-300 hover:bg-red-50' : isFollowed ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-slate-300 bg-white text-slate-600 hover:border-sky-300 hover:text-sky-700'}`}
     >
