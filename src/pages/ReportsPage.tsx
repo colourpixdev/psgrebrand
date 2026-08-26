@@ -115,7 +115,6 @@ function projectSpreadsheetRows(projects: Project[]) {
       project.id,
       project.branch,
       project.town,
-      project.province,
       project.manager,
       formatReportDate(project.projectStartDate ?? ''),
       formatReportDate(project.targetDate),
@@ -133,11 +132,11 @@ function projectSpreadsheetRows(projects: Project[]) {
 
 async function downloadExcel(projects: Project[], reportName: string) {
   const XLSX = await import('xlsx-js-style');
-  const headers = ['Branch reference', 'Branch', 'Town', 'Province', 'Manager', 'Project Start Date', 'Project Target Completion', 'Stage', 'Stage Status', 'Stage Start Date', 'Stage Target Date', 'Pending tasks', 'Files', 'Participants', 'Updated'];
+  const headers = ['Branch reference', 'Branch', 'Town', 'Manager', 'Project Start Date', 'Project Target Completion', 'Stage', 'Stage Status', 'Stage Start Date', 'Stage Target Date', 'Pending tasks', 'Files', 'Participants', 'Updated'];
   const rows = projectSpreadsheetRows(projects);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   worksheet['!cols'] = [
-    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 10 }, { wch: 42 }, { wch: 22 },
+    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 10 }, { wch: 42 }, { wch: 22 },
   ];
   worksheet['!rows'] = [{ hpt: 30 }, ...rows.map(() => ({ hpt: 24 }))];
   worksheet['!autofilter'] = { ref: `A1:M${rows.length + 1}` };
@@ -202,7 +201,7 @@ function branchDetailHtml(projects: Project[], reportName: string, branchName: s
       <section class="card">
         <h2>${escapeHtml(project.id)} - ${escapeHtml(project.projectTypeName)}</h2>
         <p><strong>Stage:</strong> ${escapeHtml(project.currentStage)} | <strong>Status:</strong> ${escapeHtml(statusLabels[project.status])}</p>
-        <p><strong>Address:</strong> ${escapeHtml(project.physicalAddress || `${project.town}, ${project.province}`)}</p>
+        <p><strong>Address:</strong> ${escapeHtml(project.physicalAddress || project.town)}</p>
         <p><strong>Manager:</strong> ${escapeHtml(project.manager || 'Not assigned')}</p>
         <p><strong>Pending tasks:</strong> ${escapeHtml(pendingTasks.length)}</p>
         <ul>
@@ -270,12 +269,11 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
           <p class="meta">${projects.length} project${projects.length === 1 ? '' : 's'} · Generated ${escapeHtml(new Date().toLocaleDateString())}</p>
         </header>
         <table>
-            <thead><tr>${['Project ID', 'Branch', 'Town', 'Province', 'Manager', 'Project Start Date', 'Project Target Completion', 'Stage', 'Stage Status', 'Stage Start Date', 'Stage Target Date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+            <thead><tr>${['Project ID', 'Branch', 'Town', 'Manager', 'Project Start Date', 'Project Target Completion', 'Stage', 'Stage Status', 'Stage Start Date', 'Stage Target Date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
               <tbody>${projects.map((project) => { const stageTask = currentStageTask(project); return `<tr>${[
       project.id,
       project.branch,
       project.town,
-      project.province,
       project.manager,
       project.projectStartDate ?? '',
       project.targetDate,
@@ -302,7 +300,6 @@ export function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>('multi-branch-overview');
   const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
   const [branchName, setBranchName] = useState('all');
-  const [province, setProvince] = useState('all');
   const [completion, setCompletion] = useState<'all' | 'completed' | 'outstanding'>('all');
   const [marketingCoordinator, setMarketingCoordinator] = useState('all');
   const [query, setQuery] = useState('');
@@ -323,7 +320,6 @@ export function ReportsPage() {
   const selectedReport = reportTypes.find((report) => report.value === reportType) ?? reportTypes[0];
   const normalizedQuery = query.trim().toLowerCase();
   const availableBranches = useMemo(() => uniqueSorted(scopedProjects.map((project) => project.branch)), [scopedProjects]);
-  const availableProvinces = useMemo(() => uniqueSorted(scopedProjects.map((project) => project.province)), [scopedProjects]);
   const branchByProject = useMemo(() => new Map<string, Branch>(branches.map((branch) => [branch.id, branch])), [branches]);
   const getProjectBranch = (project: Project) => branchByProject.get(project.branchId) ?? branches.find((branch) => branch.name === project.branch);
   const availableMarketingCoordinators = useMemo(() => uniqueSorted(users.filter((item) => item.role === 'psg_user').map((item) => item.name)), [users]);
@@ -340,7 +336,6 @@ export function ReportsPage() {
       project.id,
       project.branch,
       project.town,
-      project.province,
       project.manager,
       project.currentStage,
       project.status,
@@ -355,10 +350,6 @@ export function ReportsPage() {
     }
 
     if (branchName !== 'all' && project.branch !== branchName) {
-      return false;
-    }
-
-    if (province !== 'all' && project.province !== province) {
       return false;
     }
 
@@ -379,7 +370,7 @@ export function ReportsPage() {
     }
 
     return true;
-  }), [branchName, completion, getProjectBranch, marketingCoordinator, normalizedQuery, province, reportType, scopedProjects, status]);
+  }), [branchName, completion, getProjectBranch, marketingCoordinator, normalizedQuery, reportType, scopedProjects, status]);
 
   const displayedProjects = useMemo(() => {
     if (reportType === 'single-branch-detail') {
@@ -430,14 +421,6 @@ export function ReportsPage() {
             <select value={status} onChange={(event) => setStatus(event.target.value as ProjectStatus | 'all')} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
               <option value="all">All statuses</option>
               {(['on_schedule', 'completed', 'delayed'] as const).map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}
-            </select>
-          </label>
-
-          <label className="grid gap-2 text-sm text-slate-300">
-            Province
-            <select value={province} onChange={(event) => setProvince(event.target.value)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
-              <option value="all">All provinces</option>
-              {availableProvinces.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
 
@@ -522,7 +505,6 @@ export function ReportsPage() {
             <thead className="bg-white/5 text-xs uppercase tracking-[0.18em] text-slate-400">
               <tr>
                 <th className="px-5 py-4 font-medium">Branch</th>
-                <th className="px-5 py-4 font-medium">Province</th>
                 <th className="px-5 py-4 font-medium">Project Start Date</th>
                 <th className="px-5 py-4 font-medium">Project Target Completion</th>
                 <th className="px-5 py-4 font-medium">Stage</th>
@@ -534,12 +516,11 @@ export function ReportsPage() {
             </thead>
             <tbody className="divide-y divide-white/10">
               {isLoading ? (
-                <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
+                <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
                   {(() => { const stageTask = currentStageTask(project); return <>
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
-                  <td className="px-5 py-4">{project.province}</td>
                   <td className="px-5 py-4">{project.projectStartDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.targetDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.currentStage}</td>
@@ -550,7 +531,7 @@ export function ReportsPage() {
                   </>; })()}
                 </tr>
               )) : (
-                <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-400">No projects match the selected filters.</td></tr>
+                <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-400">No projects match the selected filters.</td></tr>
               )}
             </tbody>
           </table>
