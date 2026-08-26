@@ -65,6 +65,8 @@ type BranchRow = {
   contact_email?: string | null;
   contact_phone?: string | null;
   contacts?: ContactPerson[] | null;
+  marketing_coordinator_name?: string | null;
+  marketing_coordinator_email?: string | null;
   created_at: string;
   updated_at: string;
   archived_at?: string | null;
@@ -93,6 +95,8 @@ function rowToBranch(row: BranchRow): Branch {
     contactEmail: row.contact_email ?? undefined,
     contactPhone: row.contact_phone ?? undefined,
     contacts: Array.isArray(row.contacts) ? row.contacts : undefined,
+    marketingCoordinatorName: row.marketing_coordinator_name ?? undefined,
+    marketingCoordinatorEmail: row.marketing_coordinator_email ?? undefined,
     createdAt: row.created_at ?? new Date().toISOString(),
     updatedAt: row.updated_at ?? new Date().toISOString(),
     archivedAt: row.archived_at ?? undefined,
@@ -249,6 +253,8 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
     contact_email: syncedContactFields.contactEmail,
     contact_phone: syncedContactFields.contactPhone,
     contacts: input.contacts ?? [],
+    marketing_coordinator_name: input.marketingCoordinatorName?.trim() || null,
+    marketing_coordinator_email: input.marketingCoordinatorEmail?.trim() || null,
   };
 
   const code = input.code?.trim();

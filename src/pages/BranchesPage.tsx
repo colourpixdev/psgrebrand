@@ -136,6 +136,7 @@ export function BranchesPage() {
     contactPhone: '',
     contactDesignation: '',
     contacts: [] as ContactPerson[],
+    marketingCoordinatorEmail: '',
   });
   const location = useLocation();
   const navigate = useNavigate();
@@ -288,6 +289,7 @@ export function BranchesPage() {
       contactPhone: primaryContact?.phone ?? branch.contactPhone ?? '',
       contactDesignation: primaryContact?.designation ?? '',
       contacts: getAdditionalBranchContacts(branch),
+      marketingCoordinatorEmail: branch.marketingCoordinatorEmail ?? '',
     });
     setError(null);
     setSuccessMessage(null);
@@ -311,6 +313,7 @@ export function BranchesPage() {
       contactPhone: '',
       contactDesignation: '',
       contacts: [],
+      marketingCoordinatorEmail: '',
     });
   }
 
@@ -349,6 +352,8 @@ export function BranchesPage() {
           }] : []),
           ...editData.contacts.filter((contact) => contact.name.trim()),
         ],
+        marketingCoordinatorName: editData.marketingCoordinatorEmail ? users.find((item) => item.email === editData.marketingCoordinatorEmail)?.name ?? null : null,
+        marketingCoordinatorEmail: editData.marketingCoordinatorEmail || null,
       });
 
       const updatedName = editData.name;
@@ -836,6 +841,20 @@ export function BranchesPage() {
 
                     <div className="mt-4">
                       <ParticipantFields contacts={editData.contacts} onChange={(contacts) => setEditData({ ...editData, contacts })} />
+
+                      <label className="mb-6 grid gap-2 text-sm font-medium text-slate-300">
+                        Marketing coordinator
+                        <select
+                          value={editData.marketingCoordinatorEmail}
+                          onChange={(event) => setEditData({ ...editData, marketingCoordinatorEmail: event.target.value })}
+                          className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
+                        >
+                          <option value="">Unassigned</option>
+                          {users.filter((item) => item.role === 'psg_user').map((item) => (
+                            <option key={item.email} value={item.email}>{item.name} · {item.email}</option>
+                          ))}
+                        </select>
+                      </label>
                     </div>
 
                     <div className="mt-4 flex gap-2">

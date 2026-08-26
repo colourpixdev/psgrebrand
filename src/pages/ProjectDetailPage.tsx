@@ -290,6 +290,8 @@ export function ProjectDetailPage() {
           contactEmail: contacts[0]?.email?.trim() || null,
           contactPhone: contacts[0]?.phone?.trim() || null,
           contacts,
+          marketingCoordinatorName: users.find((item) => item.email.toLowerCase() === marketingCoordinatorEmailDraft.toLowerCase())?.name ?? null,
+          marketingCoordinatorEmail: marketingCoordinatorEmailDraft.trim() || null,
         }),
         updateProjectSummary({
           projectId: projectId ?? '',

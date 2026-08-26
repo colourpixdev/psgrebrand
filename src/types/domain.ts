@@ -66,6 +66,8 @@ export interface Branch {
   contactEmail?: string;
   contactPhone?: string;
   contacts?: ContactPerson[];
+  marketingCoordinatorName?: string;
+  marketingCoordinatorEmail?: string;
   createdAt: string;
   updatedAt: string;
   archivedAt?: string;

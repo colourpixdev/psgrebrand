@@ -165,32 +165,13 @@ export function DashboardPage() {
     const normalizedName = user?.name?.trim().toLowerCase();
     const branchById = new Map(branches.map((branch) => [branch.id, branch]));
 
-    const isAllocatedToUser = (project: Project) => {
-      return project.managerEmail?.trim().toLowerCase() === normalizedEmail
-        || project.manager?.trim().toLowerCase() === normalizedName;
+    const isAllocatedToUser = (branch: Branch) => {
+      return branch.marketingCoordinatorEmail?.trim().toLowerCase() === normalizedEmail
+        || branch.marketingCoordinatorName?.trim().toLowerCase() === normalizedName;
     };
 
-    scopedProjects.forEach((project) => {
-      if (!isAllocatedToUser(project) || branchById.has(project.branchId)) {
-        return;
-      }
-
-      branchById.set(project.branchId, {
-        id: project.branchId,
-        name: project.branch,
-        division: 'Wealth',
-        province: project.province,
-        town: project.town,
-        physicalAddress: project.physicalAddress,
-        createdAt: project.updatedAt,
-        updatedAt: project.updatedAt,
-      } satisfies Branch);
-    });
-
-    return [...branchById.values()].filter((branch) => scopedProjects.some((project) => {
-      return project.branchId === branch.id && isAllocatedToUser(project);
-    }));
-  }, [branches, scopedProjects, user]);
+    return [...branchById.values()].filter(isAllocatedToUser);
+  }, [branches, user]);
 
   const branchList = useMemo(() => {
     const uniqueBranches = [...new Set(scopedProjects.map((project) => project.branch).filter(Boolean))];
