@@ -157,21 +157,17 @@ export function DashboardPage() {
   }, [branches, followedProjectIds, scopedProjects]);
 
   const myBranches = useMemo(() => {
+    if (user?.role !== 'psg_user') {
+      return [];
+    }
+
     const normalizedEmail = user?.email?.trim().toLowerCase();
     const normalizedName = user?.name?.trim().toLowerCase();
     const branchById = new Map(branches.map((branch) => [branch.id, branch]));
 
     const isAllocatedToUser = (project: Project) => {
-      const coordinatorMatches = project.managerEmail?.trim().toLowerCase() === normalizedEmail
+      return project.managerEmail?.trim().toLowerCase() === normalizedEmail
         || project.manager?.trim().toLowerCase() === normalizedName;
-      const assignedToStage = project.tasks.some((task) => {
-        const emails = [task.assigneeEmail, ...(task.assignees ?? []).map((assignee) => assignee.email)];
-        const names = [task.assigneeName, ...(task.assignees ?? []).map((assignee) => assignee.name)];
-        return emails.some((email) => normalizedEmail && email?.trim().toLowerCase() === normalizedEmail)
-          || names.some((name) => normalizedName && name?.trim().toLowerCase() === normalizedName);
-      });
-
-      return coordinatorMatches || assignedToStage;
     };
 
     scopedProjects.forEach((project) => {
@@ -291,7 +287,7 @@ export function DashboardPage() {
 
           <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-2">
-              <div><h3 className="text-lg font-semibold text-slate-900">Branches allocated to me</h3><p className="mt-1 text-sm text-slate-600">Branches where you coordinate the project or are assigned to a stage.</p></div>
+              <div><h3 className="text-lg font-semibold text-slate-900">Branches allocated to me</h3><p className="mt-1 text-sm text-slate-600">Branches where you are the marketing coordinator.</p></div>
               <span className="text-sm text-slate-500">{myBranches.length}</span>
             </div>
             {myBranches.length > 0 ? (
