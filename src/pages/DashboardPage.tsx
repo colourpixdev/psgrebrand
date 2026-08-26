@@ -81,48 +81,6 @@ export function DashboardPage() {
   const loadError = isBranchesError ? branchesError : isProjectsError ? projectsError : null;
   const isInternalManagement = user ? ['colourpix_admin', 'psg_head_office'].includes(user.role) : true;
 
-  const stats = useMemo(() => {
-    const total = scopedProjects.length;
-
-    const completed = scopedProjects.filter((project) => project.status === 'completed').length;
-    const atRisk = scopedProjects.filter((project) => project.status === 'delayed' || project.status === 'on_hold').length;
-    const awaitingApproval = scopedProjects.filter((project) =>
-      project.status === 'awaiting_approval' || project.currentStage === 'Awaiting Approval'
-    ).length;
-
-    const notStarted = scopedProjects.filter((project) => {
-      if (project.status === 'completed' || project.status === 'delayed' || project.status === 'on_hold') {
-        return false;
-      }
-
-      if (project.status === 'awaiting_approval' || project.currentStage === 'Awaiting Approval') {
-        return false;
-      }
-
-      return project.currentStage === 'New Project';
-    }).length;
-
-    const inProgress = scopedProjects.filter((project) => {
-      if (project.status === 'completed' || project.status === 'delayed' || project.status === 'on_hold') {
-        return false;
-      }
-
-      if (project.status === 'awaiting_approval' || project.currentStage === 'Awaiting Approval') {
-        return false;
-      }
-
-      if (project.currentStage === 'New Project') {
-        return false;
-      }
-
-      return true;
-    }).length;
-
-    const installationsToday = scopedProjects.filter((project) => project.installationDate && project.installationDate.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
-
-    return { total, completed, inProgress, atRisk, notStarted, awaitingApproval, installationsToday };
-  }, [scopedProjects]);
-
   const attentionProjects = useMemo(() => {
     const userEmail = user?.email?.trim().toLowerCase();
     return scopedProjects
@@ -291,33 +249,6 @@ export function DashboardPage() {
             ) : (
               <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">No branches are assigned to you as marketing coordinator.</p>
             )}
-          </section>
-
-          <section className="grid grid-cols-2 gap-3 md:grid-cols-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Total branches</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{stats.total}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Completed</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{stats.completed}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">In progress</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{stats.inProgress}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">At risk</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{stats.atRisk}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Not started</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{stats.notStarted}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Awaiting approval</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{stats.awaitingApproval}</p>
-            </div>
           </section>
 
           <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
