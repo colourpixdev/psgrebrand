@@ -773,7 +773,6 @@ export function ProjectDetailPage() {
     .filter((item, index, items) => items.findIndex((candidate) => candidate.date === item.date && candidate.title === item.title && candidate.author === item.author && candidate.detail === item.detail) === index)
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
     .slice(0, 12);
-  const completedStageCount = stagePlan.filter((stage) => selectedProject.tasks.some((task) => (task.stage ?? task.text).trim() === stage && task.completed)).length;
   const branchParticipants = branch?.contacts?.filter((contact) => contact.name?.trim() || contact.email?.trim() || contact.phone?.trim()).length
     ? branch.contacts.filter((contact) => contact.name?.trim() || contact.email?.trim() || contact.phone?.trim())
     : branch?.contactName
@@ -1317,25 +1316,6 @@ export function ProjectDetailPage() {
 
         </div>
       </section>
-
-      <div className="mt-6 border-t border-white/10 pt-5">
-        <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
-          <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Stage checklist</p><span className="text-xs text-slate-400">{completedStageCount} of {stagePlan.length} stages</span></div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {selectedProject.tasks.length > 0 ? selectedProject.tasks.map((stageTask) => {
-              const stage = stageTask.stage ?? stageTask.text;
-              const taskStatus = getTaskStatus(stageTask);
-              const current = stageTask.id === currentStageTask?.id;
-              return (
-                <div key={stageTask.id} className={`flex flex-wrap items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold ${taskStatus === 'done' ? 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100' : current ? 'border-cyan-300/50 bg-cyan-400/20 text-cyan-100' : 'border-white/10 bg-white/5 text-slate-300'}`}>
-                  <button type="button" onClick={() => setExpandedAccordionTaskIds((currentIds) => currentIds.includes(stageTask.id) ? currentIds.filter((id) => id !== stageTask.id) : [...currentIds, stageTask.id])} className="text-white hover:underline">{taskStatus === 'done' ? '✓ ' : current ? '● ' : '○ '}{stage}</button>
-                  {canCurrentUserCompleteTask(stageTask) ? <select value={taskStatus === 'open' || taskStatus === 'waiting' ? 'blocked' : taskStatus} disabled={updateTaskMutation.isPending} onChange={(event) => updateTaskMutation.mutate({ task: stageTask, status: event.target.value as TaskItem['status'] })} aria-label={`Status for ${stage}`} className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px] font-semibold text-white outline-none"><option value="pending">Pending</option><option value="busy">Busy</option><option value="blocked">Delayed</option><option value="done">Completed</option></select> : <span className="rounded-lg border border-white/10 bg-slate-950/40 px-1.5 py-1 text-[11px]">{stageStatusLabels[taskStatus]}</span>}
-                </div>
-              );
-            }) : <p className="w-full rounded-xl border border-dashed border-white/15 bg-slate-950/40 p-3 text-xs text-slate-400">No stages yet. Add the first stage below to begin tracking this branch.</p>}
-          </div>
-        </div>
-      </div>
 
       {false && <section>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
