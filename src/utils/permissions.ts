@@ -440,6 +440,11 @@ export function canViewProject(user: UserRecord | null | undefined, project: Pro
     return true;
   }
 
+  // PSG users can read project stages, updates, and files without being assigned to a stage.
+  if (normalizeRole(user.role) === 'psg_user') {
+    return true;
+  }
+
   const normalizedUserEmail = (user.email ?? '').trim().toLowerCase();
   const normalizedBranch = (user.branch ?? '').trim().toLowerCase();
   const projectBranch = (project.branch ?? '').trim().toLowerCase();
