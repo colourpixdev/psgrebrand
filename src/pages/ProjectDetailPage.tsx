@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { FileGrid } from '../components/uploads/FileGrid';
 import { DatePickerInput } from '../components/DatePickerInput';
 import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectActivity, deleteProjectComment, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectActivity, updateProjectComment, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
 import { getBranchById, updateBranch } from '../services/branchService';
@@ -1462,24 +1461,6 @@ export function ProjectDetailPage() {
         </div>
 
       </section>}
-
-      <section>
-        <FileGrid
-          files={selectedProject.files}
-          taskFolders={selectedProject.tasks.map((task) => ({ id: task.id, label: task.text }))}
-          isUploading={uploadMutation.isPending || previewMutation.isPending || downloadMutation.isPending}
-          uploadError={fileError instanceof Error ? fileError.message : null}
-          canUpload={canUploadFiles}
-          canDelete={canDeleteFiles}
-          canRename={canRenameProjectFiles}
-          onUpload={(files, taskId) => { void uploadFiles(files, taskId); }}
-          onPreview={(file: ProjectFile) => previewMutation.mutate(file)}
-          onDownload={(file: ProjectFile) => downloadMutation.mutate(file)}
-          onRename={(file: ProjectFile, nextName) => renameFileMutation.mutate({ file, nextName })}
-          onDelete={(file: ProjectFile) => deleteFileMutation.mutate(file)}
-          getThumbnailUrl={(file: ProjectFile) => getProjectFileUrl(file)}
-        />
-      </section>
 
       {user && projectHistory.length > 0 ? <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
         <div className="flex flex-wrap items-center gap-3">
