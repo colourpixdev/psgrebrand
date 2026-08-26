@@ -168,6 +168,7 @@ const allowedProjectFileTypes = new Set([
   'image/vnd.dwg',
   'image/x-dwg',
 ]);
+const allowedProjectFileExtensions = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'webp', 'dwg', 'ai']);
 const allowedVoiceUpdateTypes = new Set([
   'audio/aac',
   'audio/m4a',
@@ -336,7 +337,8 @@ function validateProjectFile(file: File) {
     throw new Error('File is too large. Upload files up to 25 MB.');
   }
 
-  if (file.type && !allowedProjectFileTypes.has(file.type)) {
+  const extension = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() : undefined;
+  if (!allowedProjectFileExtensions.has(extension ?? '') || file.type && !allowedProjectFileTypes.has(file.type) && file.type !== 'application/octet-stream') {
     throw new Error('Unsupported file type. Upload PDF, DOCX, XLSX, JPG, PNG, DWG, or AI files.');
   }
 }
