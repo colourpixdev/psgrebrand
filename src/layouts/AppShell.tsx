@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { LogOut } from 'lucide-react';
@@ -19,9 +19,26 @@ interface NavigationItem {
 export function AppShell({ navigation, children, statusBanner }: { navigation: NavigationItem[]; children: ReactNode; statusBanner?: ReactNode }) {
   const { user, roleLabel, signOut } = useAuth();
   const navigate = useNavigate();
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => window.localStorage.getItem('psg-theme') === 'light' ? 'light' : 'dark');
   const mobileNavigation = navigation.slice(0, 5);
   const profileIdentity = getProfileIdentity(user);
   const profileName = profileIdentity.displayName || user?.name || 'Signed out';
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('theme-light', theme === 'light');
+    window.localStorage.setItem('psg-theme', theme);
+  }, [theme]);
+
+  const themeToggle = (
+    <div className="theme-toggle" role="group" aria-label="Choose app theme">
+      <button type="button" onClick={() => setTheme('dark')} className={theme === 'dark' ? 'theme-toggle-active' : ''} aria-pressed={theme === 'dark'}>
+        Dark
+      </button>
+      <button type="button" onClick={() => setTheme('light')} className={theme === 'light' ? 'theme-toggle-active' : ''} aria-pressed={theme === 'light'}>
+        Light
+      </button>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,rgba(2,6,23,0.88),rgba(15,23,42,0.98))] text-slate-100">
@@ -111,6 +128,7 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
         </aside>
 
         <main className="content-main min-w-0 flex-1 rounded-[2rem] bg-[#07152f] px-4 pb-28 pt-5 text-slate-100 shadow-soft sm:px-6 lg:px-8 lg:py-6 xl:px-10">
+          <div className="mb-4 flex justify-end">{themeToggle}</div>
           {statusBanner}
           {children}
           <AppFooter />

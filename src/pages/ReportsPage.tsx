@@ -269,7 +269,7 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
           <p class="meta">${projects.length} project${projects.length === 1 ? '' : 's'} · Generated ${escapeHtml(new Date().toLocaleDateString())}</p>
         </header>
         <table>
-            <thead><tr>${['Project ID', 'Branch', 'Town', 'Manager', 'Project Start Date', 'Project Target Completion', 'Stage', 'Stage Status', 'Stage Start Date', 'Stage Target Date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+            <thead><tr>${['Project ID', 'Branch', 'Town', 'Marketing Manager', 'Project Start Date', 'Project Target Completion', 'Stage', 'Stage Status', 'Stage Start Date', 'Stage Target Date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
               <tbody>${projects.map((project) => { const stageTask = currentStageTask(project); return `<tr>${[
       project.id,
       project.branch,
