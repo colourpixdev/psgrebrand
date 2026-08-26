@@ -879,10 +879,12 @@ export function ProjectDetailPage() {
                     {branchParticipants.length > 0 ? branchParticipants.map((participant, index) => <div key={`${participant.email ?? participant.name}-${index}`} className="border-l-2 border-sky-400/50 pl-3"><p className="font-medium text-cyan-400">{participant.name}</p><p className="mt-1 text-xs text-slate-300">{participant.designation}</p>{participant.email ? <p className="mt-2 text-xs text-slate-300">{participant.email}</p> : null}{participant.phone ? <p className="mt-1 text-xs text-slate-300">{participant.phone}</p> : null}</div>) : <p className="text-xs text-slate-500">No contact persons added.</p>}
                   </div>
                 </section>
-                <section className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+                <section className="grid self-start gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Project schedule</h3>
-                  <div><span className="text-cyan-200">Project start date:</span> {formatWorkspaceDate(selectedProject.projectStartDate ?? '')}</div>
-                  <div><span className="text-cyan-200">Project target completion:</span> {formatWorkspaceDate(selectedProject.targetDate)}</div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div><span className="text-cyan-200">Project start date:</span> {formatWorkspaceDate(selectedProject.projectStartDate ?? '')}</div>
+                    <div><span className="text-cyan-200">Project target completion:</span> {formatWorkspaceDate(selectedProject.targetDate)}</div>
+                  </div>
                 </section>
                 {hasSignageDetails ? <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4 lg:col-span-2">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Signage supplier</h3>
