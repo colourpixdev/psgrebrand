@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getAllBranches, createBranchProject, updateBranch, deleteBranch, formatBranchName, extractBranchName } from '../services/branchService';
 import { getProjects } from '../services/portalService';
-import type { Branch, ContactPerson, Division, Project } from '../types/domain';
+import { getUsers } from '../services/userService';
+import type { Branch, ContactPerson, Division, Project, UserRecord } from '../types/domain';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { ProjectFollowButton } from '../components/projects/ProjectFollowButton';
@@ -91,6 +92,7 @@ function ParticipantFields({ contacts, onChange }: { contacts: ContactPerson[]; 
 export function BranchesPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +118,7 @@ export function BranchesPage() {
     contactPhone: '',
     contactDesignation: '',
     contacts: [] as ContactPerson[],
+    marketingCoordinatorEmail: '',
   });
   const [editData, setEditData] = useState({
     name: '',
@@ -171,6 +174,12 @@ export function BranchesPage() {
       setError(projectsResult.reason instanceof Error ? projectsResult.reason.message : 'Failed to load projects');
     }
 
+    try {
+      setUsers(await getUsers());
+    } catch {
+      setUsers([]);
+    }
+
     setLoading(false);
   }
 
@@ -221,6 +230,8 @@ export function BranchesPage() {
           }] : []),
           ...formData.contacts.filter((contact) => contact.name.trim()),
         ],
+        marketingCoordinatorName: users.find((item) => item.email === formData.marketingCoordinatorEmail)?.name ?? null,
+        marketingCoordinatorEmail: formData.marketingCoordinatorEmail || null,
       });
 
       setFormData({
@@ -239,6 +250,7 @@ export function BranchesPage() {
         contactPhone: '',
         contactDesignation: '',
         contacts: [],
+        marketingCoordinatorEmail: '',
       });
       setShowForm(false);
       setError(null);
@@ -664,6 +676,20 @@ export function BranchesPage() {
             </div>
 
             <ParticipantFields contacts={formData.contacts} onChange={(contacts) => setFormData({ ...formData, contacts })} />
+
+            <label className="mb-6 grid gap-2 text-sm font-medium text-slate-300">
+              Marketing coordinator
+              <select
+                value={formData.marketingCoordinatorEmail}
+                onChange={(event) => setFormData({ ...formData, marketingCoordinatorEmail: event.target.value })}
+                className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2 text-white outline-none focus:border-sky-400/50"
+              >
+                <option value="">Unassigned</option>
+                {users.filter((item) => item.role === 'psg_user').map((item) => (
+                  <option key={item.email} value={item.email}>{item.name} · {item.email}</option>
+                ))}
+              </select>
+            </label>
 
             <button
               type="submit"

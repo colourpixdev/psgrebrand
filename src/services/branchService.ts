@@ -43,6 +43,8 @@ export interface CreateBranchInput {
   contactEmail?: string | null;
   contactPhone?: string | null;
   contacts?: ContactPerson[];
+  marketingCoordinatorName?: string | null;
+  marketingCoordinatorEmail?: string | null;
 }
 
 type BranchRow = {
@@ -457,8 +459,8 @@ export async function createBranchProject(input: CreateBranchInput): Promise<{ b
     province: branch.province,
     town: branch.town,
     physicalAddress: branch.physicalAddress,
-    manager: branch.contactName,
-    managerEmail: branch.contactEmail,
+    manager: input.marketingCoordinatorName ?? branch.contactName,
+    managerEmail: input.marketingCoordinatorEmail ?? branch.contactEmail,
     projectType: 'signage_rollout',
     currentStage: 'New Project',
     status: 'on_schedule',
