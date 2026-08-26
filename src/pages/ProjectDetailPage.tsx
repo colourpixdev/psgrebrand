@@ -171,6 +171,9 @@ export function ProjectDetailPage() {
 
       setCurrentStageDraft(project.currentStage);
       setViewedTaskId(nextViewedTaskId);
+      if (requestedTask) {
+        setExpandedAccordionTaskIds([requestedTask.id]);
+      }
       setStatusDraft(project.status);
       setTargetDateDraft(project.targetDate);
       setProjectStartDateDraft(project.projectStartDate ?? '');

@@ -110,6 +110,11 @@ function AppRoutes() {
   }, [location.pathname]);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.querySelector<HTMLElement>('.content-main')?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
     let isMounted = true;
 
     async function refreshSupabaseStatus() {
