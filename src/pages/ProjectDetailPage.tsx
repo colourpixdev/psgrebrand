@@ -1446,12 +1446,12 @@ export function ProjectDetailPage() {
 
       </section>}
 
-      {false ? <section>
+      <section>
         <FileGrid
           files={selectedProject.files}
           taskFolders={selectedProject.tasks.map((task) => ({ id: task.id, label: task.text }))}
           isUploading={uploadMutation.isPending || previewMutation.isPending || downloadMutation.isPending}
-          uploadError={null}
+          uploadError={fileError instanceof Error ? fileError.message : null}
           canUpload={canUploadFiles}
           canDelete={canDeleteFiles}
           canRename={canRenameProjectFiles}
@@ -1462,7 +1462,7 @@ export function ProjectDetailPage() {
           onDelete={(file: ProjectFile) => deleteFileMutation.mutate(file)}
           getThumbnailUrl={(file: ProjectFile) => getProjectFileUrl(file)}
         />
-      </section> : null}
+      </section>
 
       {user && projectHistory.length > 0 ? <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/8 p-6 shadow-soft backdrop-blur-sm">
         <div className="flex flex-wrap items-center gap-3">
