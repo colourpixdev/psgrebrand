@@ -145,6 +145,7 @@ export function ProjectDetailPage() {
   const [editingActivityDraft, setEditingActivityDraft] = useState('');
   const [deleteConfirmationArmed, setDeleteConfirmationArmed] = useState(false);
   const [isProjectHistoryExpanded, setIsProjectHistoryExpanded] = useState(false);
+  const [draggingUploadTaskId, setDraggingUploadTaskId] = useState<string | null>(null);
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => getProjectById(projectId ?? ''),
@@ -1069,15 +1070,31 @@ export function ProjectDetailPage() {
                   </select>
                   {canUploadFiles ? (
                     <label
-                      className="inline-flex min-w-[110px] cursor-pointer items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-4 py-1.5 text-xs font-semibold uppercase text-cyan-100 transition hover:bg-cyan-400/20 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+                      className={`inline-flex min-w-[110px] cursor-pointer items-center justify-center rounded-xl border px-4 py-1.5 text-xs font-semibold uppercase transition aria-disabled:pointer-events-none aria-disabled:opacity-50 ${draggingUploadTaskId === task.id ? 'border-cyan-200 bg-cyan-400/30 text-white' : 'border-cyan-300/30 bg-cyan-400/10 text-cyan-100 hover:bg-cyan-400/20'}`}
                       aria-disabled={uploadMutation.isPending}
+                      onDragEnter={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (!uploadMutation.isPending) {
+                          setDraggingUploadTaskId(task.id);
+                        }
+                      }}
                       onDragOver={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
+                        event.dataTransfer.dropEffect = uploadMutation.isPending ? 'none' : 'copy';
+                      }}
+                      onDragLeave={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (event.currentTarget === event.target) {
+                          setDraggingUploadTaskId(null);
+                        }
                       }}
                       onDrop={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
+                        setDraggingUploadTaskId(null);
                         if (!uploadMutation.isPending) {
                           const files = Array.from(event.dataTransfer.files);
                           if (files.length > 0) {
