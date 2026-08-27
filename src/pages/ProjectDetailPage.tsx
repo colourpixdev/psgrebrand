@@ -511,6 +511,7 @@ export function ProjectDetailPage() {
         return next;
       });
       setTaskDateSaveMessage('Saved');
+      showSuccess('Stage dates saved.');
       const syncedProject = {
         ...updatedProject,
         tasks: updatedProject.tasks.map((task) => task.id === variables.task.id
