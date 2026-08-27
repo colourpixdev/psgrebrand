@@ -387,7 +387,6 @@ export function ReportsPage() {
   const canExportReports = can(user, 'export_reports');
   const exportProjects = displayedProjects.length > 0 ? displayedProjects : scopedProjects;
   const reportName = `${selectedReport.label} report`;
-  const delayedCount = displayedProjects.filter((project) => project.status === 'delayed' || project.status === 'on_hold').length;
   const completedCount = displayedProjects.filter((project) => project.status === 'completed').length;
 
   return (
@@ -398,7 +397,7 @@ export function ReportsPage() {
       </section>
 
       <section className="grid gap-4">
-        <div className="grid gap-3 rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft sm:grid-cols-3">
+        <div className="grid gap-3 rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft sm:grid-cols-2">
           <div>
             <p className="text-sm text-slate-400">Matching projects</p>
             <p className="mt-2 text-3xl font-semibold text-white">{displayedProjects.length}</p>
@@ -407,9 +406,11 @@ export function ReportsPage() {
             <p className="text-sm text-slate-400">Completed</p>
             <p className="mt-2 text-3xl font-semibold text-emerald-200">{completedCount}</p>
           </div>
-          <div>
-            <p className="text-sm text-slate-400">At risk</p>
-            <p className="mt-2 text-3xl font-semibold text-amber-200">{delayedCount}</p>
+          <div className="sm:col-span-2">
+            <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-400" style={{ width: `${averageProgress}%` }} />
+            </div>
+            <p className="mt-2 text-xs text-slate-400">Average progress: {averageProgress}%</p>
           </div>
         </div>
       </section>
