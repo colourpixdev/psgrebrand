@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Role, UserRecord } from '../types/domain';
 import { loadSessionUser, sessionToUser, signInWithEmailPassword, signOutSession, updateUserPassword } from '../services/authService';
-import { updateOwnProfileIdentity } from '../services/userService';
+import { updateOwnProfileIdentity, updateOwnThemePreference } from '../services/userService';
 import { supabase } from '../lib/supabase';
 import { roleLabels } from '../constants/portal';
 import { enrichWorkspaceAccess, platformOwnerEmail } from '../constants/workspaces';
@@ -16,6 +16,7 @@ interface AuthContextValue {
   updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   signInAs: (role: Role) => void;
   updateProfileIdentity: (identity: EditableProfileIdentity) => Promise<'supabase' | 'local'>;
+  updateThemePreference: (theme: 'dark' | 'light') => Promise<'supabase' | 'local'>;
   signOut: () => Promise<void>;
 }
 
@@ -102,6 +103,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const updatedUser = await updateOwnProfileIdentity(user.email, identity);
       saveProfileIdentity(updatedUser, identity);
+      setUser(updatedUser);
+      return 'supabase';
+    },
+    updateThemePreference: async (theme) => {
+      if (!user || !supabase) {
+        return 'local';
+      }
+
+      const updatedUser = await updateOwnThemePreference(user.email, theme);
       setUser(updatedUser);
       return 'supabase';
     },

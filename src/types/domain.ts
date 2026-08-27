@@ -173,6 +173,7 @@ export interface UserRecord {
   role: Role;
   branch?: string;
   email: string;
+  themePreference?: 'dark' | 'light';
   company?: string;
   profileTitle?: string;
   avatarUrl?: string;

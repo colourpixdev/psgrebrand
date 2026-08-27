@@ -13,6 +13,7 @@ type ProfileRow = {
   role: Role;
   branch: string | null;
   email: string;
+  theme_preference?: 'dark' | 'light' | null;
   company?: string | null;
   profile_title?: string | null;
   avatar_url?: string | null;
@@ -56,14 +57,14 @@ export async function sessionToUser(session: Session | null): Promise<UserRecord
 
   const profileResult = await supabase
     .from('profiles')
-    .select('name, role, branch, email, company, profile_title, avatar_url, logo_url, workspace_ids, permission_overrides')
+    .select('name, role, branch, email, theme_preference, company, profile_title, avatar_url, logo_url, workspace_ids, permission_overrides')
     .ilike('email', email)
     .maybeSingle();
 
   let data: Partial<ProfileRow> | null = profileResult.data as Partial<ProfileRow> | null;
   let error = profileResult.error;
 
-  if (['company', 'profile_title', 'avatar_url', 'logo_url', 'workspace_ids', 'permission_overrides'].some((column) => error?.message.toLowerCase().includes(column))) {
+  if (['theme_preference', 'company', 'profile_title', 'avatar_url', 'logo_url', 'workspace_ids', 'permission_overrides'].some((column) => error?.message.toLowerCase().includes(column))) {
     const fallbackResult = await supabase
       .from('profiles')
       .select('name, role, branch, email')
@@ -88,6 +89,7 @@ export async function sessionToUser(session: Session | null): Promise<UserRecord
     profileTitle: profile.profile_title ?? undefined,
     avatarUrl: profile.avatar_url ?? undefined,
     logoUrl: profile.logo_url ?? undefined,
+    themePreference: profile.theme_preference ?? undefined,
     workspaceIds: Array.isArray(profile.workspace_ids) ? profile.workspace_ids : undefined,
     email: profile.email,
     permissionOverrides: sanitizePermissionOverrides(profile.permission_overrides),

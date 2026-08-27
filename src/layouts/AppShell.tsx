@@ -17,24 +17,38 @@ interface NavigationItem {
 }
 
 export function AppShell({ navigation, children, statusBanner }: { navigation: NavigationItem[]; children: ReactNode; statusBanner?: ReactNode }) {
-  const { user, roleLabel, signOut } = useAuth();
+  const { user, roleLabel, signOut, updateThemePreference } = useAuth();
   const navigate = useNavigate();
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => window.localStorage.getItem('psg-theme') === 'light' ? 'light' : 'dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>('light');
   const mobileNavigation = navigation.slice(0, 5);
   const profileIdentity = getProfileIdentity(user);
   const profileName = profileIdentity.displayName || user?.name || 'Signed out';
 
   useEffect(() => {
+    if (user?.themePreference && user.themePreference !== theme) {
+      setTheme(user.themePreference);
+    }
+  }, [theme, user?.themePreference]);
+
+  useEffect(() => {
     document.documentElement.classList.toggle('theme-light', theme === 'light');
     window.localStorage.setItem('psg-theme', theme);
-  }, [theme]);
+    if (user && user.themePreference === undefined) {
+      void updateThemePreference(theme).catch(() => undefined);
+    }
+  }, [theme, updateThemePreference, user]);
+
+  const changeTheme = (nextTheme: 'dark' | 'light') => {
+    setTheme(nextTheme);
+    void updateThemePreference(nextTheme).catch(() => undefined);
+  };
 
   const themeToggle = (
     <div className="theme-toggle" role="group" aria-label="Choose app theme">
-      <button type="button" onClick={() => setTheme('dark')} className={theme === 'dark' ? 'theme-toggle-active' : ''} aria-pressed={theme === 'dark'}>
+      <button type="button" onClick={() => changeTheme('dark')} className={theme === 'dark' ? 'theme-toggle-active' : ''} aria-pressed={theme === 'dark'}>
         Dark
       </button>
-      <button type="button" onClick={() => setTheme('light')} className={theme === 'light' ? 'theme-toggle-active' : ''} aria-pressed={theme === 'light'}>
+      <button type="button" onClick={() => changeTheme('light')} className={theme === 'light' ? 'theme-toggle-active' : ''} aria-pressed={theme === 'light'}>
         Light
       </button>
     </div>

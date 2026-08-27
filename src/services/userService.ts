@@ -9,6 +9,7 @@ type ProfileRow = {
   role: UserRecord['role'];
   branch: string | null;
   email: string;
+  theme_preference?: 'dark' | 'light' | null;
   company?: string | null;
   profile_title?: string | null;
   avatar_url?: string | null;
@@ -56,6 +57,7 @@ function profileRowToUser(row: ProfileRow): UserRecord {
     profileTitle: row.profile_title ?? undefined,
     avatarUrl: row.avatar_url ?? undefined,
     logoUrl: row.logo_url ?? undefined,
+    themePreference: row.theme_preference ?? undefined,
     workspaceIds: Array.isArray(row.workspace_ids) ? row.workspace_ids : undefined,
     email: row.email,
     permissionOverrides: sanitizePermissionOverrides(row.permission_overrides),
@@ -71,13 +73,13 @@ export async function getUsers(): Promise<UserRecord[]> {
 
   const profileResult = await supabase
     .from('profiles')
-    .select('name, role, branch, email, company, profile_title, avatar_url, logo_url, workspace_ids, permission_overrides')
+    .select('name, role, branch, email, theme_preference, company, profile_title, avatar_url, logo_url, workspace_ids, permission_overrides')
     .order('name', { ascending: true });
 
   let data: Partial<ProfileRow>[] | null = profileResult.data as Partial<ProfileRow>[] | null;
   let error = profileResult.error;
 
-  if (['company', 'profile_title', 'avatar_url', 'logo_url', 'workspace_ids', 'permission_overrides'].some((column) => error?.message.toLowerCase().includes(column))) {
+  if (['theme_preference', 'company', 'profile_title', 'avatar_url', 'logo_url', 'workspace_ids', 'permission_overrides'].some((column) => error?.message.toLowerCase().includes(column))) {
     const fallbackResult = await supabase
       .from('profiles')
       .select('name, role, branch, email')
@@ -160,6 +162,27 @@ export async function updateOwnProfileIdentity(email: string, identity: Editable
 
   if (error || !data) {
     throw error ?? new Error('Unable to update profile identity.');
+  }
+
+  return profileRowToUser(data as ProfileRow);
+}
+
+export async function updateOwnThemePreference(email: string, themePreference: 'dark' | 'light'): Promise<UserRecord> {
+  if (!supabase) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  await hydrateAuthSession();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ theme_preference: themePreference, updated_at: new Date().toISOString() })
+    .ilike('email', email.trim().toLowerCase())
+    .select('name, role, branch, email, theme_preference, company, profile_title, avatar_url, logo_url, workspace_ids, permission_overrides')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to update theme preference.');
   }
 
   return profileRowToUser(data as ProfileRow);
