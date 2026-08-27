@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FileText, Search } from 'lucide-react';
@@ -297,6 +297,8 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
 
 export function ReportsPage() {
   const { user } = useAuth();
+  const previewTopScrollRef = useRef<HTMLDivElement>(null);
+  const previewTableScrollRef = useRef<HTMLDivElement>(null);
   const [reportType, setReportType] = useState<ReportType>('multi-branch-overview');
   const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
   const [branchName, setBranchName] = useState('all');
@@ -391,11 +393,6 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="border-b border-slate-200 pb-5">
-        <h2 className="text-2xl font-semibold text-slate-900">PSG National Rebrand Rollout Report</h2>
-        <p className="mt-2 text-sm text-slate-600">See stage, status and dates across the national branch rollout.</p>
-      </section>
-
       <section className="grid gap-4">
         <div className="grid gap-3 rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft sm:grid-cols-2">
           <div>
@@ -501,7 +498,27 @@ export function ReportsPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div
+          ref={previewTopScrollRef}
+          className="report-preview-top-scroll overflow-x-scroll"
+          onScroll={(event) => {
+            if (previewTableScrollRef.current) {
+              previewTableScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
+            }
+          }}
+          aria-label="Scroll report preview horizontally"
+        >
+          <div className="h-3 min-w-[1050px]" />
+        </div>
+        <div
+          ref={previewTableScrollRef}
+          className="report-preview-scroll overflow-x-auto"
+          onScroll={(event) => {
+            if (previewTopScrollRef.current) {
+              previewTopScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
+            }
+          }}
+        >
           <table className="w-full min-w-[1050px] text-left text-sm">
             <thead className="bg-white/5 text-xs uppercase tracking-[0.18em] text-slate-400">
               <tr>

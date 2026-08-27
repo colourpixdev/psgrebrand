@@ -184,8 +184,8 @@ function AppRoutes() {
       navigation={visibleNavigation}
       statusBanner={
         supabaseStatus ? (
-          <div
-            className={`mb-6 rounded-2xl border px-4 py-3 text-sm shadow-soft ${
+            <div
+              className={`status-banner mb-6 rounded-2xl border px-4 py-3 text-sm shadow-soft ${
               supabaseStatus.toLowerCase().includes('unreachable') || supabaseStatus.toLowerCase().includes('not configured') || supabaseStatus.toLowerCase().includes('failed')
                 ? 'border-red-400/30 bg-red-500/10 text-red-100'
                 : 'border-slate-600 bg-slate-200 text-slate-900 font-medium'

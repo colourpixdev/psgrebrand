@@ -260,12 +260,17 @@ export function DashboardPage() {
               <div className="space-y-3">
                 {attentionProjects.length > 0 ? attentionProjects.map((project) => {
                   const assignedTask = getAssignedAttentionStage(project, user?.email?.trim().toLowerCase(), user?.name);
+                  const assignedTaskLabel = assignedTask?.text?.trim();
+                  const currentStageLabel = project.currentStage?.trim();
+                  const attentionLabel = assignedTaskLabel && currentStageLabel && assignedTaskLabel.toLowerCase() === currentStageLabel.toLowerCase()
+                    ? assignedTaskLabel
+                    : [assignedTaskLabel, currentStageLabel].filter(Boolean).join(' · ');
                   return (
                     <div key={project.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:border-sky-200 hover:bg-sky-50">
                       <div className="flex items-start justify-between gap-3">
                         <Link to={`/projects/${project.id}?task=${encodeURIComponent(assignedTask?.id ?? '')}`} className="min-w-0 flex-1">
                           <p className="font-medium text-slate-900">{project.branch}</p>
-                          <p className="mt-1 text-sm text-slate-600">{assignedTask?.text} · {project.currentStage}</p>
+                          <p className="mt-1 text-sm text-slate-600">{attentionLabel}</p>
                         </Link>
                         <span className="rounded-full bg-[#0b1f3a] px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-white ring-1 ring-white/30">
                           {project.status === 'delayed' || project.status === 'on_hold' ? 'At risk' : 'Action needed'}

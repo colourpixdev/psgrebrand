@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building2, CheckCircle2, UserCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { defaultWorkspace } from '../constants/workspaces';
@@ -51,7 +50,7 @@ export function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(14,165,233,0.16),rgba(2,6,23,0.72))] p-6 shadow-soft">
+      <section className="profile-hero rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(14,165,233,0.16),rgba(2,6,23,0.72))] p-6 shadow-soft">
         <p className="text-sm uppercase tracking-[0.32em] text-teal-200/80">Profile</p>
         <h2 className="mt-3 text-3xl font-semibold text-white">Control how you appear to other project users.</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
@@ -89,20 +88,6 @@ export function ProfilePage() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 text-sm text-slate-300">
-            <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/45 p-4">
-              <UserCircle className="mt-0.5 h-5 w-5 text-teal-200" />
-              <p>Each user should own their avatar and display details.</p>
-            </div>
-            <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/45 p-4">
-              <Building2 className="mt-0.5 h-5 w-5 text-sky-200" />
-              <p>Workspace administrators should approve organisation marks that appear in shared project spaces.</p>
-            </div>
-            <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/45 p-4">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-200" />
-              <p>PSG Rebrand owners should retain platform-level control over roles, workspace creation, and global support routing.</p>
-            </div>
-          </div>
         </div>
 
         <form onSubmit={onSubmit} className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-6 shadow-soft">

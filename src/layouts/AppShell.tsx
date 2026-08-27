@@ -41,15 +41,15 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
   );
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,rgba(2,6,23,0.88),rgba(15,23,42,0.98))] text-slate-100">
+    <div className="app-shell min-h-screen bg-[linear-gradient(180deg,rgba(2,6,23,0.88),rgba(15,23,42,0.98))] text-slate-100">
       <UserAgreementDialog user={user} />
       <div className="mx-auto flex min-h-screen w-full max-w-[1600px] min-w-0 flex-col lg:flex-row">
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 px-4 py-3 backdrop-blur lg:hidden">
+        <header className="app-shell-mobile-header sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 px-4 py-3 backdrop-blur lg:hidden">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <RolloutLogo />
               <div className="min-w-0">
-                <p className="truncate text-xs uppercase tracking-[0.28em] text-teal-200/80">{productBrand.name}</p>
+                <p className="brand-wordmark truncate text-xs uppercase tracking-[0.28em] text-teal-200/80">{productBrand.name}</p>
                 <p className="truncate text-sm font-semibold text-white">{productBrand.workspace}</p>
               </div>
             </div>
@@ -71,11 +71,11 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
           </div>
         </header>
 
-        <aside className="hidden border-b border-white/10 bg-slate-950/70 p-5 backdrop-blur lg:sticky lg:top-0 lg:block lg:h-screen lg:w-72 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+        <aside className="app-shell-sidebar hidden border-b border-white/10 bg-slate-950/70 p-5 backdrop-blur lg:sticky lg:top-0 lg:block lg:h-screen lg:w-72 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
           <div className="mb-8 flex items-center gap-3">
             <RolloutLogo />
             <div>
-              <p className="text-xs uppercase tracking-[0.32em] text-teal-200/80">{productBrand.name}</p>
+              <p className="brand-wordmark text-xs uppercase tracking-[0.32em] text-teal-200/80">{productBrand.name}</p>
             </div>
           </div>
 
@@ -128,13 +128,15 @@ export function AppShell({ navigation, children, statusBanner }: { navigation: N
         </aside>
 
         <main className="content-main min-w-0 flex-1 rounded-[2rem] bg-[#07152f] px-4 pb-28 pt-5 text-slate-100 shadow-soft sm:px-6 lg:px-8 lg:py-6 xl:px-10">
-          <div className="mb-4 flex justify-end">{themeToggle}</div>
-          {statusBanner}
+          <div className="status-banner-shell">
+            {statusBanner}
+            {statusBanner ? <div className="status-banner-theme-toggle">{themeToggle}</div> : null}
+          </div>
           {children}
           <AppFooter />
         </main>
 
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-slate-950/92 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 backdrop-blur lg:hidden">
+        <nav className="app-shell-mobile-nav fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-slate-950/92 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 backdrop-blur lg:hidden">
           <div className="mx-auto grid max-w-xl grid-cols-5 gap-1">
             {mobileNavigation.map((item) => {
               const Icon = item.icon;

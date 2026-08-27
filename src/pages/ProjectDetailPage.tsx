@@ -866,7 +866,7 @@ export function ProjectDetailPage() {
               </div>
             ) : (
               <div className="mt-4 grid gap-4 text-sm text-white lg:grid-cols-2">
-                <section className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+                <section className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4 lg:row-span-2">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Branch</h3>
                   <div><span className="text-cyan-200">Name:</span> {branch.name}</div>
                   <div><span className="text-cyan-200">Division:</span> {branch.division}</div>
@@ -885,7 +885,7 @@ export function ProjectDetailPage() {
                     <div><span className="text-cyan-200">Project target completion:</span> {formatWorkspaceDate(selectedProject.targetDate)}</div>
                   </div>
                 </section>
-                {hasSignageDetails ? <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4 lg:col-span-2">
+                {hasSignageDetails ? <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Signage supplier</h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {branch.signageCompany?.trim() ? <div><span className="text-cyan-200">Company:</span> {branch.signageCompany}</div> : null}
@@ -937,7 +937,7 @@ export function ProjectDetailPage() {
                 onClick={() => taskCommentMutation.mutate({ projectId: projectId ?? '', taskId: currentStageTask?.id ?? '', message: taskCommentDrafts[currentStageTask?.id ?? ''] ?? '' })}
                 className="w-fit rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {taskCommentMutation.isPending ? 'Posting...' : 'Add stage update'}
+                {taskCommentMutation.isPending ? 'Posting...' : 'ADD COMMENT'}
               </button>
             </div>
           </div> : null}
@@ -1260,7 +1260,7 @@ export function ProjectDetailPage() {
                   </div>
                 ) : null}
                 <div className="mt-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100">Stage updates</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100">STAGE COMMENTS</p>
                     <div className="mt-2 space-y-2">
                       {taskUpdates.length > 0 ? taskUpdates.map((c, i) => (
                         <div key={`${task.id}-comment-${c.id ?? i}`} className="rounded-2xl bg-slate-950/80 p-3">
@@ -1301,7 +1301,7 @@ export function ProjectDetailPage() {
                             onClick={() => taskCommentMutation.mutate({ projectId: projectId ?? '', taskId: task.id, message: taskCommentDrafts[task.id] ?? '' })}
                             className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            {taskCommentMutation.isPending ? 'Posting...' : 'Add stage update'}
+                            {taskCommentMutation.isPending ? 'Posting...' : 'ADD COMMENT'}
                           </button>
                         </div>
                       </div>

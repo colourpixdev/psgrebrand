@@ -526,14 +526,10 @@ export function BranchesPage() {
     <div className="branches-page min-h-screen rounded-[2rem] bg-slate-950 p-6 text-slate-100 md:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="mb-2 text-4xl font-bold text-white">PSG Branch Workspaces</h1>
-            <p className="text-slate-300">Manage each branch and its rebrand work from one operational workspace. Select <span className="font-semibold text-sky-200">Track branch</span> to add it to your dashboard.</p>
-          </div>
           {isAdmin && (
             <button
               onClick={(e) => { e.stopPropagation(); setShowForm(!showForm); }}
-              className="rounded-2xl bg-sky-500 px-6 py-3 text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl border border-sky-300/35 bg-sky-400/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-400/20 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={saving}
             >
               {showForm ? 'Cancel' : 'Add Branch'}
