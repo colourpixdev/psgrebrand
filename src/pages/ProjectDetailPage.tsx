@@ -640,7 +640,7 @@ export function ProjectDetailPage() {
     },
   });
 
-  const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error ?? deleteFileMutation.error;
+  const fileError = uploadMutation.error ?? previewMutation.error ?? downloadMutation.error ?? renameFileMutation.error ?? deleteFileMutation.error;
   const workflowError = taskUpdateMutation.error ?? questionMutation.error ?? answerQuestionMutation.error ?? readQuestionMutation.error ?? taskMutation.error ?? updateTaskMutation.error ?? deleteTaskMutation.error ?? deleteProjectMutation.error;
   const rolePolicy = getRolePolicy(user);
   const canAdministerProjectDetails = Boolean(user && (
@@ -1024,18 +1024,31 @@ export function ProjectDetailPage() {
               return (
               <div key={task.id} className="rounded-2xl border border-white/10 bg-slate-950/50 overflow-hidden">
                 {/* Accordion Header */}
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   aria-expanded={isAccordionExpanded}
                   aria-controls={taskBodyId}
                   onClick={(e) => { e.stopPropagation(); setExpandedAccordionTaskIds((current) =>
                     current.includes(task.id) ? current.filter((id) => id !== task.id) : [...current, task.id]
                   ); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedAccordionTaskIds((current) =>
+                    current.includes(task.id) ? current.filter((id) => id !== task.id) : [...current, task.id]
+                  ); } }}
                   className="w-full px-4 py-3 text-sm text-slate-200 hover:bg-slate-900/40 transition text-left focus:outline-none focus:ring-2 focus:ring-sky-400/50 rounded-2xl"
                 >
                   <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <span className="shrink-0 text-slate-400">{isAccordionExpanded ? '▼' : '▶'}</span>
+                      <button
+                        type="button"
+                        aria-label={`${isAccordionExpanded ? 'Close' : 'View'} ${task.text}`}
+                        onClick={(e) => { e.stopPropagation(); setExpandedAccordionTaskIds((current) =>
+                          current.includes(task.id) ? current.filter((id) => id !== task.id) : [...current, task.id]
+                        ); }}
+                        className="shrink-0 rounded-lg border border-sky-300/30 bg-sky-400/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-100 transition hover:bg-sky-400/20 focus:outline-none focus:ring-2 focus:ring-sky-400/50"
+                      >
+                        {isAccordionExpanded ? 'Close' : 'View'}
+                      </button>
                       <span className={`min-w-0 break-words ${taskStatus === 'done' ? 'text-slate-500 line-through' : 'text-slate-200 font-medium'}`}>{task.text}</span>
                     </div>
                     <div className="flex flex-wrap items-center justify-start gap-2 text-xs text-slate-500 sm:shrink-0 sm:justify-end">
@@ -1043,7 +1056,7 @@ export function ProjectDetailPage() {
                       <span>Started: {task.startedDate || 'Not set'} · Target: {task.dueDate || 'Not set'}</span>
                     </div>
                   </div>
-                </button>
+                </div>
 
                 {isAccordionExpanded && <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-3">
                   <select
@@ -1231,11 +1244,17 @@ export function ProjectDetailPage() {
                                 >
                                   Download
                                 </button>
-                                {canDeleteFiles ? (
+                                {canRenameProjectFiles ? (
                                   <button
                                     type="button"
                                     disabled={renameFileMutation.isPending || deleteFileMutation.isPending}
-                                    onClick={() => renameFileMutation.mutate({ file, nextName: file.name })}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const nextName = window.prompt('Rename file', file.name)?.trim();
+                                      if (nextName && nextName !== file.name) {
+                                        renameFileMutation.mutate({ file, nextName });
+                                      }
+                                    }}
                                     className="rounded-xl border border-slate-700 bg-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     Rename
