@@ -390,6 +390,9 @@ export function ReportsPage() {
   const exportProjects = displayedProjects.length > 0 ? displayedProjects : scopedProjects;
   const reportName = `${selectedReport.label} report`;
   const completedCount = displayedProjects.filter((project) => project.status === 'completed').length;
+  const averageProgress = displayedProjects.length
+    ? Math.round(displayedProjects.reduce((sum, project) => sum + project.progress, 0) / displayedProjects.length)
+    : 0;
 
   return (
     <div className="space-y-6">
