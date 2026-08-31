@@ -895,6 +895,7 @@ export function ProjectDetailPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Project schedule</h3>
                   <div className="grid gap-3 sm:grid-cols-1">
                     <div><span className="text-cyan-200">Project start date:</span> {formatWorkspaceDate(selectedProject.projectStartDate ?? '')}</div>
+                    <div><span className="text-cyan-200">Installation date:</span> {selectedProject.installationDate ? formatWorkspaceDate(selectedProject.installationDate) : 'Not set yet'}</div>
                   </div>
                 </section>
                 {hasSignageDetails ? <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
