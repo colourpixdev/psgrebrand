@@ -48,20 +48,14 @@ const statusTones: Record<ProjectStatus, string> = {
 
 const stageStatusLabels: Record<NonNullable<TaskItem['status']>, string> = {
   pending: 'Pending',
-  open: 'Delayed',
   busy: 'Busy',
   done: 'Completed',
-  waiting: 'Delayed',
-  blocked: 'Delayed',
 };
 
 const stageStatusTones: Record<NonNullable<TaskItem['status']>, string> = {
   pending: 'border-slate-300/30 bg-slate-400/15 text-slate-100',
-  open: 'border-sky-300/40 bg-sky-400/15 text-sky-100',
   busy: 'border-amber-300/40 bg-amber-400/15 text-amber-100',
   done: 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100',
-  waiting: 'border-blue-300/40 bg-blue-400/15 text-blue-100',
-  blocked: 'border-red-300/40 bg-red-400/15 text-red-100',
 };
 
 function findTaskById(tasks: TaskItem[], taskId: string) {
@@ -133,7 +127,6 @@ export function ProjectDetailPage() {
   const [expandedAccordionTaskIds, setExpandedAccordionTaskIds] = useState<string[]>([]);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingTaskText, setEditingTaskText] = useState('');
-  const [taskDueDateDrafts, setTaskDueDateDrafts] = useState<Record<string, string>>({});
   const [taskStartedDateDrafts, setTaskStartedDateDrafts] = useState<Record<string, string>>({});
   const [taskDateSaveMessage, setTaskDateSaveMessage] = useState<string | null>(null);
   const [stageImageUrls, setStageImageUrls] = useState<Record<string, string>>({});
@@ -481,7 +474,7 @@ export function ProjectDetailPage() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ task, text, completed, status, assignees, startedDate, dueDate }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; assignees?: TaskItem['assignees']; startedDate?: string; dueDate?: string }) => {
+    mutationFn: ({ task, text, completed, status, assignees, startedDate }: { task: TaskItem; text?: string; completed?: boolean; status?: TaskItem['status']; assignees?: TaskItem['assignees']; startedDate?: string }) => {
       const nextText = text?.trim();
       return updateProjectTask({
         projectId: projectId ?? '',
@@ -491,7 +484,6 @@ export function ProjectDetailPage() {
         status,
         assignees,
         startedDate,
-        dueDate,
         stage: nextText || undefined,
         actor: user?.name ?? 'Workspace user',
         actorEmail: user?.email,
@@ -500,11 +492,6 @@ export function ProjectDetailPage() {
     onSuccess: async (updatedProject, variables) => {
       setEditingTaskId(null);
       setEditingTaskText('');
-      setTaskDueDateDrafts((current) => {
-        const next = { ...current };
-        delete next[variables.task.id];
-        return next;
-      });
       setTaskStartedDateDrafts((current) => {
         const next = { ...current };
         delete next[variables.task.id];
@@ -522,7 +509,6 @@ export function ProjectDetailPage() {
             assigneeEmail: variables.assignees !== undefined ? variables.assignees[variables.assignees.length - 1]?.email : task.assigneeEmail,
             assignees: variables.assignees !== undefined ? variables.assignees : task.assignees,
             startedDate: variables.startedDate ?? task.startedDate,
-            dueDate: variables.dueDate ?? task.dueDate,
           }
           : task),
       };
@@ -1016,13 +1002,10 @@ export function ProjectDetailPage() {
               const taskFiles = selectedProject.files.filter((file) => file.taskId === task.id);
               const statusStyles: Record<NonNullable<TaskItem['status']>, string> = {
                 pending: 'border-slate-400/20 bg-slate-700/20 text-slate-200 hover:bg-slate-700/30',
-                open: 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10',
                 busy: 'border-amber-400/30 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25',
                 done: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25',
-                waiting: 'border-blue-400/30 bg-blue-500/15 text-blue-100 hover:bg-blue-500/25',
-                blocked: 'border-red-400/30 bg-red-500/15 text-red-100 hover:bg-red-500/25',
               };
-              const statusLabels: Record<NonNullable<TaskItem['status']>, string> = { pending: 'Pending', open: 'Delayed', busy: 'Busy', done: 'Completed', waiting: 'Delayed', blocked: 'Delayed' };
+              const statusLabels: Record<NonNullable<TaskItem['status']>, string> = { pending: 'Pending', busy: 'Busy', done: 'Completed' };
               const isAccordionExpanded = expandedAccordionTaskIds.includes(task.id);
               const taskBodyId = `task-body-${task.id}`;
 
@@ -1058,20 +1041,20 @@ export function ProjectDetailPage() {
                     </div>
                     <div className="flex flex-wrap items-center justify-start gap-2 text-xs text-slate-500 sm:shrink-0 sm:justify-end">
                       <span className="rounded-full bg-white/5 px-2 py-1">{statusLabels[taskStatus]}</span>
-                      <span>Started: {task.startedDate || 'Not set'} · Target: {task.dueDate || 'Not set'}</span>
+                      <span>Started: {task.startedDate || 'Not set'}</span>
                     </div>
                   </div>
                 </div>
 
                 {isAccordionExpanded && <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-3">
                   <select
-                    value={taskStatus === 'open' || taskStatus === 'waiting' ? 'blocked' : taskStatus}
+                    value={taskStatus}
                     disabled={!canCurrentUserCompleteTask(task) || updateTaskMutation.isPending}
                     onChange={(event) => updateTaskMutation.mutate({ task, status: event.target.value as TaskItem['status'] })}
                     aria-label={`Status for ${task.text}`}
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${statusStyles[taskStatus]}`}
                   >
-                    {(['pending', 'busy', 'blocked', 'done'] as const).map((status) => (
+                    {(['pending', 'busy', 'done'] as const).map((status) => (
                       <option key={status} value={status}>{statusLabels[status]}</option>
                     ))}
                   </select>
@@ -1186,7 +1169,7 @@ export function ProjectDetailPage() {
                 )}
                 {editingTaskId !== task.id ? (
                   <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 sm:grid-cols-1">
                       <DatePickerInput
                         label="Started date"
                         value={taskStartedDateDrafts[task.id] ?? task.startedDate ?? ''}
@@ -1194,26 +1177,17 @@ export function ProjectDetailPage() {
                         placeholder="Select started date"
                         disabled={!canEditStageDates || updateTaskMutation.isPending}
                       />
-                      <DatePickerInput
-                        label="Target completion"
-                        value={taskDueDateDrafts[task.id] ?? task.dueDate ?? ''}
-                        onChange={(value) => setTaskDueDateDrafts((current) => ({ ...current, [task.id]: value }))}
-                        placeholder="Select target date"
-                        disabled={!canEditStageDates || updateTaskMutation.isPending}
-                      />
                     </div>
                     {canEditStageDates ? <>
                       <button
                         type="button"
-                        disabled={updateTaskMutation.isPending || ((taskStartedDateDrafts[task.id] ?? task.startedDate ?? '') === (task.startedDate ?? '') && (taskDueDateDrafts[task.id] ?? task.dueDate ?? '') === (task.dueDate ?? ''))}
+                        disabled={updateTaskMutation.isPending || (taskStartedDateDrafts[task.id] ?? task.startedDate ?? '') === (task.startedDate ?? '')}
                         onClick={() => {
                           setTaskDateSaveMessage(null);
                           const nextStartedDate = taskStartedDateDrafts[task.id];
-                          const nextDueDate = taskDueDateDrafts[task.id];
                           updateTaskMutation.mutate({
                             task,
                             startedDate: nextStartedDate !== undefined && nextStartedDate !== task.startedDate ? nextStartedDate : undefined,
-                            dueDate: nextDueDate !== undefined && nextDueDate !== task.dueDate ? nextDueDate : undefined,
                           });
                         }}
                         className="w-fit rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"

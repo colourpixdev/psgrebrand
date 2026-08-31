@@ -940,9 +940,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function mapLegacyTasks(rows: unknown[] | null | undefined): TaskItem[] {
   return (rows ?? []).filter(isRecord).map((row, index) => {
-    const status: TaskStatus = row.status === 'pending' || row.status === 'open' || row.status === 'busy' || row.status === 'done'
-      ? row.status
-      : row.completed === true ? 'done' : 'open';
+    const rawStatus = typeof row.status === 'string' ? row.status : undefined;
+    const status: TaskStatus = rawStatus === 'pending' || rawStatus === 'busy' || rawStatus === 'done'
+      ? rawStatus
+      : rawStatus === 'open' || rawStatus === 'waiting' || rawStatus === 'blocked'
+        ? 'busy'
+        : row.completed === true
+          ? 'done'
+          : 'pending';
     return {
       id: typeof row.id === 'string' ? row.id : `legacy-task-${index}`,
       text: typeof row.text === 'string' ? row.text : '',
@@ -2474,11 +2479,11 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
 
   // Map status from frontend format to relational format
   const nextStatus = input.status ?? (input.completed !== undefined
-    ? (input.completed ? 'done' : 'open')
-    : existingTask.status ?? (existingTask.completed ? 'done' : 'open'));
+    ? (input.completed ? 'done' : 'busy')
+    : existingTask.status ?? (existingTask.completed ? 'done' : (existingTask.startedDate ? 'busy' : 'pending')));
   const startedDate = input.startedDate !== undefined
     ? input.startedDate
-    : existingTask.startedDate ?? (nextStatus === 'open' || nextStatus === 'busy' ? new Date().toISOString().slice(0, 10) : undefined);
+    : existingTask.startedDate ?? (nextStatus === 'busy' ? new Date().toISOString().slice(0, 10) : undefined);
   const nextCompleted = nextStatus === 'done';
   const assignees = input.assignees !== undefined
     ? (input.assignees.length > 0 ? input.assignees : undefined)

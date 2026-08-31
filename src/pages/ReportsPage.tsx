@@ -25,10 +25,21 @@ const statusLabels: Record<ProjectStatus, string> = {
   cancelled: 'Cancelled',
 };
 
-const taskStatusLabels: Record<NonNullable<TaskItem['status']>, string> = { pending: 'Pending', open: 'Started', busy: 'Busy', done: 'Completed', waiting: 'Waiting', blocked: 'Blocked' };
+const taskStatusLabels: Record<NonNullable<TaskItem['status']>, string> = { pending: 'Pending', busy: 'Busy', done: 'Completed' };
 
-function currentStageTask(project: Project) {
-  return project.tasks.find((task) => !task.completed) ?? project.tasks[project.tasks.length - 1];
+function projectStageTimeline(project: Project) {
+  return [...project.tasks]
+    .filter((task) => task.status !== 'pending')
+    .sort((a, b) => {
+      const aStamp = new Date(a.startedDate ?? a.createdAt ?? 0).getTime();
+      const bStamp = new Date(b.startedDate ?? b.createdAt ?? 0).getTime();
+      return aStamp - bStamp;
+    });
+}
+
+function latestBusyStageTask(project: Project) {
+  const activeStages = projectStageTimeline(project);
+  return [...activeStages].reverse().find((task) => task.status === 'busy') ?? activeStages[activeStages.length - 1];
 }
 
 const reportTypes: Array<{ value: ReportType; label: string; description: string }> = [
@@ -108,9 +119,12 @@ function formatFileName(reportName: string) {
 
 function projectSpreadsheetRows(projects: Project[]) {
   return projects.map((project) => {
-    const stageTask = currentStageTask(project);
+    const stageTimeline = projectStageTimeline(project);
+    const stageTask = latestBusyStageTask(project);
     const pendingTasks = project.tasks.filter(isTaskOutstanding).length;
     const participants = project.tasks.flatMap((task) => task.assignees?.map((assignee) => `${assignee.name} (${assignee.designation})`) ?? []).join('; ');
+    const orderedStages = stageTimeline.map((task) => task.stage ?? task.text).join(' > ') || project.currentStage || 'Not set';
+
     return [
       project.id,
       project.branch,
@@ -118,10 +132,9 @@ function projectSpreadsheetRows(projects: Project[]) {
       project.manager,
       formatReportDate(project.projectStartDate ?? ''),
       formatReportDate(project.targetDate),
-      project.currentStage,
+      orderedStages,
       stageTask ? taskStatusLabels[stageTask.status ?? 'pending'] : 'Not set',
       formatReportDate(stageTask?.startedDate ?? ''),
-      formatReportDate(stageTask?.dueDate ?? ''),
       pendingTasks,
       project.files.length,
       participants,
@@ -132,14 +145,14 @@ function projectSpreadsheetRows(projects: Project[]) {
 
 async function downloadExcel(projects: Project[], reportName: string) {
   const XLSX = await import('xlsx-js-style');
-  const headers = ['Branch reference', 'Branch', 'Town', 'Manager', 'Project Start Date', 'Project Target Completion', 'Stage', 'Stage Status', 'Stage Start Date', 'Stage Target Date', 'Pending tasks', 'Files', 'Participants', 'Updated'];
+  const headers = ['Branch reference', 'Branch', 'Town', 'Manager', 'Project Start Date', 'Project Target Completion', 'Stages (oldest → newest)', 'Latest busy stage', 'Latest busy stage start date', 'Pending tasks', 'Files', 'Participants', 'Updated'];
   const rows = projectSpreadsheetRows(projects);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   worksheet['!cols'] = [
-    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 10 }, { wch: 42 }, { wch: 22 },
+    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 16 }, { wch: 18 }, { wch: 15 }, { wch: 10 }, { wch: 42 }, { wch: 22 },
   ];
   worksheet['!rows'] = [{ hpt: 30 }, ...rows.map(() => ({ hpt: 24 }))];
-  worksheet['!autofilter'] = { ref: `A1:M${rows.length + 1}` };
+  worksheet['!autofilter'] = { ref: `A1:L${rows.length + 1}` };
   worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
 
   for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
@@ -269,18 +282,17 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
           <p class="meta">${projects.length} project${projects.length === 1 ? '' : 's'} · Generated ${escapeHtml(new Date().toLocaleDateString())}</p>
         </header>
         <table>
-            <thead><tr>${['Project ID', 'Branch', 'Town', 'Marketing Manager', 'Project Start Date', 'Project Target Completion', 'Stage', 'Stage Status', 'Stage Start Date', 'Stage Target Date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
-              <tbody>${projects.map((project) => { const stageTask = currentStageTask(project); return `<tr>${[
+            <thead><tr>${['Project ID', 'Branch', 'Town', 'Marketing Manager', 'Project Start Date', 'Project Target Completion', 'Stages (oldest → newest)', 'Latest busy stage', 'Latest busy stage start date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+              <tbody>${projects.map((project) => { const stageTimeline = projectStageTimeline(project); const stageTask = latestBusyStageTask(project); const orderedStages = stageTimeline.map((task) => task.stage ?? task.text).join(' > ') || project.currentStage || 'Not set'; return `<tr>${[
       project.id,
       project.branch,
       project.town,
       project.manager,
       project.projectStartDate ?? '',
       project.targetDate,
-      project.currentStage,
+      orderedStages,
       stageTask ? taskStatusLabels[stageTask.status ?? 'pending'] : 'Not set',
       stageTask?.startedDate ?? '',
-      stageTask?.dueDate ?? '',
     ].map((cell) => `<td>${escapeHtml(cell || 'Not set')}</td>`).join('')}</tr>`; }).join('')}</tbody>
         </table>
         <p class="footer">PSG Rebrand rollout report</p>
@@ -531,7 +543,6 @@ export function ReportsPage() {
                 <th className="px-5 py-4 font-medium">Stage</th>
                 <th className="px-5 py-4 font-medium">Stage Status</th>
                 <th className="px-5 py-4 font-medium">Stage Start Date</th>
-                <th className="px-5 py-4 font-medium">Stage Target Date</th>
                 <th className="px-5 py-4 font-medium">Open</th>
               </tr>
             </thead>
@@ -540,14 +551,13 @@ export function ReportsPage() {
                 <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
-                  {(() => { const stageTask = currentStageTask(project); return <>
+                  {(() => { const stageTimeline = projectStageTimeline(project); const stageTask = latestBusyStageTask(project); const orderedStages = stageTimeline.map((task) => task.stage ?? task.text).join(' > ') || project.currentStage || 'Not set'; return <>
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectStartDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.targetDate || 'Not set'}</td>
-                  <td className="px-5 py-4">{project.currentStage}</td>
+                  <td className="px-5 py-4">{orderedStages}</td>
                   <td className="px-5 py-4">{stageTask ? taskStatusLabels[stageTask.status ?? 'pending'] : 'Not set'}</td>
                   <td className="px-5 py-4">{stageTask?.startedDate || 'Not set'}</td>
-                  <td className="px-5 py-4">{stageTask?.dueDate || 'Not set'}</td>
                   <td className="px-5 py-4"><Link to={`/projects/${project.id}`} className="inline-flex items-center rounded-xl border border-sky-300/30 bg-sky-400/10 px-3 py-1.5 font-medium text-sky-200 hover:bg-sky-400/20 hover:text-white">View</Link></td>
                   </>; })()}
                 </tr>

@@ -120,7 +120,7 @@ export interface ProjectFile {
   taskId?: string;
 }
 
-export type TaskStatus = 'pending' | 'open' | 'busy' | 'done' | 'waiting' | 'blocked';
+export type TaskStatus = 'pending' | 'busy' | 'done';
 
 export interface TaskItem {
   id: string;
