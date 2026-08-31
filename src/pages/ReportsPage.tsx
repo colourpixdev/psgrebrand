@@ -52,6 +52,16 @@ function latestRelevantStageTask(project: Project) {
   return [...activeStages].reverse().find((task) => task.status === 'done') ?? activeStages[activeStages.length - 1];
 }
 
+function latestCommentForStage(project: Project, stageTask: TaskItem | null) {
+  if (!stageTask) {
+    return '';
+  }
+
+  return project.comments
+    .filter((comment) => comment.taskId === stageTask.id && comment.message.trim())
+    .sort((left, right) => Date.parse(right.date) - Date.parse(left.date))[0]?.message ?? '';
+}
+
 const reportTypes: Array<{ value: ReportType; label: string; description: string }> = [
   { value: 'multi-branch-overview', label: 'PSG National Rebrand Rollout Report', description: 'A clear view of every permitted branch, its current stage, status, and target date.' },
 ];
@@ -130,6 +140,7 @@ function projectSpreadsheetRows(projects: Project[]) {
   return projects.map((project) => {
     const stageTask = latestRelevantStageTask(project);
     const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set';
+    const latestComment = latestCommentForStage(project, stageTask);
 
     return [
       project.id,
@@ -138,6 +149,7 @@ function projectSpreadsheetRows(projects: Project[]) {
       formatReportDate(project.installationDate ?? ''),
       project.manager,
       latestStageName,
+      latestComment,
       formatReportDate(stageTask?.startedDate ?? ''),
     ];
   });
@@ -145,14 +157,14 @@ function projectSpreadsheetRows(projects: Project[]) {
 
 async function downloadExcel(projects: Project[], reportName: string) {
   const XLSX = await import('xlsx-js-style');
-  const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Latest stage', 'Latest stage start date'];
+  const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Latest stage', 'Latest Comment', 'Latest stage start date'];
   const rows = projectSpreadsheetRows(projects);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   worksheet['!cols'] = [
-    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 18 },
+    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 42 }, { wch: 18 },
   ];
   worksheet['!rows'] = [{ hpt: 30 }, ...rows.map(() => ({ hpt: 24 }))];
-  worksheet['!autofilter'] = { ref: `A1:G${rows.length + 1}` };
+  worksheet['!autofilter'] = { ref: `A1:H${rows.length + 1}` };
   worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
 
   for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
@@ -171,7 +183,7 @@ async function downloadExcel(projects: Project[], reportName: string) {
       cell.s = {
         fill: { fgColor: { rgb: rowIndex % 2 === 0 ? 'F0F9FF' : 'FFFFFF' } },
         font: { color: { rgb: '172033' }, sz: 10 },
-        alignment: { vertical: 'top', wrapText: columnIndex === 5 },
+        alignment: { vertical: 'top', wrapText: columnIndex === 5 || columnIndex === 6 },
         border: { bottom: { style: 'thin', color: { rgb: 'D7E3EA' } } },
       };
     }
@@ -282,14 +294,15 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
           <p class="meta">${projects.length} project${projects.length === 1 ? '' : 's'} · Generated ${escapeHtml(new Date().toLocaleDateString())}</p>
         </header>
         <table>
-            <thead><tr>${['Project ID', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Latest stage', 'Latest stage start date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
-              <tbody>${projects.map((project) => { const stageTask = latestRelevantStageTask(project); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; return `<tr>${[
+            <thead><tr>${['Project ID', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Latest stage', 'Latest Comment', 'Latest stage start date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+              <tbody>${projects.map((project) => { const stageTask = latestRelevantStageTask(project); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; const latestComment = latestCommentForStage(project, stageTask); return `<tr>${[
       project.id,
       project.branch,
       project.projectStartDate ?? '',
       project.installationDate ?? '',
       project.manager,
       latestStageName,
+      latestComment,
       stageTask?.startedDate ?? '',
     ].map((cell) => `<td>${escapeHtml(cell || 'Not set')}</td>`).join('')}</tr>`; }).join('')}</tbody>
         </table>
@@ -538,8 +551,10 @@ export function ReportsPage() {
                 <th className="px-5 py-4 font-medium">Branch</th>
                 <th className="px-5 py-4 font-medium">Project Start Date</th>
                 <th className="px-5 py-4 font-medium">Installation Date</th>
-                <th className="px-5 py-4 font-medium">Stage</th>
-                <th className="px-5 py-4 font-medium">Stage Start Date</th>
+                <th className="px-5 py-4 font-medium">Marketing Manager</th>
+                <th className="px-5 py-4 font-medium">Latest stage</th>
+                <th className="px-5 py-4 font-medium">Latest Comment</th>
+                <th className="px-5 py-4 font-medium">Latest stage start date</th>
                 <th className="px-5 py-4 font-medium">Open</th>
               </tr>
             </thead>
@@ -548,12 +563,13 @@ export function ReportsPage() {
                 <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
-                  {(() => { const stageTask = latestRelevantStageTask(project); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; return <>
+                  {(() => { const stageTask = latestRelevantStageTask(project); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; const latestComment = latestCommentForStage(project, stageTask); return <>
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectStartDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.installationDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.manager || 'Not set'}</td>
                   <td className="px-5 py-4">{latestStageName}</td>
+                  <td className="max-w-sm whitespace-normal px-5 py-4">{latestComment || 'Not set'}</td>
                   <td className="px-5 py-4">{stageTask?.startedDate || 'Not set'}</td>
                   <td className="px-5 py-4"><Link to={`/projects/${project.id}`} className="inline-flex items-center rounded-xl border border-sky-300/30 bg-sky-400/10 px-3 py-1.5 font-medium text-sky-200 hover:bg-sky-400/20 hover:text-white">View</Link></td>
                   </>; })()}
