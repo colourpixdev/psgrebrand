@@ -551,6 +551,7 @@ export function ReportsPage() {
           <table className="w-full min-w-[1050px] text-left text-sm">
             <thead className="bg-white/5 text-xs uppercase tracking-[0.18em] text-slate-400">
               <tr>
+                <th className="px-5 py-4 font-medium">Project ID</th>
                 <th className="px-5 py-4 font-medium">Branch</th>
                 <th className="px-5 py-4 font-medium">Project Start Date</th>
                 <th className="px-5 py-4 font-medium">Installation Date</th>
@@ -558,7 +559,6 @@ export function ReportsPage() {
                 <th className="px-5 py-4 font-medium">Latest stage</th>
                 <th className="px-5 py-4 font-medium">Latest Comment</th>
                 <th className="px-5 py-4 font-medium">Latest stage start date</th>
-                <th className="px-5 py-4 font-medium">Open</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
@@ -567,6 +567,7 @@ export function ReportsPage() {
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
                   {(() => { const stageTask = latestRelevantStageTask(project); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; const latestComment = latestCommentForStage(project, stageTask); return <>
+                  <td className="px-5 py-4 text-white">{project.id}</td>
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectStartDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.installationDate || 'Not set'}</td>
@@ -574,7 +575,6 @@ export function ReportsPage() {
                   <td className="px-5 py-4">{latestStageName}</td>
                   <td className="max-w-sm whitespace-normal px-5 py-4">{latestComment || 'Not set'}</td>
                   <td className="px-5 py-4">{stageTask?.startedDate || 'Not set'}</td>
-                  <td className="px-5 py-4"><Link to={`/projects/${project.id}`} className="inline-flex items-center rounded-xl border border-sky-300/30 bg-sky-400/10 px-3 py-1.5 font-medium text-sky-200 hover:bg-sky-400/20 hover:text-white">View</Link></td>
                   </>; })()}
                 </tr>
               )) : (
