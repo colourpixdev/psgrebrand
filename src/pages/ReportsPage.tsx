@@ -173,7 +173,7 @@ function projectSpreadsheetRows(projects: Project[], userRole?: string | null) {
 
 async function downloadExcel(projects: Project[], reportName: string, userRole?: string | null) {
   const XLSX = await import('xlsx-js-style');
-  const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Latest stage', 'Latest Comment', 'Latest stage start date'];
+  const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Stage', 'Comment', 'Date'];
   const rows = projectSpreadsheetRows(projects, userRole);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   worksheet['!cols'] = [
@@ -313,7 +313,7 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
           <p class="meta">${projects.length} project${projects.length === 1 ? '' : 's'} · Generated ${escapeHtml(new Date().toLocaleDateString())}</p>
         </header>
         <table>
-            <thead><tr>${['Project ID', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Latest stage', 'Latest Comment', 'Latest stage start date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+            <thead><tr>${['Project ID', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Stage', 'Comment', 'Date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
               <tbody>${projects.map((project) => { const stageTask = latestRelevantStageTask(project, userRole); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; const latestComment = latestCommentForStage(project, stageTask); return `<tr>${[
       project.id,
       project.branch,
@@ -584,9 +584,9 @@ export function ReportsPage() {
                 <th className="px-5 py-4 font-medium">Project Start Date</th>
                 <th className="px-5 py-4 font-medium">Installation Date</th>
                 <th className="px-5 py-4 font-medium">Marketing Manager</th>
-                <th className="px-5 py-4 font-medium">Latest stage</th>
-                <th className="px-5 py-4 font-medium">Latest Comment</th>
-                <th className="px-5 py-4 font-medium">Latest stage start date</th>
+                <th className="px-5 py-4 font-medium">Stage</th>
+                <th className="px-5 py-4 font-medium">Comment</th>
+                <th className="px-5 py-4 font-medium">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
