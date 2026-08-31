@@ -10,7 +10,7 @@ import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { can, canEditOwnComment, canRenameFiles, filterProjectsForUser, getRolePolicy } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { getTaskStatus, isTaskOutstanding } from '../utils/taskStatus';
-import { signageProjectStages } from '../constants/projectTemplates';
+import { canonicalizeProjectStageName, signageProjectStages } from '../constants/projectTemplates';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
 
 function isImageFile(file: ProjectFile) {
@@ -49,7 +49,7 @@ function taskStatusLabel(status: ReturnType<typeof getTaskStatus>) {
 }
 
 function normalizeStageName(value: string) {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ');
+  return canonicalizeProjectStageName(value).trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ');
 }
 
 function formatShortDate(value?: string) {

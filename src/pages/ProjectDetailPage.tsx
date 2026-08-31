@@ -12,6 +12,7 @@ import { can, canViewProject, canAddTaskComments, canDeleteComment, canEditOwnCo
 import { getTaskStatus } from '../utils/taskStatus';
 import type { CommentItem, ContactPerson, Division, Project, ProjectFile, ProjectStatus, ProjectStage, TaskItem } from '../types/domain';
 import { normalizeRole } from '../types/domain';
+import { canonicalizeProjectStageName } from '../constants/projectTemplates';
 import { isAccessControlAdmin, isPlatformOwnerEmail } from '../constants/workspaces';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
@@ -78,12 +79,35 @@ function isImageFile(file: ProjectFile) {
   return fileType.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg|bmp|tif|tiff)$/.test(fileName);
 }
 
-function getStagePlan(project: Project): ProjectStage[] {
-  const mergedStages = project.tasks
-    .map((task) => (task.stage ?? task.text).trim())
-    .filter((stage): stage is ProjectStage => Boolean(stage));
+function normalizeStageKey(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ');
+}
 
-  return mergedStages;
+function getStagePlan(project: Project): ProjectStage[] {
+  const uniqueStages = new Map<string, ProjectStage>();
+
+  project.tasks.forEach((task) => {
+    const stageName = (task.stage ?? task.text ?? '').trim();
+    if (!stageName) {
+      return;
+    }
+
+    const canonicalStage = canonicalizeProjectStageName(stageName);
+    if (!canonicalStage) {
+      return;
+    }
+
+    const key = normalizeStageKey(canonicalStage);
+    if (!key) {
+      return;
+    }
+
+    if (!uniqueStages.has(key)) {
+      uniqueStages.set(key, canonicalStage as ProjectStage);
+    }
+  });
+
+  return [...uniqueStages.values()];
 }
 
 export function ProjectDetailPage() {
@@ -760,7 +784,17 @@ export function ProjectDetailPage() {
     ? selectedProject.files.filter((file) => !file.taskId || file.taskId === currentStageTask.id)
     : [];
   const currentStageComments = currentStageTask ? projectComments.filter((comment) => comment.taskId === currentStageTask.id) : [];
-  const summaryStageOptions = Array.from(new Set([selectedProject.currentStage, ...stagePlan]));
+  const summaryStageOptions = Array.from(
+    new Map(
+      [selectedProject.currentStage, ...stagePlan]
+        .filter((stage) => Boolean(stage))
+        .map((stage) => {
+          const canonicalStage = canonicalizeProjectStageName(stage);
+          return [normalizeStageKey(canonicalStage), canonicalStage] as [string, ProjectStage];
+        })
+        .filter((entry): entry is [string, ProjectStage] => Boolean(entry[0]) && Boolean(entry[1]))
+    ).values(),
+  );
   const isInternalUser = canAdministerProjectDetails;
   const projectHistory = [
     ...projectComments.map((comment, index) => ({

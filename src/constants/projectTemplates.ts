@@ -9,8 +9,6 @@ export type ProjectTemplate = {
 };
 
 export const signageProjectStageDefinitions = [
-  { key: 'Intro date', description: 'Date signage has been requested.' },
-  { key: 'Projection date', description: 'Projected completion date (allow 3–4 weeks).' },
   { key: 'Colourpix to prepare brief', description: 'Colourpix prepares the brief (allow 3–5 working days).' },
   { key: 'Site inspection', description: 'Site inspection required or not required.' },
   { key: 'Other', description: 'Electrician or wall preparation required.' },
@@ -23,10 +21,44 @@ export const signageProjectStageDefinitions = [
   { key: 'Completion date', description: 'Completed date.' },
   { key: 'Invoice', description: 'Invoice upload.' },
   { key: 'Summary', description: 'Happy or issues summary.' },
-  { key: 'Photos', description: 'Photo uploads.' },
 ] as const;
 
 export const signageProjectStages = signageProjectStageDefinitions.map((stage) => stage.key) as ProjectStage[];
+
+export function normalizeProjectStageName(value: string) {
+  return value.trim().toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+export function canonicalizeProjectStageName(value: string): string {
+  const raw = value?.trim() ?? '';
+  if (!raw) {
+    return '';
+  }
+
+  const key = normalizeProjectStageName(raw);
+  const aliasMap: Record<string, string> = {
+    'site inspection': 'Site inspection',
+    'layout brief': 'Colourpix to prepare brief',
+    'signed brief': 'Brief',
+    quote: 'Quote',
+    invoice: 'Invoice',
+    'production installation': 'Date of installation',
+    'production and installation': 'Date of installation',
+    'production & installation': 'Date of installation',
+  };
+
+  const mappedStage = aliasMap[key];
+  if (mappedStage) {
+    return mappedStage;
+  }
+
+  const exactMatch = signageProjectStages.find((stage) => normalizeProjectStageName(stage) === key);
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  return raw;
+}
 
 export const projectTemplates: Record<ProjectTemplateId, ProjectTemplate> = {
   signage_rollout: {
