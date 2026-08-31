@@ -2727,7 +2727,7 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
     .eq('is_primary', true)
     .maybeSingle();
 
-  if (workspaceData?.id) {
+  if (workspaceData?.id && isUuid(input.taskId)) {
     const { data: deletedTask, error: deleteError } = await client
       .from('project_tasks')
       .update({ deleted_at: now, is_current: false })
@@ -2749,7 +2749,7 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
 
   const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
-    .update({ current_stage: currentStage, activity, updated_at: now })
+    .update({ tasks, current_stage: currentStage, activity, updated_at: now })
     .eq('id', input.projectId)
     .select('id')
     .maybeSingle();
