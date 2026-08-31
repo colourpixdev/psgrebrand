@@ -725,6 +725,13 @@ export function ProjectDetailPage() {
   const isQuestionRequester = (question: CommentItem) => (question.requesterEmail ? question.requesterEmail === user?.email : question.author === user?.name);
   const unreadAnswers = projectQuestions.filter((question) => question.status === 'answered' && question.unreadForRequester && isQuestionRequester(question));
   const mergedTasks = [...selectedProject.tasks].sort((leftTask, rightTask) => {
+    // Respect manual reordering by sort_order if available, otherwise fall back to date-based sorting
+    const leftSort = leftTask.sortOrder ?? Number.MAX_SAFE_INTEGER;
+    const rightSort = rightTask.sortOrder ?? Number.MAX_SAFE_INTEGER;
+    if (leftSort !== Number.MAX_SAFE_INTEGER || rightSort !== Number.MAX_SAFE_INTEGER) {
+      return leftSort - rightSort;
+    }
+    // Fallback: sort by dates if sort_order is not set
     const leftValue = leftTask.createdAt ?? leftTask.startedDate ?? leftTask.dueDate ?? leftTask.completedAt ?? '';
     const rightValue = rightTask.createdAt ?? rightTask.startedDate ?? rightTask.dueDate ?? rightTask.completedAt ?? '';
     return rightValue.localeCompare(leftValue);

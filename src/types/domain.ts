@@ -140,6 +140,7 @@ export interface TaskItem {
   completedAt?: string;
   completedByName?: string;
   completedByEmail?: string;
+  sortOrder?: number;
 }
 
 export interface CommentItem {

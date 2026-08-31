@@ -109,6 +109,7 @@ function convertRelationalTaskToTaskItem(taskRow: ProjectTaskRow): TaskItem {
     completedAt: status === 'complete' ? taskRow.updated_at : undefined,
     completedByName: status === 'complete' ? 'System' : undefined,
     completedByEmail: status === 'complete' ? undefined : undefined,
+    sortOrder: taskRow.sort_order ?? undefined,
   };
 }
 
