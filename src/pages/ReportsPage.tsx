@@ -163,7 +163,10 @@ async function downloadExcel(projects: Project[], reportName: string) {
   worksheet['!cols'] = [
     { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 42 }, { wch: 18 },
   ];
-  worksheet['!rows'] = [{ hpt: 30 }, ...rows.map(() => ({ hpt: 24 }))];
+  worksheet['!rows'] = [
+    { hpt: 30 },
+    ...rows.map((row) => ({ hpt: Math.max(24, String(row[6] ?? '').split(/\r?\n/).length * 15 + 9) })),
+  ];
   worksheet['!autofilter'] = { ref: `A1:H${rows.length + 1}` };
   worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
 
