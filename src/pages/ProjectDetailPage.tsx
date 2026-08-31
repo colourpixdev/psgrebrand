@@ -231,17 +231,33 @@ export function ProjectDetailPage() {
     });
   }, [project?.files, stageImageUrls]);
 
-  const syncProject = (updatedProject: Project, successMessage?: string) => {
+  const syncProject = (updatedProject: Project, successMessage?: string, options?: { refreshProjectList?: boolean; refreshSummary?: boolean }) => {
+    const { refreshProjectList = true, refreshSummary = true } = options ?? {};
+
     queryClient.setQueryData(['project', projectId], updatedProject);
+    queryClient.setQueriesData({ queryKey: ['projects'] }, (currentProjects: Project[] | undefined) => {
+      if (!currentProjects) {
+        return currentProjects;
+      }
+
+      return currentProjects.map((project) => project.id === updatedProject.id ? updatedProject : project);
+    });
 
     if (successMessage) {
       showSuccess(successMessage);
     }
 
-    void Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['projects'] }),
-      queryClient.invalidateQueries({ queryKey: ['portal-summary'] }),
-    ]).catch(() => undefined);
+    const refreshTasks: Promise<unknown>[] = [];
+    if (refreshProjectList) {
+      refreshTasks.push(queryClient.invalidateQueries({ queryKey: ['projects'] }));
+    }
+    if (refreshSummary) {
+      refreshTasks.push(queryClient.invalidateQueries({ queryKey: ['portal-summary'] }));
+    }
+
+    if (refreshTasks.length > 0) {
+      void Promise.all(refreshTasks).catch(() => undefined);
+    }
   };
 
   const taskUpdateMutation = useMutation({
@@ -468,7 +484,7 @@ export function ProjectDetailPage() {
     },
     onSuccess: async (updatedProject) => {
       setTaskText('');
-      await syncProject(updatedProject, 'Stage added.');
+      await syncProject(updatedProject, 'Stage added.', { refreshProjectList: false, refreshSummary: false });
     },
     onError: (error) => showError(error instanceof Error ? error.message : 'Unable to add stage.'),
   });
@@ -512,7 +528,7 @@ export function ProjectDetailPage() {
           }
           : task),
       };
-      await syncProject(syncedProject, 'Stage saved.');
+      await syncProject(syncedProject, 'Stage saved.', { refreshProjectList: false, refreshSummary: false });
     },
     onError: (error) => {
       setTaskDateSaveMessage(error instanceof Error ? error.message : 'Unable to save stage.');
@@ -528,7 +544,7 @@ export function ProjectDetailPage() {
       actor: user?.name ?? 'Workspace user',
     }),
     onSuccess: async (updatedProject) => {
-      await syncProject(updatedProject, 'Stage order saved.');
+      await syncProject(updatedProject, 'Stage order saved.', { refreshProjectList: false, refreshSummary: false });
     },
   });
 
