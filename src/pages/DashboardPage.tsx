@@ -209,7 +209,7 @@ export function DashboardPage() {
                     <div className="flex items-start justify-between gap-3">
                       <Link to={project ? `/projects/${project.id}` : `/branches/${branch.id}`} className="min-w-0 flex-1">
                         <p className="truncate font-medium text-slate-900 hover:text-sky-700">{branch.name}</p>
-                        {project ? <p className="mt-1 text-sm text-slate-600">{project.status === 'completed' ? 'Completed' : project.currentStage} · {project.status}</p> : null}
+                        {project ? <p className="mt-1 text-sm text-slate-600">{project.status === 'completed' ? 'Production & Installation : Completed' : `${project.currentStage} · ${project.status}`}</p> : null}
                       </Link>
                       <div className="flex shrink-0 items-center gap-2">
                         <ProjectFollowButton projectId={branch.id} legacyProjectIds={legacyProjectIds} userEmail={user?.email} userRole={user?.role} noun="branch" />
@@ -238,7 +238,7 @@ export function DashboardPage() {
                       <div className="flex items-start justify-between gap-3">
                         <Link to={project ? `/projects/${project.id}` : `/branches/${branch.id}`} className="min-w-0 flex-1">
                           <p className="truncate font-medium text-slate-900 hover:text-sky-700">{branch.name}</p>
-                          {project ? <p className="mt-1 text-sm text-slate-600">{project.status === 'completed' ? 'Completed' : project.currentStage} · {project.status}</p> : null}
+                          {project ? <p className="mt-1 text-sm text-slate-600">{project.status === 'completed' ? 'Production & Installation : Completed' : `${project.currentStage} · ${project.status}`}</p> : null}
                         </Link>
                         <ProjectFollowButton projectId={branch.id} userEmail={user?.email} userRole={user?.role} noun="branch" />
                       </div>
