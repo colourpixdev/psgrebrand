@@ -2733,8 +2733,18 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
   }
 
   const now = new Date().toISOString();
-  const tasks = existingProject.tasks.filter((task) => task.id !== input.taskId);
   const deletedStage = (existingTask.stage ?? existingTask.text).trim();
+  const tasks = existingProject.tasks.filter((task) => task.id !== input.taskId && !(isUuid(input.taskId) && normalizeTaskTitle(task.text) === normalizeTaskTitle(deletedStage)));
+  const { data: legacyProjectRow, error: legacyProjectError } = await client
+    .from('projects')
+    .select('tasks')
+    .eq('id', input.projectId)
+    .single();
+  if (legacyProjectError) {
+    throw legacyProjectError;
+  }
+  const legacyTasks = mapLegacyTasks((legacyProjectRow as ProjectRow).tasks)
+    .filter((task) => task.id !== input.taskId && normalizeTaskTitle(task.text) !== normalizeTaskTitle(deletedStage));
   const nextStage = tasks.find((task) => (task.stage ?? task.text).trim()) as TaskItem | undefined;
   const currentStage = deletedStage === existingProject.currentStage.trim()
     ? nextStage ? (nextStage.stage ?? nextStage.text).trim() : 'New Project'
@@ -2786,7 +2796,7 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
 
   const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
-    .update({ tasks, current_stage: currentStage, activity, updated_at: now })
+    .update({ tasks: legacyTasks, current_stage: currentStage, activity, updated_at: now })
     .eq('id', input.projectId)
     .select('id')
     .maybeSingle();
