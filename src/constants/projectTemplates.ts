@@ -9,7 +9,6 @@ export type ProjectTemplate = {
 };
 
 export const signageProjectStageDefinitions = [
-  { key: 'Colourpix to prepare brief', description: 'Colourpix prepares the brief (allow 3–5 working days).' },
   { key: 'Site inspection', description: 'Site inspection required or not required.' },
   { key: 'Other', description: 'Electrician or wall preparation required.' },
   { key: 'Brief', description: 'CPIX submitted brief date.' },
@@ -20,8 +19,6 @@ export const signageProjectStageDefinitions = [
   { key: 'Date of installation', description: 'Scheduled installation date.' },
   { key: 'Completion date', description: 'Completed date.' },
   { key: 'Invoice', description: 'Invoice upload.' },
-  { key: 'Summary', description: 'Happy or issues summary.' },
-  { key: 'Photos', description: 'Photo uploads.' },
 ] as const;
 
 export const signageProjectStages = signageProjectStageDefinitions.map((stage) => stage.key) as ProjectStage[];
@@ -39,7 +36,7 @@ export function canonicalizeProjectStageName(value: string): string {
   const key = normalizeProjectStageName(raw);
   const aliasMap: Record<string, string> = {
     'site inspection': 'Site inspection',
-    'layout brief': 'Colourpix to prepare brief',
+    'layout brief': 'Brief',
     'signed brief': 'Brief',
     quote: 'Quote',
     invoice: 'Invoice',
