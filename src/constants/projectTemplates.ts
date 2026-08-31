@@ -38,9 +38,6 @@ export function canonicalizeProjectStageName(value: string): string {
     'signed brief': 'Brief',
     quote: 'Quote',
     invoice: 'Invoice',
-    'production installation': 'Date of installation',
-    'production and installation': 'Date of installation',
-    'production & installation': 'Date of installation',
   };
 
   const mappedStage = aliasMap[key];
