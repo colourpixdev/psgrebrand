@@ -1542,7 +1542,7 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
 
   const { data: projectRow, error: projectError } = await client
     .from('projects')
-    .select('branch_id, rebrand_workspace_id')
+    .select('branch_id, rebrand_workspace_id, tasks')
     .eq('id', projectId)
     .single();
 
@@ -1582,6 +1582,24 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
       .is('rebrand_workspace_id', null);
   }
 
+  let relationalTaskId: string | null = isUuid(taskId ?? '') ? taskId ?? null : null;
+  if (taskId && !relationalTaskId) {
+    const legacyTask = mapLegacyTasks((projectRow as ProjectRow).tasks).find((task) => task.id === taskId);
+    if (legacyTask) {
+      const { data: matchingTasks, error: taskLookupError } = await client
+        .from('project_tasks')
+        .select('id, title')
+        .eq('workspace_id', workspace.id)
+        .is('deleted_at', null);
+      if (taskLookupError) {
+        await client.storage.from(projectFilesBucket).remove([path]);
+        throw taskLookupError;
+      }
+
+      relationalTaskId = (matchingTasks ?? []).find((task) => normalizeTaskTitle(task.title) === normalizeTaskTitle(legacyTask.text))?.id ?? null;
+    }
+  }
+
   const { data: category } = await client.from('file_categories').select('id').eq('category_key', 'other').maybeSingle();
   if (!category?.id) {
     await client.storage.from(projectFilesBucket).remove([path]);
@@ -1590,7 +1608,7 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
 
   const { data: projectFile, error: fileError } = await client
     .from('project_files')
-    .insert({ workspace_id: workspace.id, task_id: taskId ?? null, category_id: category.id, display_name: file.name, uploaded_by: uploadedBy })
+    .insert({ workspace_id: workspace.id, task_id: relationalTaskId, category_id: category.id, display_name: file.name, uploaded_by: uploadedBy })
     .select('id')
     .single();
   if (fileError || !projectFile) {
@@ -1616,9 +1634,9 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     throw currentVersionError;
   }
 
-  await recordProjectFileActivity(projectId, workspace.id, 'file_uploaded', projectFile.id, taskId, { display_name: file.name, actor: 'upload' });
+  await recordProjectFileActivity(projectId, workspace.id, 'file_uploaded', projectFile.id, relationalTaskId ?? undefined, { display_name: file.name, actor: 'upload' });
   const updatedProject = await getProjectById(projectId);
-  return updatedProject?.files ?? [...currentFiles, { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId }];
+  return updatedProject?.files ?? [...currentFiles, { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId: relationalTaskId ?? undefined }];
 }
 
 export async function getProjectFileUrl(file: ProjectFile, options: { download?: boolean } = {}) {
