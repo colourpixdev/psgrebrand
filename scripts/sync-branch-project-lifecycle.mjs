@@ -35,13 +35,42 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 });
 
 const desiredStages = [
-  'Site Inspection',
-  'Layout Brief',
-  'Signed Brief',
+  'Intro date',
+  'Projection date',
+  'Colourpix to prepare brief',
+  'Site inspection',
+  'Other',
+  'Brief',
   'Quote',
+  'Artwork approval',
+  'Quote acceptance',
+  'Quote additional approval',
+  'Date of installation',
+  'Completion date',
   'Invoice',
-  'Production & Installation',
+  'Summary',
+  'Photos',
 ];
+
+const legacyStageAliases = {
+  'site inspection': 'Site inspection',
+  'layout brief': 'Colourpix to prepare brief',
+  'signed brief': 'Brief',
+  'quote': 'Quote',
+  'invoice': 'Invoice',
+  'production installation': 'Date of installation',
+  'production & installation': 'Date of installation',
+  'production and installation': 'Date of installation',
+  'brief requested': 'Intro date',
+  'projection date': 'Projection date',
+  'artwork approval': 'Artwork approval',
+  'quote acceptance': 'Quote acceptance',
+  'quote additional': 'Quote additional approval',
+  'quote additional approval': 'Quote additional approval',
+  'completion': 'Completion date',
+  'photos': 'Photos',
+  'summary': 'Summary',
+};
 
 function normalizeStage(value) {
   return String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -104,16 +133,26 @@ function mergeDesiredTasks(existingTasks) {
   const seen = new Set();
 
   for (const task of Array.isArray(existingTasks) ? existingTasks : []) {
-    const key = normalizeStage(task?.stage ?? task?.text ?? '');
-    if (desiredStages.some((stage) => normalizeStage(stage) === key)) {
-      if (seen.has(key)) continue;
-      task.text = desiredStages.find((stage) => normalizeStage(stage) === key);
-      task.stage = task.text;
-      task.completed = false;
-      task.status = 'pending';
-      if (!task.createdAt) task.createdAt = new Date().toISOString();
-      seen.add(key);
+    const originalStage = String(task?.stage ?? task?.text ?? '').trim();
+    const key = normalizeStage(originalStage);
+    const mappedStage = legacyStageAliases[key] ?? desiredStages.find((stage) => normalizeStage(stage) === key) ?? null;
+
+    if (mappedStage) {
+      if (seen.has(normalizeStage(mappedStage))) continue;
+      const nextTask = { ...task, text: mappedStage, stage: mappedStage, completed: Boolean(task?.completed) && task?.status === 'done', status: task?.status === 'done' ? 'done' : 'pending' };
+      if (!nextTask.createdAt) nextTask.createdAt = new Date().toISOString();
+      if (originalStage && normalizeStage(originalStage) !== normalizeStage(mappedStage)) {
+        nextTask.notes = nextTask.notes || `Migrated from old stage: ${originalStage}`;
+      }
+      seen.add(normalizeStage(mappedStage));
+      tasks.push(nextTask);
+      continue;
     }
+
+    if (!key) {
+      continue;
+    }
+
     tasks.push(task);
   }
 
@@ -184,7 +223,7 @@ async function ensureProjectForBranch(branch, projects) {
 
   const project = linkedProjects[0];
   const nextTasks = mergeDesiredTasks(project.tasks);
-  const nextCurrentStage = desiredStages.includes(project.current_stage) ? project.current_stage : desiredStages[0];
+const nextCurrentStage = desiredStages.some((stage) => normalizeStage(stage) === normalizeStage(project.current_stage)) ? project.current_stage : desiredStages[0];
   const updatePayload = {
     tasks: nextTasks,
     current_stage: nextCurrentStage,

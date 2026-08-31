@@ -10,6 +10,7 @@ import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
 import { can, canEditOwnComment, canRenameFiles, filterProjectsForUser, getRolePolicy } from '../utils/permissions';
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { getTaskStatus, isTaskOutstanding } from '../utils/taskStatus';
+import { signageProjectStages } from '../constants/projectTemplates';
 import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
 
 function isImageFile(file: ProjectFile) {
@@ -44,7 +45,29 @@ function byUpdatedAtDesc(a: Project, b: Project) {
 }
 
 function taskStatusLabel(status: ReturnType<typeof getTaskStatus>) {
-  return status === 'done' ? 'Done' : status === 'busy' ? 'Busy' : status === 'pending' ? 'Pending' : status === 'waiting' ? 'Waiting' : status === 'blocked' ? 'Blocked' : 'Open';
+  return status === 'done' ? 'Done' : status === 'busy' ? 'Busy' : status === 'pending' ? 'Not actioned' : status === 'waiting' ? 'Waiting' : status === 'blocked' ? 'Blocked' : 'Open';
+}
+
+function normalizeStageName(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ');
+}
+
+function formatShortDate(value?: string) {
+  if (!value) {
+    return '—';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('en-ZA', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Africa/Johannesburg',
+  }).format(date);
 }
 
 function projectParticipants(project: Project) {
@@ -311,6 +334,42 @@ export function BranchDetailPage() {
       }]
       : [];
 
+  const rolloutChecklistRows = useMemo(() => {
+    return branchProjects.map((project) => {
+      const taskMap = new Map<string, { task: typeof project.tasks[number]; status: ReturnType<typeof getTaskStatus>; date: string; note?: string }>();
+
+      project.tasks.forEach((task) => {
+        const stageKey = normalizeStageName(task.stage ?? task.text ?? '');
+        if (!stageKey) {
+          return;
+        }
+
+        const status = getTaskStatus(task);
+        const stageDate = task.startedDate || task.completedAt || task.dueDate || task.createdAt || '';
+        taskMap.set(stageKey, {
+          task,
+          status,
+          date: stageDate,
+          note: task.completed ? 'Complete' : task.startedDate ? 'Started' : 'Pending',
+        });
+      });
+
+      return {
+        project,
+        stageValues: signageProjectStages.map((stageName) => {
+          const taskEntry = taskMap.get(normalizeStageName(stageName));
+          return {
+            stageName,
+            task: taskEntry?.task ?? null,
+            status: taskEntry?.status ?? 'pending',
+            date: taskEntry?.date ?? '',
+            note: taskEntry?.note ?? 'Not started',
+          };
+        }),
+      };
+    });
+  }, [branchProjects]);
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-soft">
@@ -366,7 +425,104 @@ export function BranchDetailPage() {
         </div>
       </section>
 
-      {/* Contact persons shown in header above; section removed to avoid duplication */}
+      <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-soft">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold text-white">Rollout checklist</h3>
+          <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100">Shared project stages</span>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {rolloutChecklistRows.map(({ project, stageValues }) => {
+            const inProgressStages = stageValues.filter(({ status, task }) => status === 'busy' || (!task && Boolean(project.currentStage) && status === 'pending' && stageValues.some((entry) => entry.task && entry.task.stage?.toLowerCase() === project.currentStage?.toLowerCase())));
+            const pendingStages = stageValues.filter(({ task, status }) => !task && status === 'pending');
+            const completedStages = stageValues.filter(({ status, task }) => status === 'done' && task);
+
+            return (
+              <div key={project.id} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{project.branch}</p>
+                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">{project.id}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                    className="rounded-xl border border-sky-300/35 bg-sky-500/15 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-100 transition hover:bg-sky-400/25"
+                  >
+                    View
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-200">In progress</p>
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      {inProgressStages.length ? inProgressStages.map(({ stageName, task, status, date, note }) => {
+                        const isActiveStage = status === 'busy' || (!task && project.currentStage && stageName.toLowerCase() === project.currentStage.toLowerCase());
+                        return (
+                          <div
+                            key={`${project.id}-${stageName}`}
+                            className={`rounded-xl border p-3 transition-colors ${
+                              isActiveStage
+                                ? 'border-sky-400/60 bg-sky-500/15 shadow-[0_0_0_1px_rgba(56,189,248,0.35)]'
+                                : 'border-white/10 bg-slate-950/45'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={`text-xs ${isActiveStage ? 'font-bold text-white' : 'font-medium text-slate-200'}`}>{stageName}</p>
+                              <span className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] ${status === 'done' ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : isActiveStage ? 'border-sky-300/50 bg-sky-500/20 text-sky-100' : 'border-slate-300/25 bg-slate-400/10 text-slate-200'}`}>
+                                {task ? taskStatusLabel(status) : 'Not actioned'}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-xs text-slate-300">{formatShortDate(date)}</p>
+                            <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate-400">{task ? note : 'Not started'}</p>
+                          </div>
+                        );
+                      }) : <p className="text-xs text-slate-400">No stages in progress.</p>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">Not actioned</p>
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      {pendingStages.length ? pendingStages.map(({ stageName, task, status, date, note }) => (
+                        <div key={`${project.id}-${stageName}`} className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-medium text-slate-200">{stageName}</p>
+                            <span className="inline-flex rounded-full border border-slate-300/25 bg-slate-400/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200">
+                              Not actioned
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs text-slate-300">{formatShortDate(date)}</p>
+                          <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate-400">{task ? note : 'Not started'}</p>
+                        </div>
+                      )) : <p className="text-xs text-slate-400">No pending stages.</p>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">Done</p>
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      {completedStages.length ? completedStages.map(({ stageName, task, status, date, note }) => (
+                        <div key={`${project.id}-${stageName}`} className="rounded-xl border border-emerald-400/35 bg-emerald-500/10 p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-medium text-emerald-100">{stageName}</p>
+                            <span className="inline-flex rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-emerald-200">
+                              Done
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs text-emerald-100/80">{formatShortDate(date)}</p>
+                          <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-emerald-100/70">{note}</p>
+                        </div>
+                      )) : <p className="text-xs text-slate-400">No completed stages yet.</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-3">
