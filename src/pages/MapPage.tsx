@@ -378,7 +378,7 @@ export function MapPage() {
                     <p className="font-semibold text-white">{project.branch}</p>
                     <p className="mt-1 text-sm text-slate-400">{project.town}, {project.province}</p>
                     {project.physicalAddress ? <p className="mt-1 text-xs text-slate-500">{project.physicalAddress}</p> : null}
-                    <p className="mt-2 text-xs text-slate-300">{project.currentStage} · {statusStyles[project.status].label}</p>
+                    <p className="mt-2 text-xs text-slate-300">{project.status === 'completed' ? 'Production & Installation : Completed' : null}</p>
                     <p className="mt-3 inline-flex rounded-lg border border-sky-300/35 bg-sky-500/15 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-sky-100">View project details</p>
                   </div>
                 </div>

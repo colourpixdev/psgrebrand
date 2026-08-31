@@ -53,7 +53,13 @@ export function DashboardPage() {
     isLoading: isLoadingProjects,
     isError: isProjectsError,
     error: projectsError,
-  } = useQuery({ queryKey: ['projects'], queryFn: getProjects, refetchInterval: 10000, refetchOnWindowFocus: true });
+  } = useQuery({
+    queryKey: ['projects'],
+    queryFn: getProjects,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60000,
+  });
 
   const scopedProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);
   const canManageFollowedBranchesForUser = canManageFollowedBranches(user?.email, user?.role);
@@ -69,12 +75,10 @@ export function DashboardPage() {
     window.addEventListener(getFollowChangedEventName(), refreshFollowedProjects);
     window.addEventListener('focus', syncFromServer);
     document.addEventListener('visibilitychange', syncFromServer);
-    const refreshInterval = window.setInterval(syncFromServer, 10000);
     return () => {
       window.removeEventListener(getFollowChangedEventName(), refreshFollowedProjects);
       window.removeEventListener('focus', syncFromServer);
       document.removeEventListener('visibilitychange', syncFromServer);
-      window.clearInterval(refreshInterval);
     };
   }, [canManageFollowedBranchesForUser, user?.email]);
   const isLoading = isLoadingBranches || isLoadingProjects;
@@ -209,7 +213,7 @@ export function DashboardPage() {
                     <div className="flex items-start justify-between gap-3">
                       <Link to={project ? `/projects/${project.id}` : `/branches/${branch.id}`} className="min-w-0 flex-1">
                         <p className="truncate font-medium text-slate-900 hover:text-sky-700">{branch.name}</p>
-                        {project ? <p className="mt-1 text-sm text-slate-600">{project.status === 'completed' ? 'Production & Installation : Completed' : `${project.currentStage} · ${project.status}`}</p> : null}
+                        {project ? <p className="mt-1 text-sm text-slate-600">{project.status === 'completed' ? 'Production & Installation : Completed' : null}</p> : null}
                       </Link>
                       <div className="flex shrink-0 items-center gap-2">
                         <ProjectFollowButton projectId={branch.id} legacyProjectIds={legacyProjectIds} userEmail={user?.email} userRole={user?.role} noun="branch" />
@@ -238,7 +242,7 @@ export function DashboardPage() {
                       <div className="flex items-start justify-between gap-3">
                         <Link to={project ? `/projects/${project.id}` : `/branches/${branch.id}`} className="min-w-0 flex-1">
                           <p className="truncate font-medium text-slate-900 hover:text-sky-700">{branch.name}</p>
-                          {project ? <p className="mt-1 text-sm text-slate-600">{project.status === 'completed' ? 'Production & Installation : Completed' : `${project.currentStage} · ${project.status}`}</p> : null}
+                          {project ? <p className="mt-1 text-sm text-slate-600">{project.status === 'completed' ? 'Production & Installation : Completed' : null}</p> : null}
                         </Link>
                         <ProjectFollowButton projectId={branch.id} userEmail={user?.email} userRole={user?.role} noun="branch" />
                       </div>

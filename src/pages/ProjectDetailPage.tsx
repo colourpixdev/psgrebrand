@@ -142,8 +142,9 @@ export function ProjectDetailPage() {
     queryKey: ['project', projectId],
     queryFn: () => getProjectById(projectId ?? ''),
     enabled: Boolean(projectId),
-    refetchInterval: 10000,
-    refetchOnWindowFocus: true,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60000,
   });
   const { data: users = [] } = useQuery({
     queryKey: ['users'],

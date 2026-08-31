@@ -84,8 +84,9 @@ export function BranchDetailPage() {
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery({
     queryKey: ['projects'],
     queryFn: getProjects,
-    refetchInterval: 10000,
-    refetchOnWindowFocus: true,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60000,
   });
 
   const normalizedParam = String(branchId ?? '').trim();
@@ -404,7 +405,7 @@ export function BranchDetailPage() {
                 <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <p className="text-base font-semibold text-white">{project.branch}</p>
-                    <p className="mt-1 text-sm text-slate-300">{project.currentStage} · {project.status.replace('_', ' ')}</p>
+                    <p className="mt-1 text-sm text-slate-300">{project.status === 'completed' ? 'Production & Installation : Completed' : null}</p>
                     <p className="mt-1 text-xs text-slate-400">Project start {project.projectStartDate || 'Not set'} · Updated {project.updatedAt || 'Unknown'}</p>
                   </div>
                   <div className="mt-3 flex gap-2">
