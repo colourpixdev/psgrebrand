@@ -6,6 +6,10 @@ import { createTaskFromPool } from '../constants/taskPool';
 import { createNextProjectId } from '../utils/branchProjectIds';
 import { taskStatusFromDatabase, taskStatusToDatabase } from '../utils/taskStatus';
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export interface PortalSummary {
   metrics: Array<{ label: string; value: number }>;
   recentActivity: ActivityItem[];
@@ -1776,7 +1780,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     throw error ?? new Error('Unable to update project summary.');
   }
 
-  if (currentStageTask && existingProject.workspaceId) {
+  if (currentStageTask && existingProject.workspaceId && isUuid(currentStageTask.id)) {
     const now = new Date().toISOString();
     const { error: taskError } = await client
       .from('project_tasks')
@@ -2531,7 +2535,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     .eq('id', existingProject.workspaceId)
     .maybeSingle();
 
-  if (workspaceData?.id) {
+  if (workspaceData?.id && isUuid(input.taskId)) {
     const taskUpdate = {
       title: text ?? existingTask.text,
       status: relationalStatus,
