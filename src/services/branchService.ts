@@ -617,16 +617,47 @@ export async function deleteBranch(id: string): Promise<boolean> {
     .from('branches')
     .update({ archived_at: new Date().toISOString() })
     .eq('id', id)
-    .is('archived_at', null)
     .select('id');
 
-  if (error) {
-    console.error('Failed to delete branch:', error);
-    throw new Error(error.message || 'Failed to archive branch');
+  if (!error && data && data.length > 0) {
+    return true;
   }
 
-  if (!data || data.length === 0) {
+  if (!error && (!data || data.length === 0)) {
+    const { data: existingBranch, error: lookupError } = await supabase
+      .from('branches')
+      .select('id, archived_at')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (lookupError) {
+      console.error('Failed to verify branch state before archive:', lookupError);
+      throw new Error(lookupError.message || 'Failed to archive branch');
+    }
+
+    if (!existingBranch) {
+      throw new Error('Branch not found.');
+    }
+
+    if (existingBranch.archived_at) {
+      return true;
+    }
+
     throw new Error('The branch was not removed. Apply the branch archive migration or check your permissions.');
+  }
+
+  if (error) {
+    const normalizedMessage = (error.message || '').toLowerCase();
+    if (
+      normalizedMessage.includes('archived_at')
+      || normalizedMessage.includes('does not exist')
+      || normalizedMessage.includes('column')
+    ) {
+      throw new Error('The branch archive column is missing. Run the branch archive migration before removing this branch.');
+    }
+
+    console.error('Failed to delete branch:', error);
+    throw new Error(error.message || 'Failed to archive branch');
   }
 
   return true;
