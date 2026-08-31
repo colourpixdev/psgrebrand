@@ -1078,7 +1078,10 @@ function applyRelationalProjectData(project: Project, data: RelationalProjectDat
     }
   });
 
-  const nextFiles = data.filesAvailable === false || data.files === undefined || data.files === null ? project.files : data.files;
+  const relationalFiles = data.filesAvailable === false || data.files === undefined || data.files === null ? null : data.files;
+  const nextFiles = relationalFiles === null
+    ? project.files
+    : [...relationalFiles, ...project.files.filter((legacyFile) => !relationalFiles.some((file) => file.path && legacyFile.path === file.path || file.id && legacyFile.id === file.id))];
   const remapFileTaskIds = (files: ProjectFile[]) => files.map((file) => file.taskId && legacyTaskIdToRelationalId.has(file.taskId)
     ? { ...file, taskId: legacyTaskIdToRelationalId.get(file.taskId) }
     : file);
@@ -1542,7 +1545,7 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
 
   const { data: projectRow, error: projectError } = await client
     .from('projects')
-    .select('branch_id, rebrand_workspace_id, tasks')
+    .select('branch_id, rebrand_workspace_id, tasks, files')
     .eq('id', projectId)
     .single();
 
@@ -1632,6 +1635,20 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     await client.from('project_files').delete().eq('id', projectFile.id);
     await client.storage.from(projectFilesBucket).remove([path]);
     throw currentVersionError;
+  }
+
+  if (taskId && !relationalTaskId) {
+    const legacyFiles = mapLegacyFiles((projectRow as ProjectRow).files);
+    const legacyFile = { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId };
+    const { error: legacyFileError } = await client
+      .from('projects')
+      .update({ files: [...legacyFiles, legacyFile], updated_at: new Date().toISOString() })
+      .eq('id', projectId);
+    if (legacyFileError) {
+      await client.from('project_files').delete().eq('id', projectFile.id);
+      await client.storage.from(projectFilesBucket).remove([path]);
+      throw legacyFileError;
+    }
   }
 
   await recordProjectFileActivity(projectId, workspace.id, 'file_uploaded', projectFile.id, relationalTaskId ?? undefined, { display_name: file.name, actor: 'upload' });
