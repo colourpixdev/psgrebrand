@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { FileText, Download, Eye } from 'lucide-react';
+import { FileText, Download, Eye, CheckCircle2 } from 'lucide-react';
 import { ProjectFollowButton } from '../components/projects/ProjectFollowButton';
 import { getAllBranches } from '../services/branchService';
 import { addProjectComment, deleteProjectFile, getProjectFileUrl, getProjects, renameProjectFile, updateProjectComment, uploadProjectFile } from '../services/portalService';
@@ -506,7 +506,10 @@ export function BranchDetailPage() {
                       {completedStages.length ? completedStages.map(({ stageName, task, status, date, note }) => (
                         <div key={`${project.id}-${stageName}`} className="rounded-xl border border-emerald-400/35 bg-emerald-500/10 p-3">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-xs font-medium text-emerald-100">{stageName}</p>
+                            <div className="flex items-center gap-1">
+                              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" />
+                              <p className="text-xs font-medium text-emerald-100">{stageName}</p>
+                            </div>
                             <span className="inline-flex rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-emerald-200">
                               Done
                             </span>
