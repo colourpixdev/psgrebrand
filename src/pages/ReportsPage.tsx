@@ -122,7 +122,10 @@ function projectSpreadsheetRows(projects: Project[]) {
     const stageTask = latestBusyStageTask(project);
     const pendingTasks = project.tasks.filter(isTaskOutstanding).length;
     const participants = project.tasks.flatMap((task) => task.assignees?.map((assignee) => `${assignee.name} (${assignee.designation})`) ?? []).join('; ');
-    const orderedStages = stageTimeline.map((task) => task.stage ?? task.text).join(' > ') || project.currentStage || 'Not set';
+    const busyStages = stageTimeline.filter((task) => task.status === 'busy');
+    const orderedStages = busyStages.length > 0
+      ? busyStages.map((task) => task.stage ?? task.text).join(' > ')
+      : stageTimeline.map((task) => task.stage ?? task.text).join(' > ') || project.currentStage || 'Not set';
 
     return [
       project.id,
@@ -281,7 +284,7 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
         </header>
         <table>
             <thead><tr>${['Project ID', 'Branch', 'Town', 'Marketing Manager', 'Project Start Date', 'Stages (oldest → newest)', 'Latest busy stage', 'Latest busy stage start date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
-              <tbody>${projects.map((project) => { const stageTimeline = projectStageTimeline(project); const stageTask = latestBusyStageTask(project); const orderedStages = stageTimeline.map((task) => task.stage ?? task.text).join(' > ') || project.currentStage || 'Not set'; return `<tr>${[
+              <tbody>${projects.map((project) => { const stageTimeline = projectStageTimeline(project); const stageTask = latestBusyStageTask(project); const busyStages = stageTimeline.filter((task) => task.status === 'busy'); const orderedStages = busyStages.length > 0 ? busyStages.map((task) => task.stage ?? task.text).join(' > ') : stageTimeline.map((task) => task.stage ?? task.text).join(' > ') || project.currentStage || 'Not set'; return `<tr>${[
       project.id,
       project.branch,
       project.town,
@@ -547,7 +550,7 @@ export function ReportsPage() {
                 <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
-                  {(() => { const stageTimeline = projectStageTimeline(project); const stageTask = latestBusyStageTask(project); const orderedStages = stageTimeline.map((task) => task.stage ?? task.text).join(' > ') || project.currentStage || 'Not set'; return <>
+                  {(() => { const stageTimeline = projectStageTimeline(project); const stageTask = latestBusyStageTask(project); const busyStages = stageTimeline.filter((task) => task.status === 'busy'); const orderedStages = busyStages.length > 0 ? busyStages.map((task) => task.stage ?? task.text).join(' > ') : stageTimeline.map((task) => task.stage ?? task.text).join(' > ') || project.currentStage || 'Not set'; return <>
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectStartDate || 'Not set'}</td>
                   <td className="px-5 py-4">{orderedStages}</td>
