@@ -16,8 +16,6 @@ export const signageProjectStageDefinitions = [
   { key: 'Artwork approval', description: 'Head office and office approval status.' },
   { key: 'Quote acceptance', description: 'Head office acceptance status.' },
   { key: 'Quote additional approval', description: 'Additional office approval required for part of the quote.' },
-  { key: 'Date of installation', description: 'Scheduled installation date.' },
-  { key: 'Completion date', description: 'Completed date.' },
   { key: 'Invoice', description: 'Invoice upload.' },
 ] as const;
 
@@ -61,6 +59,9 @@ export function canonicalizeProjectStageName(value: string): string {
 const hiddenLegacyProjectStages = new Set([
   'Intro date',
   'Projection date',
+  'Date of installation',
+  'Completion date',
+  'Completed',
   'Colourpix to prepare brief',
   'Summary',
   'Photos',
