@@ -10,6 +10,10 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+function normalizeTaskTitle(value: string) {
+  return value.trim().toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 export interface PortalSummary {
   metrics: Array<{ label: string; value: number }>;
   recentActivity: ActivityItem[];
@@ -2727,16 +2731,31 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
     .eq('is_primary', true)
     .maybeSingle();
 
-  if (workspaceData?.id && isUuid(input.taskId)) {
-    const { data: deletedTask, error: deleteError } = await client
+  if (workspaceData?.id) {
+    const { data: relationalTasks, error: relationalTasksError } = await client
       .from('project_tasks')
-      .update({ deleted_at: now, is_current: false })
-      .eq('id', input.taskId)
+      .select('id, title')
       .eq('workspace_id', workspaceData.id)
-      .select('id')
-      .maybeSingle();
+      .is('deleted_at', null);
 
-    if (deleteError || !deletedTask) {
+    if (relationalTasksError) {
+      throw relationalTasksError;
+    }
+
+    const matchingRelationalTaskIds = (relationalTasks ?? [])
+      .filter((task) => isUuid(input.taskId) ? task.id === input.taskId : normalizeTaskTitle(task.title) === normalizeTaskTitle(deletedStage))
+      .map((task) => task.id);
+
+    const { data: deletedTask, error: deleteError } = matchingRelationalTaskIds.length > 0
+      ? await client
+        .from('project_tasks')
+        .update({ deleted_at: now, is_current: false })
+        .in('id', matchingRelationalTaskIds)
+        .eq('workspace_id', workspaceData.id)
+        .select('id')
+      : { data: [], error: null };
+
+    if (deleteError || !deletedTask?.length) {
       throw new Error(deleteError?.message ?? 'Unable to delete project task. The task may be read-only or no longer exists.');
     }
   }
