@@ -1046,7 +1046,11 @@ type RelationalProjectData = {
 };
 
 function applyRelationalProjectData(project: Project, data: RelationalProjectData): Project {
-  const nextTasks = data.tasksAvailable === false || data.tasks === undefined ? project.tasks : data.tasks;
+  const relationalTasks = data.tasksAvailable === false || data.tasks === undefined ? [] : data.tasks;
+  const relationalTaskNames = new Set(relationalTasks.map((task) => task.text.trim().toLowerCase()));
+  const nextTasks = data.tasksAvailable === false || data.tasks === undefined
+    ? project.tasks
+    : [...relationalTasks, ...project.tasks.filter((task) => !relationalTaskNames.has(task.text.trim().toLowerCase()))];
   const legacyTaskIdToRelationalId = new Map<string, string>();
   const unmatchedTasks = [...nextTasks];
 
