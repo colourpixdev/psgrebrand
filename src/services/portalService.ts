@@ -1582,22 +1582,22 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
       .is('rebrand_workspace_id', null);
   }
 
-  let relationalTaskId: string | null = isUuid(taskId ?? '') ? taskId ?? null : null;
-  if (taskId && !relationalTaskId) {
-    const legacyTask = mapLegacyTasks((projectRow as ProjectRow).tasks).find((task) => task.id === taskId);
-    if (legacyTask) {
-      const { data: matchingTasks, error: taskLookupError } = await client
-        .from('project_tasks')
-        .select('id, title')
-        .eq('workspace_id', workspace.id)
-        .is('deleted_at', null);
-      if (taskLookupError) {
-        await client.storage.from(projectFilesBucket).remove([path]);
-        throw taskLookupError;
-      }
-
-      relationalTaskId = (matchingTasks ?? []).find((task) => normalizeTaskTitle(task.title) === normalizeTaskTitle(legacyTask.text))?.id ?? null;
+  let relationalTaskId: string | null = null;
+  if (taskId) {
+    const { data: matchingTasks, error: taskLookupError } = await client
+      .from('project_tasks')
+      .select('id, title')
+      .eq('workspace_id', workspace.id)
+      .is('deleted_at', null);
+    if (taskLookupError) {
+      await client.storage.from(projectFilesBucket).remove([path]);
+      throw taskLookupError;
     }
+
+    const legacyTask = mapLegacyTasks((projectRow as ProjectRow).tasks).find((task) => task.id === taskId);
+    const taskTitle = legacyTask?.text ?? (await getProjectById(projectId))?.tasks.find((task) => task.id === taskId)?.text;
+    relationalTaskId = (matchingTasks ?? []).find((task) => task.id === taskId
+      || (taskTitle && normalizeTaskTitle(task.title) === normalizeTaskTitle(taskTitle)))?.id ?? null;
   }
 
   const { data: category } = await client.from('file_categories').select('id').eq('category_key', 'other').maybeSingle();
