@@ -1,4 +1,4 @@
-import type { ProjectTemplateId, ProjectStage } from '../types/domain';
+import type { ProjectTemplateId, ProjectStage, TaskItem } from '../types/domain';
 
 export type ProjectTemplate = {
   id: ProjectTemplateId;
@@ -55,6 +55,26 @@ export const defaultProjectTemplate = projectTemplates.signage_rollout;
 
 export function getProjectTemplate(templateId: string | null | undefined) {
   return projectTemplates[templateId as ProjectTemplateId] ?? defaultProjectTemplate;
+}
+
+export function createProjectLifecycleTasks(templateId: string | null | undefined): TaskItem[] {
+  const template = getProjectTemplate(templateId);
+
+  return template.defaultStages.map((stageName, index) => ({
+    id: `lifecycle-${index}-${stageName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+    text: stageName,
+    stage: stageName,
+    completed: false,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  }));
+}
+
+export function mergeDefaultLifecycleTasks(existingTasks: TaskItem[] | null | undefined, templateId: string | null | undefined): TaskItem[] {
+  const defaultTasks = createProjectLifecycleTasks(templateId);
+  const seenStages = new Set((existingTasks ?? []).map((task) => (task.stage ?? task.text).trim().toLowerCase()).filter(Boolean));
+
+  return [...(existingTasks ?? []), ...defaultTasks.filter((task) => !seenStages.has((task.stage ?? task.text).trim().toLowerCase()))];
 }
 
 export const projectTemplateOptions = Object.values(projectTemplates);

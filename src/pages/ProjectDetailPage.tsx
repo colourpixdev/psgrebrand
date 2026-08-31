@@ -725,7 +725,11 @@ export function ProjectDetailPage() {
   const projectComments = selectedProject.comments.filter((comment) => comment.kind !== 'question');
   const isQuestionRequester = (question: CommentItem) => (question.requesterEmail ? question.requesterEmail === user?.email : question.author === user?.name);
   const unreadAnswers = projectQuestions.filter((question) => question.status === 'answered' && question.unreadForRequester && isQuestionRequester(question));
-  const mergedTasks = selectedProject.tasks;
+  const mergedTasks = [...selectedProject.tasks].sort((leftTask, rightTask) => {
+    const leftValue = leftTask.createdAt ?? leftTask.startedDate ?? leftTask.dueDate ?? leftTask.completedAt ?? '';
+    const rightValue = rightTask.createdAt ?? rightTask.startedDate ?? rightTask.dueDate ?? rightTask.completedAt ?? '';
+    return rightValue.localeCompare(leftValue);
+  });
   const stagePlan = getStagePlan(selectedProject);
   const currentStageTask = findTaskById(selectedProject.tasks, viewedTaskId);
   const viewedStageValue = currentStageTask?.stage ?? currentStageTask?.text ?? selectedProject.currentStage;
@@ -1160,7 +1164,7 @@ export function ProjectDetailPage() {
                           <button
                             type="button"
                             disabled={reorderTaskMutation.isPending || index === 0}
-                            onClick={() => reorderTaskMutation.mutate({ task, direction: 'up' })}
+                            onClick={() => reorderTaskMutation.mutate({ task, direction: 'down' })}
                             className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Move up
@@ -1168,7 +1172,7 @@ export function ProjectDetailPage() {
                           <button
                             type="button"
                             disabled={reorderTaskMutation.isPending || index === mergedTasks.length - 1}
-                            onClick={() => reorderTaskMutation.mutate({ task, direction: 'down' })}
+                            onClick={() => reorderTaskMutation.mutate({ task, direction: 'up' })}
                             className="rounded-xl border border-slate-700 bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Move down

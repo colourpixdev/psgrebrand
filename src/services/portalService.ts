@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectStatus, ProjectTemplateId, Role, TaskAssignee, TaskItem, TaskStatus, UserRecord } from '../types/domain';
 import { defaultWorkspace, isPlatformOwnerEmail, rolloutAppEmail } from '../constants/workspaces';
-import { defaultProjectTemplate, getProjectTemplate } from '../constants/projectTemplates';
+import { defaultProjectTemplate, getProjectTemplate, mergeDefaultLifecycleTasks } from '../constants/projectTemplates';
 import { createTaskFromPool } from '../constants/taskPool';
 import { createNextProjectId } from '../utils/branchProjectIds';
 import { taskStatusFromDatabase, taskStatusToDatabase } from '../utils/taskStatus';
@@ -986,6 +986,8 @@ function mapProjectRow(row: ProjectRow): Project {
 
   const status: ProjectStatus = row.status;
 
+  const legacyTasks = mapLegacyTasks(row.tasks);
+
   return {
     id: row.id ?? 'unknown-project',
     branchId: mappedBranchId,
@@ -1018,7 +1020,7 @@ function mapProjectRow(row: ProjectRow): Project {
     branchManagerViewOnly: Boolean(row.branch_manager_view_only),
     notes: row.notes ?? '',
     files: mapLegacyFiles(row.files),
-    tasks: mapLegacyTasks(row.tasks),
+    tasks: mergeDefaultLifecycleTasks(legacyTasks, row.project_type ?? undefined),
     comments: Array.isArray(row.comments)
       ? row.comments.map((comment, index) => ({
         ...comment,
@@ -1336,7 +1338,8 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   const normalizedProjectId = input.id?.trim()
     || createNextProjectId(input.branchCode?.trim() || 'PSG000', await getProjects());
 
-  // Start with no tasks - users can add from the task pool or create custom tasks
+  const selectedTasks = input.selectedTaskIds ? input.selectedTaskIds.map((taskId) => createTaskFromPool(taskId)) : [];
+  const lifecycleTasks = mergeDefaultLifecycleTasks(selectedTasks, template.id);
   const basePayload = {
     id: normalizedProjectId,
     branch_id: resolvedBranchId,
@@ -1351,7 +1354,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     manager_email: optionalProjectValue(input.managerEmail, ''),
     installer: optionalProjectValue(input.installer),
     designer: optionalProjectValue(input.designer),
-    current_stage: input.currentStage,
+    current_stage: input.currentStage || template.defaultStages[0] || 'New Project',
     status: input.status,
     target_date: input.targetDate?.trim() ?? '',
     brief_requested_date: input.briefRequestedDate?.trim() ?? '',
@@ -1361,7 +1364,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     branch_manager_view_only: false,
     notes: input.notes?.trim() ?? '',
     files: [],
-    tasks: input.selectedTaskIds ? input.selectedTaskIds.map((taskId) => createTaskFromPool(taskId)) : [],
+    tasks: lifecycleTasks,
     comments: [],
     activity: [createActivity('Project Created', `${normalizedProjectId} was created in ${workspaceName} for ${clientCompany}.`, 'success')],
   };
