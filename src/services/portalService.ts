@@ -708,7 +708,7 @@ export type UpdateProjectSummaryInput = {
   status: Project['status'];
   progress?: number;
   projectStartDate?: string;
-  targetDate: string;
+  targetDate?: string;
   briefRequestedDate: string;
   installationDate: string;
   completionDate?: string;
@@ -1703,7 +1703,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     throw new Error('Current status is required.');
   }
 
-  const targetDate = input.targetDate.trim();
+  const targetDate = input.targetDate?.trim() ?? existingProject.targetDate ?? '';
   const projectStartDate = input.projectStartDate?.trim() ?? existingProject.projectStartDate ?? '';
   const briefRequestedDate = input.briefRequestedDate.trim();
   const installationDate = input.installationDate.trim();

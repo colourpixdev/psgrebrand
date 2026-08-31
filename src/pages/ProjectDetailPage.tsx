@@ -98,7 +98,6 @@ export function ProjectDetailPage() {
   const [currentStageDraft, setCurrentStageDraft] = useState<ProjectStage>('New Project');
   const [viewedTaskId, setViewedTaskId] = useState('');
   const [statusDraft, setStatusDraft] = useState<ProjectStatus>('in_progress');
-  const [targetDateDraft, setTargetDateDraft] = useState('');
   const [projectStartDateDraft, setProjectStartDateDraft] = useState('');
   const [marketingCoordinatorEmailDraft, setMarketingCoordinatorEmailDraft] = useState('');
   const [isEditingDetails, setIsEditingDetails] = useState(false);
@@ -168,7 +167,6 @@ export function ProjectDetailPage() {
         setExpandedAccordionTaskIds([requestedTask.id]);
       }
       setStatusDraft(project.status);
-      setTargetDateDraft(project.targetDate);
       setProjectStartDateDraft(project.projectStartDate ?? '');
       setMarketingCoordinatorEmailDraft(project.managerEmail);
     }
@@ -309,7 +307,6 @@ export function ProjectDetailPage() {
           currentTaskId: viewedTaskId || undefined,
           status: statusDraft,
           projectStartDate: projectStartDateDraft,
-          targetDate: targetDateDraft,
           briefRequestedDate: selectedProject.briefRequestedDate,
           installationDate: selectedProject.installationDate,
           manager: users.find((item) => item.email.toLowerCase() === marketingCoordinatorEmailDraft.toLowerCase())?.name ?? selectedProject.manager,
@@ -854,9 +851,8 @@ export function ProjectDetailPage() {
                 </section>
                 <section className="grid gap-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Project schedule</h3>
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-1">
                     <DatePickerInput label="Project start date" value={projectStartDateDraft} onChange={setProjectStartDateDraft} placeholder="Select project start date" />
-                    <DatePickerInput label="Project target completion" value={targetDateDraft} onChange={setTargetDateDraft} placeholder="Select project target completion" />
                     {canEditProjectStatus ? <label className="grid gap-2">Project status<select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50">{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label> : null}
                   </div>
                 </section>
@@ -887,9 +883,8 @@ export function ProjectDetailPage() {
                 </section>
                 <section className="grid self-start gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-4">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Project schedule</h3>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-1">
                     <div><span className="text-cyan-200">Project start date:</span> {formatWorkspaceDate(selectedProject.projectStartDate ?? '')}</div>
-                    <div><span className="text-cyan-200">Project target completion:</span> {formatWorkspaceDate(selectedProject.targetDate)}</div>
                   </div>
                 </section>
                 {hasSignageDetails ? <section className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4">

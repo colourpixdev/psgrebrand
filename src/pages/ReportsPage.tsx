@@ -98,7 +98,6 @@ function isOperationalBlocker(project: Project) {
   return project.status === 'delayed'
     || project.status === 'on_hold'
     || awaitingQuoteOrApproval
-    || isPastDate(project.targetDate)
     || missingManager
     || pendingTasks.length >= 4;
 }
@@ -131,7 +130,6 @@ function projectSpreadsheetRows(projects: Project[]) {
       project.town,
       project.manager,
       formatReportDate(project.projectStartDate ?? ''),
-      formatReportDate(project.targetDate),
       orderedStages,
       stageTask ? taskStatusLabels[stageTask.status ?? 'pending'] : 'Not set',
       formatReportDate(stageTask?.startedDate ?? ''),
@@ -145,7 +143,7 @@ function projectSpreadsheetRows(projects: Project[]) {
 
 async function downloadExcel(projects: Project[], reportName: string) {
   const XLSX = await import('xlsx-js-style');
-  const headers = ['Branch reference', 'Branch', 'Town', 'Manager', 'Project Start Date', 'Project Target Completion', 'Stages (oldest → newest)', 'Latest busy stage', 'Latest busy stage start date', 'Pending tasks', 'Files', 'Participants', 'Updated'];
+  const headers = ['Branch reference', 'Branch', 'Town', 'Manager', 'Project Start Date', 'Stages (oldest → newest)', 'Latest busy stage', 'Latest busy stage start date', 'Pending tasks', 'Files', 'Participants', 'Updated'];
   const rows = projectSpreadsheetRows(projects);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   worksheet['!cols'] = [
@@ -282,14 +280,13 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
           <p class="meta">${projects.length} project${projects.length === 1 ? '' : 's'} · Generated ${escapeHtml(new Date().toLocaleDateString())}</p>
         </header>
         <table>
-            <thead><tr>${['Project ID', 'Branch', 'Town', 'Marketing Manager', 'Project Start Date', 'Project Target Completion', 'Stages (oldest → newest)', 'Latest busy stage', 'Latest busy stage start date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+            <thead><tr>${['Project ID', 'Branch', 'Town', 'Marketing Manager', 'Project Start Date', 'Stages (oldest → newest)', 'Latest busy stage', 'Latest busy stage start date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
               <tbody>${projects.map((project) => { const stageTimeline = projectStageTimeline(project); const stageTask = latestBusyStageTask(project); const orderedStages = stageTimeline.map((task) => task.stage ?? task.text).join(' > ') || project.currentStage || 'Not set'; return `<tr>${[
       project.id,
       project.branch,
       project.town,
       project.manager,
       project.projectStartDate ?? '',
-      project.targetDate,
       orderedStages,
       stageTask ? taskStatusLabels[stageTask.status ?? 'pending'] : 'Not set',
       stageTask?.startedDate ?? '',
@@ -539,7 +536,6 @@ export function ReportsPage() {
               <tr>
                 <th className="px-5 py-4 font-medium">Branch</th>
                 <th className="px-5 py-4 font-medium">Project Start Date</th>
-                <th className="px-5 py-4 font-medium">Project Target Completion</th>
                 <th className="px-5 py-4 font-medium">Stage</th>
                 <th className="px-5 py-4 font-medium">Stage Status</th>
                 <th className="px-5 py-4 font-medium">Stage Start Date</th>
@@ -554,7 +550,6 @@ export function ReportsPage() {
                   {(() => { const stageTimeline = projectStageTimeline(project); const stageTask = latestBusyStageTask(project); const orderedStages = stageTimeline.map((task) => task.stage ?? task.text).join(' > ') || project.currentStage || 'Not set'; return <>
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectStartDate || 'Not set'}</td>
-                  <td className="px-5 py-4">{project.targetDate || 'Not set'}</td>
                   <td className="px-5 py-4">{orderedStages}</td>
                   <td className="px-5 py-4">{stageTask ? taskStatusLabels[stageTask.status ?? 'pending'] : 'Not set'}</td>
                   <td className="px-5 py-4">{stageTask?.startedDate || 'Not set'}</td>

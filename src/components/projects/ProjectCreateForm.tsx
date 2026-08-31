@@ -33,7 +33,6 @@ const projectSchema = z.object({
   targetDate: optionalText,
   briefRequestedDate: optionalText,
   installationDate: optionalText,
-  completionDate: optionalText,
   selectedTaskIds: z.array(z.string()).default([]),
 });
 
@@ -137,7 +136,6 @@ export function ProjectCreateForm() {
       targetDate: '',
       briefRequestedDate: '',
       installationDate: '',
-      completionDate: '',
       selectedTaskIds: [],
     },
   });
@@ -167,7 +165,6 @@ export function ProjectCreateForm() {
         targetDate: '',
         briefRequestedDate: '',
         installationDate: '',
-        completionDate: '',
         selectedTaskIds: [],
       });
     },
@@ -355,18 +352,7 @@ export function ProjectCreateForm() {
           )}
         />
 
-        <Controller
-          name="completionDate"
-          control={control}
-          render={({ field }) => (
-            <DatePickerInput
-              label="Completion date"
-              value={field.value}
-              onChange={field.onChange}
-              placeholder="Select completion date"
-            />
-          )}
-        />
+
 
         <fieldset className="md:col-span-2">
           <legend className="mb-3 text-sm font-semibold text-slate-300">Initial tasks (optional)</legend>
