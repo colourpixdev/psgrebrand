@@ -7,8 +7,8 @@ import { getAllBranches } from '../services/branchService';
 import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
-import { isTaskOutstanding } from '../utils/taskStatus';
-import type { Branch, Project, ProjectStatus, TaskItem } from '../types/domain';
+import { getTaskStatus, isTaskOutstanding } from '../utils/taskStatus';
+import { normalizeRole, type Branch, type Project, type ProjectStatus, type TaskItem } from '../types/domain';
 
 type ReportType = 'single-branch-detail' | 'multi-branch-overview' | 'operational-blockers';
 
@@ -27,9 +27,25 @@ const statusLabels: Record<ProjectStatus, string> = {
 
 const taskStatusLabels: Record<NonNullable<TaskItem['status']>, string> = { pending: 'Pending', busy: 'Busy', done: 'Completed' };
 
-function projectStageTimeline(project: Project) {
-  return [...project.tasks]
-    .filter((task) => task.status !== 'pending')
+function shouldHidePendingStagesForUser(userRole?: string | null) {
+  const role = normalizeRole(userRole ?? undefined);
+  return ['psg_user', 'psg_head_office', 'psg_branch_manager', 'sign_company'].includes(role);
+}
+
+function isPendingStageTask(task: TaskItem) {
+  return !task.completed && (task.status ?? getTaskStatus(task)) === 'pending';
+}
+
+function filterVisibleStagesForUser(tasks: TaskItem[], userRole?: string | null) {
+  if (!shouldHidePendingStagesForUser(userRole)) {
+    return tasks;
+  }
+
+  return tasks.filter((task) => !isPendingStageTask(task));
+}
+
+function projectStageTimeline(project: Project, userRole?: string | null) {
+  return [...filterVisibleStagesForUser(project.tasks, userRole)]
     .sort((a, b) => {
       const aStamp = new Date(a.startedDate ?? a.createdAt ?? 0).getTime();
       const bStamp = new Date(b.startedDate ?? b.createdAt ?? 0).getTime();
@@ -37,8 +53,8 @@ function projectStageTimeline(project: Project) {
     });
 }
 
-function latestRelevantStageTask(project: Project) {
-  const activeStages = projectStageTimeline(project);
+function latestRelevantStageTask(project: Project, userRole?: string | null) {
+  const activeStages = projectStageTimeline(project, userRole);
 
   if (activeStages.length === 0) {
     return null;
@@ -136,9 +152,9 @@ function formatFileName(reportName: string) {
   return `${reportName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${date}`;
 }
 
-function projectSpreadsheetRows(projects: Project[]) {
+function projectSpreadsheetRows(projects: Project[], userRole?: string | null) {
   return projects.map((project) => {
-    const stageTask = latestRelevantStageTask(project);
+    const stageTask = latestRelevantStageTask(project, userRole);
     const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set';
     const latestComment = latestCommentForStage(project, stageTask);
 
@@ -155,10 +171,10 @@ function projectSpreadsheetRows(projects: Project[]) {
   });
 }
 
-async function downloadExcel(projects: Project[], reportName: string) {
+async function downloadExcel(projects: Project[], reportName: string, userRole?: string | null) {
   const XLSX = await import('xlsx-js-style');
   const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Latest stage', 'Latest Comment', 'Latest stage start date'];
-  const rows = projectSpreadsheetRows(projects);
+  const rows = projectSpreadsheetRows(projects, userRole);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   worksheet['!cols'] = [
     { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 42 }, { wch: 18 },
@@ -210,10 +226,10 @@ async function downloadExcel(projects: Project[], reportName: string) {
   URL.revokeObjectURL(url);
 }
 
-function branchDetailHtml(projects: Project[], reportName: string, branchName: string, userName?: string) {
+function branchDetailHtml(projects: Project[], reportName: string, branchName: string, userName?: string, userRole?: string | null) {
   const cards = projects.map((project) => {
-    const pendingTasks = project.tasks.filter(isTaskOutstanding);
-    const participants = project.tasks.flatMap((task) => task.assignees ?? []);
+    const pendingTasks = filterVisibleStagesForUser(project.tasks, userRole).filter(isTaskOutstanding);
+    const participants = filterVisibleStagesForUser(project.tasks, userRole).flatMap((task) => task.assignees ?? []);
     // filter out current user's activity when generating reports
     const activityItems = (userName
       ? project.activity.filter((item) => {
@@ -268,9 +284,9 @@ function branchDetailHtml(projects: Project[], reportName: string, branchName: s
   `;
 }
 
-function openPdfReport(projects: Project[], reportName: string, reportType: ReportType, selectedBranchName: string, userName?: string) {
+function openPdfReport(projects: Project[], reportName: string, reportType: ReportType, selectedBranchName: string, userName?: string, userRole?: string | null) {
   const html = reportType === 'single-branch-detail'
-    ? branchDetailHtml(projects, reportName, selectedBranchName, userName)
+    ? branchDetailHtml(projects, reportName, selectedBranchName, userName, userRole)
     : `
     <!doctype html>
     <html>
@@ -298,7 +314,7 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
         </header>
         <table>
             <thead><tr>${['Project ID', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Latest stage', 'Latest Comment', 'Latest stage start date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
-              <tbody>${projects.map((project) => { const stageTask = latestRelevantStageTask(project); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; const latestComment = latestCommentForStage(project, stageTask); return `<tr>${[
+              <tbody>${projects.map((project) => { const stageTask = latestRelevantStageTask(project, userRole); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; const latestComment = latestCommentForStage(project, stageTask); return `<tr>${[
       project.id,
       project.branch,
       project.projectStartDate ?? '',
@@ -336,6 +352,7 @@ export function ReportsPage() {
     queryKey: ['projects'],
     queryFn: getProjects,
   });
+  const hidePendingStages = shouldHidePendingStagesForUser(user?.role);
   const { data: branches = [] } = useQuery({
     queryKey: ['branches'],
     queryFn: getAllBranches,
@@ -400,17 +417,28 @@ export function ReportsPage() {
     return true;
   }), [branchName, completion, getProjectBranch, marketingCoordinator, normalizedQuery, reportType, scopedProjects, status]);
 
+  const hiddenPendingStageProjects = useMemo(() => {
+    if (!hidePendingStages) {
+      return filteredProjects;
+    }
+
+    return filteredProjects.map((project) => ({
+      ...project,
+      tasks: project.tasks.filter((task) => !isPendingStageTask(task)),
+    }));
+  }, [filteredProjects, hidePendingStages]);
+
   const displayedProjects = useMemo(() => {
     if (reportType === 'single-branch-detail') {
       if (branchName === 'all') {
         return [];
       }
 
-      return filteredProjects;
+      return hiddenPendingStageProjects;
     }
 
-    return filteredProjects;
-  }, [branchName, filteredProjects, reportType]);
+    return hiddenPendingStageProjects;
+  }, [branchName, hiddenPendingStageProjects, reportType]);
 
   const canExportReports = can(user, 'export_reports');
   const exportProjects = displayedProjects.length > 0 ? displayedProjects : scopedProjects;
@@ -507,11 +535,11 @@ export function ReportsPage() {
         <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm leading-6 text-slate-400">{selectedReport.description}</p>
           <div className="flex flex-wrap gap-3">
-            <button type="button" disabled={!canExportReports} onClick={() => downloadExcel(exportProjects, reportName)} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!canExportReports} onClick={() => downloadExcel(exportProjects, reportName, user?.role)} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
               <FileText className="h-4 w-4" />
               Excel report
             </button>
-            <button type="button" disabled={!canExportReports} onClick={() => openPdfReport(exportProjects, reportName, reportType, branchName, user?.name)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!canExportReports} onClick={() => openPdfReport(exportProjects, reportName, reportType, branchName, user?.name, user?.role)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">
               <FileText className="h-4 w-4" />
               PDF report
             </button>
@@ -566,7 +594,7 @@ export function ReportsPage() {
                 <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
-                  {(() => { const stageTask = latestRelevantStageTask(project); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; const latestComment = latestCommentForStage(project, stageTask); return <>
+                  {(() => { const stageTask = latestRelevantStageTask(project, user?.role); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; const latestComment = latestCommentForStage(project, stageTask); return <>
                   <td className="px-5 py-4 text-white">{project.id}</td>
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectStartDate || 'Not set'}</td>

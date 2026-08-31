@@ -11,7 +11,7 @@ import { can, canEditOwnComment, canRenameFiles, filterProjectsForUser, getRoleP
 import { filterActivityExcludingUser } from '../utils/activityFilter';
 import { getTaskStatus, isTaskOutstanding } from '../utils/taskStatus';
 import { canonicalizeProjectStageName, signageProjectStages } from '../constants/projectTemplates';
-import type { Project, ProjectFile, TaskAssignee } from '../types/domain';
+import { normalizeRole, type Project, type ProjectFile, type TaskAssignee } from '../types/domain';
 
 function isImageFile(file: ProjectFile) {
   const fileType = file.type ?? '';
@@ -335,16 +335,22 @@ export function BranchDetailPage() {
       : [];
 
   const rolloutChecklistRows = useMemo(() => {
+    const hidePendingStages = ['psg_user', 'psg_head_office', 'psg_branch_manager', 'sign_company'].includes(normalizeRole(user?.role));
+
     return branchProjects.map((project) => {
       const taskMap = new Map<string, { task: typeof project.tasks[number]; status: ReturnType<typeof getTaskStatus>; date: string; note?: string }>();
 
       project.tasks.forEach((task) => {
+        const status = getTaskStatus(task);
+        if (hidePendingStages && !task.completed && status === 'pending') {
+          return;
+        }
+
         const stageKey = normalizeStageName(task.stage ?? task.text ?? '');
         if (!stageKey) {
           return;
         }
 
-        const status = getTaskStatus(task);
         const stageDate = task.startedDate || task.completedAt || task.dueDate || task.createdAt || '';
         taskMap.set(stageKey, {
           task,
