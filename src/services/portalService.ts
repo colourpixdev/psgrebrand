@@ -14,6 +14,18 @@ function normalizeTaskTitle(value: string) {
   return value.trim().toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function workflowStageKeyForTaskTitle(title: string) {
+  const keyByTitle: Record<string, string> = {
+    'site inspection': 'site_information',
+    'layout brief': 'design_artwork',
+    'signed brief': 'psg_approval',
+    quote: 'quote',
+    invoice: 'quote',
+    'production and installation': 'production',
+  };
+  return keyByTitle[normalizeTaskTitle(title)] ?? 'site_information';
+}
+
 export interface PortalSummary {
   metrics: Array<{ label: string; value: number }>;
   recentActivity: ActivityItem[];
@@ -1589,7 +1601,7 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
   if (taskId) {
     const { data: matchingTasks, error: taskLookupError } = await client
       .from('project_tasks')
-      .select('id, title')
+      .select('id, title, sort_order')
       .eq('workspace_id', workspace.id)
       .is('deleted_at', null);
     if (taskLookupError) {
@@ -1601,6 +1613,38 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     const taskTitle = legacyTask?.text ?? (await getProjectById(projectId))?.tasks.find((task) => task.id === taskId)?.text;
     relationalTaskId = (matchingTasks ?? []).find((task) => task.id === taskId
       || (taskTitle && normalizeTaskTitle(task.title) === normalizeTaskTitle(taskTitle)))?.id ?? null;
+
+    if (!relationalTaskId && taskTitle) {
+      const [{ data: workflowStage }, { data: responsibilityGroup }] = await Promise.all([
+        client.from('workflow_stages').select('id').eq('stage_key', workflowStageKeyForTaskTitle(taskTitle)).maybeSingle(),
+        client.from('responsibility_groups').select('id').eq('group_key', 'colourpix').maybeSingle(),
+      ]);
+      if (workflowStage?.id && responsibilityGroup?.id) {
+        const nextSortOrder = (matchingTasks ?? []).reduce((max, task) => Math.max(max, Number(task.sort_order ?? 0)), 0) + 1;
+        const { data: createdTask, error: createTaskError } = await client
+          .from('project_tasks')
+          .insert({
+            workspace_id: workspace.id,
+            stage_id: workflowStage.id,
+            title: taskTitle,
+            status: 'not_started',
+            priority: 'normal',
+            sort_order: nextSortOrder,
+            responsible_group_id: responsibilityGroup.id,
+            required_action: '',
+            is_current: false,
+            created_by: uploadedBy,
+            updated_by: uploadedBy,
+          })
+          .select('id')
+          .maybeSingle();
+        if (createTaskError) {
+          await client.storage.from(projectFilesBucket).remove([path]);
+          throw createTaskError;
+        }
+        relationalTaskId = createdTask?.id ?? null;
+      }
+    }
   }
 
   const { data: category } = await client.from('file_categories').select('id').eq('category_key', 'other').maybeSingle();
