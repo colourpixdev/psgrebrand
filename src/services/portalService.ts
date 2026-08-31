@@ -2774,16 +2774,15 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
       .filter((task) => isUuid(input.taskId) ? task.id === input.taskId : normalizeTaskTitle(task.title) === normalizeTaskTitle(deletedStage))
       .map((task) => task.id);
 
-    const { data: deletedTask, error: deleteError } = matchingRelationalTaskIds.length > 0
+    const { error: deleteError } = matchingRelationalTaskIds.length > 0
       ? await client
         .from('project_tasks')
         .update({ deleted_at: now, is_current: false })
         .in('id', matchingRelationalTaskIds)
         .eq('workspace_id', workspaceData.id)
-        .select('id')
-      : { data: [], error: null };
+      : { error: null };
 
-    if (deleteError || !deletedTask?.length) {
+    if (deleteError) {
       throw new Error(deleteError?.message ?? 'Unable to delete project task. The task may be read-only or no longer exists.');
     }
   }
