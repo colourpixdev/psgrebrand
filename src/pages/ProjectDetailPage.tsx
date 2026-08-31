@@ -99,6 +99,7 @@ export function ProjectDetailPage() {
   const [viewedTaskId, setViewedTaskId] = useState('');
   const [statusDraft, setStatusDraft] = useState<ProjectStatus>('in_progress');
   const [projectStartDateDraft, setProjectStartDateDraft] = useState('');
+  const [installationDateDraft, setInstallationDateDraft] = useState('');
   const [marketingCoordinatorEmailDraft, setMarketingCoordinatorEmailDraft] = useState('');
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [branchDetailsDraft, setBranchDetailsDraft] = useState({
@@ -168,6 +169,7 @@ export function ProjectDetailPage() {
       }
       setStatusDraft(project.status);
       setProjectStartDateDraft(project.projectStartDate ?? '');
+      setInstallationDateDraft(project.installationDate ?? '');
       setMarketingCoordinatorEmailDraft(project.managerEmail);
     }
   }, [project, searchParams]);
@@ -308,7 +310,7 @@ export function ProjectDetailPage() {
           status: statusDraft,
           projectStartDate: projectStartDateDraft,
           briefRequestedDate: selectedProject.briefRequestedDate,
-          installationDate: selectedProject.installationDate,
+          installationDate: installationDateDraft,
           manager: users.find((item) => item.email.toLowerCase() === marketingCoordinatorEmailDraft.toLowerCase())?.name ?? selectedProject.manager,
           managerEmail: marketingCoordinatorEmailDraft,
         }),
@@ -860,6 +862,7 @@ export function ProjectDetailPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Project schedule</h3>
                   <div className="grid gap-4 md:grid-cols-1">
                     <DatePickerInput label="Project start date" value={projectStartDateDraft} onChange={setProjectStartDateDraft} placeholder="Select project start date" />
+                    <DatePickerInput label="Installation date" value={installationDateDraft} onChange={setInstallationDateDraft} placeholder="Select installation date" />
                     {canEditProjectStatus ? <label className="grid gap-2">Project status<select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50">{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label> : null}
                   </div>
                 </section>

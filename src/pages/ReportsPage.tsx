@@ -135,6 +135,7 @@ function projectSpreadsheetRows(projects: Project[]) {
       project.id,
       project.branch,
       formatReportDate(project.projectStartDate ?? ''),
+      formatReportDate(project.installationDate ?? ''),
       project.manager,
       latestStageName,
       formatReportDate(stageTask?.startedDate ?? ''),
@@ -144,14 +145,14 @@ function projectSpreadsheetRows(projects: Project[]) {
 
 async function downloadExcel(projects: Project[], reportName: string) {
   const XLSX = await import('xlsx-js-style');
-  const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Marketing Manager', 'Latest stage', 'Latest stage start date'];
+  const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Latest stage', 'Latest stage start date'];
   const rows = projectSpreadsheetRows(projects);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   worksheet['!cols'] = [
-    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 18 },
+    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 18 },
   ];
   worksheet['!rows'] = [{ hpt: 30 }, ...rows.map(() => ({ hpt: 24 }))];
-  worksheet['!autofilter'] = { ref: `A1:F${rows.length + 1}` };
+  worksheet['!autofilter'] = { ref: `A1:G${rows.length + 1}` };
   worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
 
   for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
@@ -170,11 +171,11 @@ async function downloadExcel(projects: Project[], reportName: string) {
       cell.s = {
         fill: { fgColor: { rgb: rowIndex % 2 === 0 ? 'F0F9FF' : 'FFFFFF' } },
         font: { color: { rgb: '172033' }, sz: 10 },
-        alignment: { vertical: 'top', wrapText: columnIndex === 4 },
+        alignment: { vertical: 'top', wrapText: columnIndex === 5 },
         border: { bottom: { style: 'thin', color: { rgb: 'D7E3EA' } } },
       };
     }
-    const stageCell = worksheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: 4 })];
+    const stageCell = worksheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: 5 })];
     stageCell.s = {
       ...stageCell.s,
       font: { bold: true, color: { rgb: '075985' }, sz: 10 },
@@ -281,11 +282,12 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
           <p class="meta">${projects.length} project${projects.length === 1 ? '' : 's'} · Generated ${escapeHtml(new Date().toLocaleDateString())}</p>
         </header>
         <table>
-            <thead><tr>${['Project ID', 'Branch', 'Project Start Date', 'Marketing Manager', 'Latest stage', 'Latest stage start date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+            <thead><tr>${['Project ID', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Latest stage', 'Latest stage start date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
               <tbody>${projects.map((project) => { const stageTask = latestRelevantStageTask(project); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; return `<tr>${[
       project.id,
       project.branch,
       project.projectStartDate ?? '',
+      project.installationDate ?? '',
       project.manager,
       latestStageName,
       stageTask?.startedDate ?? '',
@@ -535,8 +537,8 @@ export function ReportsPage() {
               <tr>
                 <th className="px-5 py-4 font-medium">Branch</th>
                 <th className="px-5 py-4 font-medium">Project Start Date</th>
+                <th className="px-5 py-4 font-medium">Installation Date</th>
                 <th className="px-5 py-4 font-medium">Stage</th>
-                <th className="px-5 py-4 font-medium">Stage Status</th>
                 <th className="px-5 py-4 font-medium">Stage Start Date</th>
                 <th className="px-5 py-4 font-medium">Open</th>
               </tr>
@@ -549,7 +551,7 @@ export function ReportsPage() {
                   {(() => { const stageTask = latestRelevantStageTask(project); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; return <>
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectStartDate || 'Not set'}</td>
-                  <td className="px-5 py-4">{project.town || 'Not set'}</td>
+                  <td className="px-5 py-4">{project.installationDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.manager || 'Not set'}</td>
                   <td className="px-5 py-4">{latestStageName}</td>
                   <td className="px-5 py-4">{stageTask?.startedDate || 'Not set'}</td>
