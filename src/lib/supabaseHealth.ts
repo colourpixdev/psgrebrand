@@ -16,18 +16,29 @@ export async function checkSupabaseReachability(): Promise<SupabaseHealth> {
   }
 
   try {
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const { error: sessionError } = await supabase.auth.getSession();
     if (sessionError) {
       throw new Error(sessionError.message);
     }
 
-    const { count, error } = await supabase.from('projects').select('id', { count: 'exact', head: true });
+    let queryError: { message: string } | null = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const { error } = await supabase.from('projects').select('id').limit(1);
+      if (!error) {
+        queryError = null;
+        break;
+      }
+      queryError = error;
+    }
 
-    if (error) {
+    if (queryError) {
+      const isNetworkError = queryError.message.toLowerCase().includes('failed to fetch');
       return {
         ok: false,
-        level: 'error',
-        message: `Supabase project is reachable, but the app query failed: ${error.message}. Check the live database schema and RLS policies.`,
+        level: isNetworkError ? 'warning' : 'error',
+        message: isNetworkError
+          ? 'Supabase connection is temporarily unavailable. The app will retry automatically.'
+          : `Supabase project is reachable, but the app query failed: ${queryError.message}. Check the live database schema and RLS policies.`,
       };
     }
 
