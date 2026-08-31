@@ -21,6 +21,7 @@ export const signageProjectStageDefinitions = [
   { key: 'Completion date', description: 'Completed date.' },
   { key: 'Invoice', description: 'Invoice upload.' },
   { key: 'Summary', description: 'Happy or issues summary.' },
+  { key: 'Photos', description: 'Photo uploads.' },
 ] as const;
 
 export const signageProjectStages = signageProjectStageDefinitions.map((stage) => stage.key) as ProjectStage[];
