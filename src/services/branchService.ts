@@ -468,7 +468,7 @@ export async function createBranchProject(input: CreateBranchInput): Promise<{ b
     manager: input.marketingCoordinatorName ?? branch.contactName,
     managerEmail: input.marketingCoordinatorEmail ?? branch.contactEmail,
     projectType: 'signage_rollout',
-    currentStage: 'New Project',
+    currentStage: 'Site Inspection',
     status: 'on_schedule',
     progress: 0,
     selectedTaskIds: [],
