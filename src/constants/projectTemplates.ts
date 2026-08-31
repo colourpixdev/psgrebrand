@@ -58,6 +58,23 @@ export function canonicalizeProjectStageName(value: string): string {
   return raw;
 }
 
+const hiddenLegacyProjectStages = new Set([
+  'Intro date',
+  'Projection date',
+  'Colourpix to prepare brief',
+  'Summary',
+  'Photos',
+]);
+
+export function isHiddenLegacyProjectStage(value: string | null | undefined) {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = canonicalizeProjectStageName(value);
+  return hiddenLegacyProjectStages.has(normalized) || hiddenLegacyProjectStages.has(value.trim());
+}
+
 export const projectTemplates: Record<ProjectTemplateId, ProjectTemplate> = {
   signage_rollout: {
     id: 'signage_rollout',

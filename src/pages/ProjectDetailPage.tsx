@@ -12,7 +12,7 @@ import { can, canViewProject, canAddTaskComments, canDeleteComment, canEditOwnCo
 import { getTaskStatus } from '../utils/taskStatus';
 import type { CommentItem, ContactPerson, Division, Project, ProjectFile, ProjectStatus, ProjectStage, TaskItem } from '../types/domain';
 import { normalizeRole } from '../types/domain';
-import { canonicalizeProjectStageName } from '../constants/projectTemplates';
+import { canonicalizeProjectStageName, isHiddenLegacyProjectStage } from '../constants/projectTemplates';
 import { isAccessControlAdmin, isPlatformOwnerEmail } from '../constants/workspaces';
 
 const statusOptions: Array<{ value: ProjectStatus; label: string }> = [
@@ -93,7 +93,7 @@ function getStagePlan(project: Project): ProjectStage[] {
     }
 
     const canonicalStage = canonicalizeProjectStageName(stageName);
-    if (!canonicalStage) {
+    if (!canonicalStage || isHiddenLegacyProjectStage(canonicalStage)) {
       return;
     }
 
@@ -787,7 +787,7 @@ export function ProjectDetailPage() {
   const summaryStageOptions = Array.from(
     new Map(
       [selectedProject.currentStage, ...stagePlan]
-        .filter((stage) => Boolean(stage))
+        .filter((stage) => Boolean(stage) && !isHiddenLegacyProjectStage(stage))
         .map((stage) => {
           const canonicalStage = canonicalizeProjectStageName(stage);
           return [normalizeStageKey(canonicalStage), canonicalStage] as [string, ProjectStage];
