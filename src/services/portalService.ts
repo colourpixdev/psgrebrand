@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { ActivityItem, CommentItem, Project, ProjectFile, ProjectStatus, ProjectTemplateId, Role, TaskAssignee, TaskItem, TaskStatus, UserRecord } from '../types/domain';
 import { defaultWorkspace, isPlatformOwnerEmail, rolloutAppEmail } from '../constants/workspaces';
-import { defaultProjectTemplate, getProjectTemplate, mergeDefaultLifecycleTasks } from '../constants/projectTemplates';
+import { canonicalizeProjectStageName, defaultProjectTemplate, getProjectTemplate, isHiddenLegacyProjectStage, mergeDefaultLifecycleTasks } from '../constants/projectTemplates';
 import { createTaskFromPool } from '../constants/taskPool';
 import { createNextProjectId } from '../utils/branchProjectIds';
 import { taskStatusFromDatabase, taskStatusToDatabase } from '../utils/taskStatus';
@@ -960,7 +960,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function mapLegacyTasks(rows: unknown[] | null | undefined): TaskItem[] {
-  return (rows ?? []).filter(isRecord).map((row, index) => {
+  const tasks: TaskItem[] = [];
+
+  for (const row of rows ?? []) {
+    if (!isRecord(row)) {
+      continue;
+    }
+
     const rawStatus = typeof row.status === 'string' ? row.status : undefined;
     const status: TaskStatus = rawStatus === 'pending' || rawStatus === 'busy' || rawStatus === 'done'
       ? rawStatus
@@ -969,20 +975,31 @@ function mapLegacyTasks(rows: unknown[] | null | undefined): TaskItem[] {
         : row.completed === true
           ? 'done'
           : 'pending';
-    return {
-      id: typeof row.id === 'string' ? row.id : `legacy-task-${index}`,
-      text: typeof row.text === 'string' ? row.text : '',
+
+    const rawTaskText = typeof row.text === 'string' ? row.text : '';
+    const rawStageName = typeof row.stage === 'string' ? row.stage : rawTaskText;
+    const canonicalStage = canonicalizeProjectStageName(rawStageName);
+
+    if (!rawTaskText.trim() || !canonicalStage || isHiddenLegacyProjectStage(canonicalStage) || isHiddenLegacyProjectStage(rawStageName)) {
+      continue;
+    }
+
+    tasks.push({
+      id: typeof row.id === 'string' ? row.id : `legacy-task-${tasks.length}`,
+      text: rawTaskText,
       completed: row.completed === true,
       status,
-      stage: typeof row.stage === 'string' ? row.stage : typeof row.text === 'string' ? row.text : undefined,
+      stage: canonicalStage,
       assigneeName: typeof row.assigneeName === 'string' ? row.assigneeName : undefined,
       assigneeEmail: typeof row.assigneeEmail === 'string' ? row.assigneeEmail : undefined,
       assignees: Array.isArray(row.assignees) ? row.assignees as TaskAssignee[] : undefined,
       startedDate: typeof row.startedDate === 'string' ? row.startedDate : undefined,
       dueDate: typeof row.dueDate === 'string' ? row.dueDate : undefined,
       completedAt: typeof row.completedAt === 'string' ? row.completedAt : undefined,
-    };
-  }).filter((task) => task.text.trim().length > 0);
+    });
+  }
+
+  return tasks;
 }
 
 function mapLegacyFiles(rows: unknown[] | null | undefined): ProjectFile[] {
@@ -1013,6 +1030,9 @@ function mapProjectRow(row: ProjectRow): Project {
   const status: ProjectStatus = row.status;
 
   const legacyTasks = mapLegacyTasks(row.tasks);
+  const currentStage = typeof row.current_stage === 'string'
+    ? canonicalizeProjectStageName(row.current_stage)
+    : template.name;
 
   return {
     id: row.id ?? 'unknown-project',
@@ -1034,7 +1054,7 @@ function mapProjectRow(row: ProjectRow): Project {
     manager: row.manager ?? 'Unknown manager',
     managerEmail: row.manager_email ?? '',
     designer: row.designer ?? '',
-    currentStage: typeof row.current_stage === 'string' ? row.current_stage as Project['currentStage'] : template.name,
+    currentStage: currentStage && !isHiddenLegacyProjectStage(currentStage) ? currentStage as Project['currentStage'] : template.name,
     status,
     projectStartDate: row.project_start_date ?? '',
     targetDate: row.target_date ?? '',
@@ -1066,7 +1086,13 @@ type RelationalProjectData = {
 };
 
 function applyRelationalProjectData(project: Project, data: RelationalProjectData): Project {
-  const relationalTasks = data.tasksAvailable === false || data.tasks === undefined ? [] : data.tasks;
+  const relationalTasks = (data.tasksAvailable === false || data.tasks === undefined ? [] : data.tasks)
+    .map((task) => ({
+      ...task,
+      stage: task.stage ? canonicalizeProjectStageName(task.stage) : task.stage,
+      text: task.text.trim(),
+    }))
+    .filter((task) => Boolean(task.text) && !isHiddenLegacyProjectStage(task.stage ?? task.text));
   const relationalTaskNames = new Set(relationalTasks.map((task) => task.text.trim().toLowerCase()));
   const nextTasks = data.tasksAvailable === false || data.tasks === undefined
     ? project.tasks
