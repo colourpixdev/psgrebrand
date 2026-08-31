@@ -555,6 +555,8 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
       contactEmail: syncedContactFields.contactEmail ?? undefined,
       contactPhone: syncedContactFields.contactPhone ?? undefined,
       contacts: input.contacts !== undefined ? input.contacts ?? undefined : existing.contacts,
+      marketingCoordinatorName: input.marketingCoordinatorName !== undefined ? input.marketingCoordinatorName?.trim() || undefined : existing.marketingCoordinatorName,
+      marketingCoordinatorEmail: input.marketingCoordinatorEmail !== undefined ? input.marketingCoordinatorEmail?.trim() || undefined : existing.marketingCoordinatorEmail,
       updatedAt: new Date().toISOString(),
     };
 
@@ -587,6 +589,8 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
     updates.contact_phone = syncedContactFields.contactPhone;
   }
   if (input.contacts !== undefined) updates.contacts = input.contacts;
+  if (input.marketingCoordinatorName !== undefined) updates.marketing_coordinator_name = input.marketingCoordinatorName?.trim() || null;
+  if (input.marketingCoordinatorEmail !== undefined) updates.marketing_coordinator_email = input.marketingCoordinatorEmail?.trim() || null;
 
   const { data, error } = await saveBranchWithSchemaFallback('update', updates, id);
 
