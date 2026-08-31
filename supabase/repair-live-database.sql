@@ -245,6 +245,7 @@ set
   allowed_mime_types = excluded.allowed_mime_types;
 
 drop policy if exists "Authenticated read access to branches" on public.branches;
+drop policy if exists "Public read access to branches" on public.branches;
 drop policy if exists "Authenticated insert branches" on public.branches;
 drop policy if exists "Authenticated update branches" on public.branches;
 drop policy if exists "Authenticated delete branches" on public.branches;

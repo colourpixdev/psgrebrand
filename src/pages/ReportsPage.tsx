@@ -129,8 +129,6 @@ function formatFileName(reportName: string) {
 function projectSpreadsheetRows(projects: Project[]) {
   return projects.map((project) => {
     const stageTask = latestRelevantStageTask(project);
-    const pendingTasks = project.tasks.filter(isTaskOutstanding).length;
-    const participants = project.tasks.flatMap((task) => task.assignees?.map((assignee) => `${assignee.name} (${assignee.designation})`) ?? []).join('; ');
     const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set';
 
     return [
@@ -140,24 +138,20 @@ function projectSpreadsheetRows(projects: Project[]) {
       project.manager,
       latestStageName,
       formatReportDate(stageTask?.startedDate ?? ''),
-      pendingTasks,
-      project.files.length,
-      participants,
-      formatReportDate(project.updatedAt),
     ];
   });
 }
 
 async function downloadExcel(projects: Project[], reportName: string) {
   const XLSX = await import('xlsx-js-style');
-  const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Manager', 'Latest stage', 'Latest stage start date', 'Pending tasks', 'Files', 'Participants', 'Updated'];
+  const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Marketing Manager', 'Latest stage', 'Latest stage start date'];
   const rows = projectSpreadsheetRows(projects);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   worksheet['!cols'] = [
-    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 42 }, { wch: 22 },
+    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 18 },
   ];
   worksheet['!rows'] = [{ hpt: 30 }, ...rows.map(() => ({ hpt: 24 }))];
-  worksheet['!autofilter'] = { ref: `A1:J${rows.length + 1}` };
+  worksheet['!autofilter'] = { ref: `A1:F${rows.length + 1}` };
   worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
 
   for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
@@ -176,7 +170,7 @@ async function downloadExcel(projects: Project[], reportName: string) {
       cell.s = {
         fill: { fgColor: { rgb: rowIndex % 2 === 0 ? 'F0F9FF' : 'FFFFFF' } },
         font: { color: { rgb: '172033' }, sz: 10 },
-        alignment: { vertical: 'top', wrapText: columnIndex === 9 },
+        alignment: { vertical: 'top', wrapText: columnIndex === 4 },
         border: { bottom: { style: 'thin', color: { rgb: 'D7E3EA' } } },
       };
     }
