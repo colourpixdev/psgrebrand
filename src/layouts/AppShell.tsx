@@ -19,16 +19,21 @@ interface NavigationItem {
 export function AppShell({ navigation, children, statusBanner }: { navigation: NavigationItem[]; children: ReactNode; statusBanner?: ReactNode }) {
   const { user, roleLabel, signOut, updateThemePreference } = useAuth();
   const navigate = useNavigate();
-  const [theme, setTheme] = useState<'dark' | 'light'>('light');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    // Initialize from localStorage first, then fallback to user preference or 'dark'
+    const stored = window.localStorage.getItem('psg-theme') as 'dark' | 'light' | null;
+    return stored ?? user?.themePreference ?? 'dark';
+  });
   const mobileNavigation = navigation.slice(0, 5);
   const profileIdentity = getProfileIdentity(user);
   const profileName = profileIdentity.displayName || user?.name || 'Signed out';
 
+  // Sync with user's database preference when it loads
   useEffect(() => {
     if (user?.themePreference && user.themePreference !== theme) {
       setTheme(user.themePreference);
     }
-  }, [theme, user?.themePreference]);
+  }, [user?.themePreference]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('theme-light', theme === 'light');
