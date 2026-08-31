@@ -1034,7 +1034,7 @@ function mapProjectRow(row: ProjectRow): Project {
     branchManagerViewOnly: Boolean(row.branch_manager_view_only),
     notes: row.notes ?? '',
     files: mapLegacyFiles(row.files),
-    tasks: mergeDefaultLifecycleTasks(legacyTasks, row.project_type ?? undefined),
+    tasks: legacyTasks,
     comments: Array.isArray(row.comments)
       ? row.comments.map((comment, index) => ({
         ...comment,
