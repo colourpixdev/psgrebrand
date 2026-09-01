@@ -49,6 +49,19 @@ function taskStatusLabel(status: ReturnType<typeof getTaskStatus>) {
 }
 
 function sortStageEntriesByStartedDate<T extends { stageName: string; date: string; status: ReturnType<typeof getTaskStatus>; task?: { startedDate?: string } | null }>(a: T, b: T) {
+  const statusOrder: Record<'pending' | 'busy' | 'done', number> = {
+    pending: 0,
+    busy: 1,
+    done: 2,
+  };
+
+  const aStatusRank = statusOrder[a.status as 'pending' | 'busy' | 'done'] ?? 3;
+  const bStatusRank = statusOrder[b.status as 'pending' | 'busy' | 'done'] ?? 3;
+
+  if (aStatusRank !== bStatusRank) {
+    return aStatusRank - bStatusRank;
+  }
+
   const aDateValue = a.task?.startedDate ?? a.date;
   const bDateValue = b.task?.startedDate ?? b.date;
 
@@ -60,18 +73,11 @@ function sortStageEntriesByStartedDate<T extends { stageName: string; date: stri
   }
 
   if (!aHasStartDate) {
-    return 1;
-  }
-
-  if (!bHasStartDate) {
     return -1;
   }
 
-  const aStatusRank = a.status === 'busy' ? 0 : a.status === 'done' ? 1 : 2;
-  const bStatusRank = b.status === 'busy' ? 0 : b.status === 'done' ? 1 : 2;
-
-  if (aStatusRank !== bStatusRank) {
-    return aStatusRank - bStatusRank;
+  if (!bHasStartDate) {
+    return 1;
   }
 
   const aTime = new Date(aDateValue).getTime();
@@ -425,7 +431,7 @@ export function BranchDetailPage() {
                 <h2 className="text-3xl font-semibold text-white">{branch.name}</h2>
                 <ProjectFollowButton projectId={branch.id} legacyProjectIds={branchProjects.map((project) => project.id)} userEmail={user?.email} userRole={user?.role} noun="branch" />
               </div>
-              <p className="mt-2 text-sm text-slate-400">{branch.town}, {branch.province}</p>
+              <p className="mt-2 text-sm text-slate-400">{branch.town} {branch.province}</p>
               <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
               <p className="mt-2 text-sm text-slate-300"><span className="text-slate-500">Signage company:</span> {branch.signageCompany || 'Not captured'}</p>
               <p className="mt-1 text-sm text-slate-300"><span className="text-slate-500">Supplier address:</span> {branch.signageAddress || 'Not captured'}</p>

@@ -927,7 +927,7 @@ export function ProjectDetailPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Branch</h3>
                   <div><span className="text-cyan-200">Name:</span> {branch.name}</div>
                   <div><span className="text-cyan-200">Division:</span> {branch.division}</div>
-                  <div><span className="text-cyan-200">Town/Province:</span> {branch.town}, {branch.province}</div>
+                  <div><span className="text-cyan-200">Town/Province:</span> {branch.town} {branch.province}</div>
                   <div><span className="text-cyan-200">Address:</span> {branch.physicalAddress || 'Not captured'}</div>
                   {hasMarketingCoordinator ? <div><span className="text-cyan-200">Marketing coordinator:</span> {marketingCoordinatorName}{marketingCoordinatorName && marketingCoordinatorEmail ? ` · ${marketingCoordinatorEmail}` : marketingCoordinatorEmail}</div> : null}
                   <div className="grid gap-3 border-t border-white/10 pt-3">
