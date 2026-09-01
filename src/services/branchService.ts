@@ -565,6 +565,12 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
     return updatedBranch;
   }
 
+  const existingBranchResult = await supabase
+    .from('branches')
+    .select('id, name, code')
+    .eq('id', id)
+    .maybeSingle();
+
   const syncedContactFields = getPrimaryContactFromContacts(input as Pick<CreateBranchInput, 'contactName' | 'contactEmail' | 'contactPhone' | 'contacts'>);
   const updates: Record<string, unknown> = {};
   if (input.name !== undefined) updates.name = input.name;
@@ -600,6 +606,24 @@ export async function updateBranch(id: string, input: Partial<CreateBranchInput>
   }
 
   const updatedBranch = rowToBranch(data);
+  const previousName = existingBranchResult.data?.name;
+
+  if (previousName && previousName !== updatedBranch.name) {
+    const syncPayload = {
+      branch: updatedBranch.name,
+      branch_code: updatedBranch.code ?? null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const linkedProjectUpdate = supabase.from('projects').update(syncPayload).eq('branch_id', id);
+    const legacyNameUpdate = supabase.from('projects').update(syncPayload).eq('branch', previousName);
+
+    const [linkedResult, legacyResult] = await Promise.allSettled([linkedProjectUpdate.select('id'), legacyNameUpdate.select('id')]);
+
+    linkedResult.status === 'rejected' && console.warn('Failed to sync linked project names by branch_id:', linkedResult.reason);
+    legacyResult.status === 'rejected' && console.warn('Failed to sync linked project names by legacy branch name:', legacyResult.reason);
+  }
+
   saveBranchToLocalShadow(updatedBranch);
   return updatedBranch;
 }

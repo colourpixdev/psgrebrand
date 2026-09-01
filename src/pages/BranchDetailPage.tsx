@@ -48,6 +48,42 @@ function taskStatusLabel(status: ReturnType<typeof getTaskStatus>) {
   return status === 'done' ? 'Done' : status === 'busy' ? 'Busy' : status === 'pending' ? 'Not actioned' : status === 'waiting' ? 'Waiting' : status === 'blocked' ? 'Blocked' : 'Open';
 }
 
+function sortStageEntriesByStartedDate<T extends { stageName: string; date: string; status: ReturnType<typeof getTaskStatus>; task?: { startedDate?: string } | null }>(a: T, b: T) {
+  const aDateValue = a.task?.startedDate ?? a.date;
+  const bDateValue = b.task?.startedDate ?? b.date;
+
+  const aHasStartDate = Boolean(aDateValue);
+  const bHasStartDate = Boolean(bDateValue);
+
+  if (!aHasStartDate && !bHasStartDate) {
+    return a.stageName.localeCompare(b.stageName);
+  }
+
+  if (!aHasStartDate) {
+    return 1;
+  }
+
+  if (!bHasStartDate) {
+    return -1;
+  }
+
+  const aStatusRank = a.status === 'busy' ? 0 : a.status === 'done' ? 1 : 2;
+  const bStatusRank = b.status === 'busy' ? 0 : b.status === 'done' ? 1 : 2;
+
+  if (aStatusRank !== bStatusRank) {
+    return aStatusRank - bStatusRank;
+  }
+
+  const aTime = new Date(aDateValue).getTime();
+  const bTime = new Date(bDateValue).getTime();
+
+  if (Number.isNaN(aTime) || Number.isNaN(bTime)) {
+    return a.stageName.localeCompare(b.stageName);
+  }
+
+  return aTime - bTime;
+}
+
 function normalizeStageName(value: string) {
   return canonicalizeProjectStageName(value).trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ');
 }
@@ -439,9 +475,15 @@ export function BranchDetailPage() {
 
         <div className="mt-4 space-y-4">
           {rolloutChecklistRows.map(({ project, stageValues }) => {
-            const inProgressStages = stageValues.filter(({ status, task }) => status === 'busy' || (!task && Boolean(project.currentStage) && status === 'pending' && stageValues.some((entry) => entry.task && entry.task.stage?.toLowerCase() === project.currentStage?.toLowerCase())));
-            const pendingStages = stageValues.filter(({ task, status }) => !task && status === 'pending');
-            const completedStages = stageValues.filter(({ status, task }) => status === 'done' && task);
+            const inProgressStages = stageValues
+              .filter(({ status, task }) => status === 'busy' || (!task && Boolean(project.currentStage) && status === 'pending' && stageValues.some((entry) => entry.task && entry.task.stage?.toLowerCase() === project.currentStage?.toLowerCase())))
+              .sort((a, b) => sortStageEntriesByStartedDate(a, b));
+            const pendingStages = stageValues
+              .filter(({ task, status }) => !task && status === 'pending')
+              .sort((a, b) => sortStageEntriesByStartedDate(a, b));
+            const completedStages = stageValues
+              .filter(({ status, task }) => status === 'done' && task)
+              .sort((a, b) => sortStageEntriesByStartedDate(a, b));
 
             return (
               <div key={project.id} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
@@ -489,24 +531,6 @@ export function BranchDetailPage() {
                   </div>
 
                   <div>
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">Not actioned</p>
-                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                      {pendingStages.length ? pendingStages.map(({ stageName, task, status, date, note }) => (
-                        <div key={`${project.id}-${stageName}`} className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-xs font-medium text-slate-200">{stageName}</p>
-                            <span className="inline-flex rounded-full border border-slate-300/25 bg-slate-400/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200">
-                              Not actioned
-                            </span>
-                          </div>
-                          <p className="mt-2 text-xs text-slate-300">{formatShortDate(date)}</p>
-                          <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate-400">{task ? note : 'Not started'}</p>
-                        </div>
-                      )) : <p className="text-xs text-slate-400">No pending stages.</p>}
-                    </div>
-                  </div>
-
-                  <div>
                     <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">Done</p>
                     <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                       {completedStages.length ? completedStages.map(({ stageName, task, status, date, note }) => (
@@ -524,6 +548,24 @@ export function BranchDetailPage() {
                           <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-emerald-100/70">{note}</p>
                         </div>
                       )) : <p className="text-xs text-slate-400">No completed stages yet.</p>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">Not actioned</p>
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      {pendingStages.length ? pendingStages.map(({ stageName, task, status, date, note }) => (
+                        <div key={`${project.id}-${stageName}`} className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-medium text-slate-200">{stageName}</p>
+                            <span className="inline-flex rounded-full border border-slate-300/25 bg-slate-400/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200">
+                              Not actioned
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs text-slate-300">{formatShortDate(date)}</p>
+                          <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate-400">{task ? note : 'Not started'}</p>
+                        </div>
+                      )) : <p className="text-xs text-slate-400">No pending stages.</p>}
                     </div>
                   </div>
                 </div>

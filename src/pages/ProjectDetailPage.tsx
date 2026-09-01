@@ -349,9 +349,18 @@ export function ProjectDetailPage() {
       if (updatedBranch) {
         queryClient.setQueryData(['branch', updatedBranch.id], updatedBranch);
       }
+
+      const syncedProject = updatedProject && updatedBranch
+        ? {
+          ...updatedProject,
+          branch: updatedBranch.name,
+          branchCode: updatedBranch.code ?? updatedProject.branchCode,
+        }
+        : updatedProject;
+
       await queryClient.invalidateQueries({ queryKey: ['branch', branch?.id] });
       setIsEditingDetails(false);
-      await syncProject(updatedProject, 'Project details saved.');
+      await syncProject(syncedProject ?? updatedProject, 'Project details saved.');
     },
     onError: (error) => showError(error instanceof Error ? error.message : 'Unable to save project details.'),
   });
