@@ -7,6 +7,10 @@ import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
 
+function normalizeSearchValue(value: unknown) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
 export function SearchPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -23,10 +27,10 @@ export function SearchPage() {
 
   const q = query.trim().toLowerCase();
   const activeBranchIds = useMemo(() => new Set(branches.map((branch) => branch.id)), [branches]);
-  const activeBranchNames = useMemo(() => new Set(branches.map((branch) => branch.name.trim().toLowerCase())), [branches]);
+  const activeBranchNames = useMemo(() => new Set(branches.map((branch) => normalizeSearchValue(branch.name))), [branches]);
   const activeProjects = useMemo(() => projects.filter((project) => {
-    const branchId = project.branchId?.trim();
-    const branchName = project.branch.trim().toLowerCase();
+    const branchId = typeof project.branchId === 'string' ? project.branchId.trim() : '';
+    const branchName = normalizeSearchValue(project.branch);
     return branchId ? activeBranchIds.has(branchId) : activeBranchNames.has(branchName);
   }), [activeBranchIds, activeBranchNames, projects]);
   const scopedProjects = filterProjectsForUser(activeProjects, user);
@@ -48,13 +52,13 @@ export function SearchPage() {
   const filtered = q
     ? scopedProjects.filter(
         (p) =>
-          p.branch.toLowerCase().includes(q) ||
-          p.town.toLowerCase().includes(q) ||
-          p.province.toLowerCase().includes(q) ||
-          p.currentStage.toLowerCase().includes(q) ||
-          p.projectTypeName.toLowerCase().includes(q) ||
-          p.status.toLowerCase().includes(q) ||
-          p.manager.toLowerCase().includes(q),
+          normalizeSearchValue(p.branch).includes(q) ||
+          normalizeSearchValue(p.town).includes(q) ||
+          normalizeSearchValue(p.province).includes(q) ||
+          normalizeSearchValue(p.currentStage).includes(q) ||
+          normalizeSearchValue(p.projectTypeName).includes(q) ||
+          normalizeSearchValue(p.status).includes(q) ||
+          normalizeSearchValue(p.manager).includes(q),
       )
     : scopedProjects;
 
