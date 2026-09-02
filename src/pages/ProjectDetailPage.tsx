@@ -257,7 +257,7 @@ export function ProjectDetailPage() {
   }, [project?.files, stageImageUrls]);
 
   const syncProject = (updatedProject: Project, successMessage?: string, options?: { refreshProjectList?: boolean; refreshSummary?: boolean }) => {
-    const { refreshProjectList = true, refreshSummary = true } = options ?? {};
+    const { refreshProjectList = false, refreshSummary = false } = options ?? {};
 
     queryClient.setQueryData(['project', projectId], updatedProject);
     queryClient.setQueriesData({ queryKey: ['projects'] }, (currentProjects: Project[] | undefined) => {
@@ -612,13 +612,7 @@ export function ProjectDetailPage() {
 
   const uploadMutation = useMutation({
     mutationFn: ({ file, taskId }: { file: File; taskId?: string }) => uploadProjectFile(projectId ?? '', file, project?.files ?? [], taskId),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['project', projectId] }),
-        queryClient.invalidateQueries({ queryKey: ['projects'] }),
-      ]);
-      showSuccess('File uploaded.');
-    },
+    onSuccess: (updatedFiles) => syncProject({ ...selectedProject, files: updatedFiles }, 'File uploaded.'),
   });
 
   const uploadFiles = async (files: File[], taskId?: string) => {
