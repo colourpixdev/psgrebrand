@@ -60,6 +60,15 @@ function latestRelevantStageTask(project: Project, userRole?: string | null) {
     return null;
   }
 
+  const currentStage = project.currentStage.trim().toLowerCase();
+  const currentBusyStage = activeStages.find((task) => (
+    task.status === 'busy'
+      && (task.stage ?? task.text).trim().toLowerCase() === currentStage
+  ));
+  if (currentBusyStage) {
+    return currentBusyStage;
+  }
+
   const latestBusy = [...activeStages].reverse().find((task) => task.status === 'busy');
   if (latestBusy) {
     return latestBusy;
@@ -351,6 +360,8 @@ export function ReportsPage() {
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: () => getProjects({ includeFiles: false }),
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
   const hidePendingStages = shouldHidePendingStagesForUser(user?.role);
   const { data: branches = [] } = useQuery({
