@@ -55,7 +55,7 @@ export function DashboardPage() {
     error: projectsError,
   } = useQuery({
     queryKey: ['projects'],
-    queryFn: getProjects,
+    queryFn: () => getProjects({ includeFiles: false }),
     refetchInterval: false,
     refetchOnWindowFocus: false,
     staleTime: 60000,

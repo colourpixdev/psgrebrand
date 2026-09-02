@@ -1220,8 +1220,9 @@ export async function getPortalSummary(): Promise<PortalSummary> {
   };
 }
 
-export async function getProjects(): Promise<Project[]> {
+export async function getProjects(options: { includeFiles?: boolean } = {}): Promise<Project[]> {
   const client = supabase;
+  const includeFiles = options.includeFiles ?? true;
 
   if (!client) {
     return readLocalProjects()
@@ -1280,7 +1281,7 @@ export async function getProjects(): Promise<Project[]> {
             tasksByWorkspace.set(wsId, tasks);
           });
 
-          return hydrateProjectFiles(projects.map((project) => {
+          const hydratedProjects = projects.map((project) => {
             const workspaceId = (data as ProjectRow[]).find((row) => row.id === project.id)?.rebrand_workspace_id;
             if (!workspaceId) return project;
             const relationalTasks = tasksByWorkspace.get(workspaceId) ?? [];
@@ -1289,7 +1290,8 @@ export async function getProjects(): Promise<Project[]> {
               tasks: relationalTasks,
               tasksAvailable: !allTasksError && (relationalTasks.length > 0 || project.tasks.length === 0),
             });
-          }));
+          });
+          return includeFiles ? hydrateProjectFiles(hydratedProjects) : hydratedProjects;
         }
       }
     } catch (err) {
@@ -1297,7 +1299,7 @@ export async function getProjects(): Promise<Project[]> {
     }
   }
 
-  return hydrateProjectFiles(projects);
+  return includeFiles ? hydrateProjectFiles(projects) : projects;
 }
 
 export async function getProjectById(projectId: string): Promise<Project | undefined> {
@@ -1395,7 +1397,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   const template = input.projectType ? getProjectTemplate(input.projectType) : defaultProjectTemplate;
   const resolvedBranchId = input.branchId?.trim() || input.branch.trim();
   const normalizedProjectId = input.id?.trim()
-    || createNextProjectId(input.branchCode?.trim() || 'PSG000', await getProjects());
+    || createNextProjectId(input.branchCode?.trim() || 'PSG000', await getProjects({ includeFiles: false }));
 
   const selectedTasks = input.selectedTaskIds ? input.selectedTaskIds.map((taskId) => createTaskFromPool(taskId)) : [];
   const lifecycleTasks = mergeDefaultLifecycleTasks(selectedTasks, template.id);

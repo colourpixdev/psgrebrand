@@ -113,7 +113,7 @@ export function ProjectCreateForm() {
   });
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
-    queryFn: getProjects,
+    queryFn: () => getProjects({ includeFiles: false }),
   });
   const preselectedBranch = branches.find((branch) => branch.id === preselectedBranchId);
   const existingBranchProject = projects.find((project) => project.branchId === preselectedBranchId && project.status !== 'cancelled');

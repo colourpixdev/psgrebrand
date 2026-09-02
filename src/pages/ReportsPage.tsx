@@ -350,7 +350,7 @@ export function ReportsPage() {
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
-    queryFn: getProjects,
+    queryFn: () => getProjects({ includeFiles: false }),
   });
   const hidePendingStages = shouldHidePendingStagesForUser(user?.role);
   const { data: branches = [] } = useQuery({

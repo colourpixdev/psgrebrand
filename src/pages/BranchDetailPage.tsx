@@ -155,8 +155,8 @@ export function BranchDetailPage() {
   });
 
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: getProjects,
+    queryKey: ['projects', 'with-files'],
+    queryFn: () => getProjects({ includeFiles: true }),
     refetchInterval: false,
     refetchOnWindowFocus: false,
     staleTime: 60000,

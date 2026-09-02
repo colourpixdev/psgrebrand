@@ -60,7 +60,7 @@ export function SupportPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
-    queryFn: getProjects,
+    queryFn: () => getProjects({ includeFiles: false }),
   });
 
   const visibleProjects = useMemo(() => filterProjectsForUser(projects, user), [projects, user]);

@@ -215,7 +215,7 @@ export function MapPage() {
   const [mapActivated, setMapActivated] = useState(false);
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
-    queryFn: getProjects,
+    queryFn: () => getProjects({ includeFiles: false }),
   });
 
   useEffect(() => {

@@ -18,7 +18,7 @@ export function SearchPage() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
-    queryFn: getProjects,
+    queryFn: () => getProjects({ includeFiles: false }),
   });
   const { data: branches = [] } = useQuery({
     queryKey: ['branches'],

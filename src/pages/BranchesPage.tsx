@@ -153,7 +153,7 @@ export function BranchesPage() {
 
   async function loadProjects() {
     try {
-      const data = await getProjects();
+      const data = await getProjects({ includeFiles: false });
       setProjects(filterProjectsForUser(data, user));
     } catch (err) {
       console.error('Failed to load projects for branches page:', err);
@@ -163,7 +163,7 @@ export function BranchesPage() {
   async function loadPageData() {
     setLoading(true);
     setError(null);
-    const [branchesResult, projectsResult] = await Promise.allSettled([getAllBranches(), getProjects()]);
+    const [branchesResult, projectsResult] = await Promise.allSettled([getAllBranches(), getProjects({ includeFiles: false })]);
 
     if (branchesResult.status === 'fulfilled') {
       setBranches(branchesResult.value);

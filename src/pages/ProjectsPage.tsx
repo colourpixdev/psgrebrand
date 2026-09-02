@@ -51,7 +51,7 @@ export function ProjectsPage() {
   const [completion, setCompletion] = useState<'all' | 'completed' | 'outstanding'>('all');
   const { data } = useQuery({
     queryKey: ['projects'],
-    queryFn: getProjects,
+    queryFn: () => getProjects({ includeFiles: false }),
   });
   const projects = useMemo(() => filterProjectsForUser(data ?? [], user), [data, user]);
   const provinces = useMemo(() => [...new Set(projects.map((project) => project.province).filter(Boolean))].sort(), [projects]);

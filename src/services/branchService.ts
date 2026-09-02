@@ -137,7 +137,7 @@ async function createProjectId(branchCode: string) {
     }
   }
 
-  return createNextProjectId(branchCode, await getProjects());
+  return createNextProjectId(branchCode, await getProjects({ includeFiles: false }));
 }
 
 function readLocalBranches(): Branch[] {
