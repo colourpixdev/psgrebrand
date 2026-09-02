@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getAllBranches, createBranchProject, updateBranch, deleteBranch, formatBranchName, extractBranchName, formatBranchLocation } from '../services/branchService';
 import { getProjects } from '../services/portalService';
@@ -142,6 +143,7 @@ export function BranchesPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showSuccess } = useSaveFeedback();
+  const queryClient = useQueryClient();
 
   const isAdmin = user?.role === 'colourpix_admin' || isPlatformOwnerEmail(user?.email);
 
@@ -382,6 +384,8 @@ export function BranchesPage() {
         setSuccessMessage(`Branch \"${deletedBranchName}\" was removed successfully.`);
       }
       showSuccess('Branch removed.');
+      await queryClient.invalidateQueries({ queryKey: ['branches'] });
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
       await loadBranches();
     } catch (err) {
       setSuccessMessage(null);

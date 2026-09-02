@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { FileText } from 'lucide-react';
+import { getAllBranches } from '../services/branchService';
 import { getProjects } from '../services/portalService';
 import { useAuth } from '../contexts/AuthContext';
 import { filterProjectsForUser } from '../utils/permissions';
@@ -15,9 +16,20 @@ export function SearchPage() {
     queryKey: ['projects'],
     queryFn: getProjects,
   });
+  const { data: branches = [] } = useQuery({
+    queryKey: ['branches'],
+    queryFn: getAllBranches,
+  });
 
   const q = query.trim().toLowerCase();
-  const scopedProjects = filterProjectsForUser(projects, user);
+  const activeBranchIds = useMemo(() => new Set(branches.map((branch) => branch.id)), [branches]);
+  const activeBranchNames = useMemo(() => new Set(branches.map((branch) => branch.name.trim().toLowerCase())), [branches]);
+  const activeProjects = useMemo(() => projects.filter((project) => {
+    const branchId = project.branchId?.trim();
+    const branchName = project.branch.trim().toLowerCase();
+    return branchId ? activeBranchIds.has(branchId) : activeBranchNames.has(branchName);
+  }), [activeBranchIds, activeBranchNames, projects]);
+  const scopedProjects = filterProjectsForUser(activeProjects, user);
 
   const suggestions = useMemo(() => {
     if (!q) {
