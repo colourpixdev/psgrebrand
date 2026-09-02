@@ -60,6 +60,11 @@ function latestRelevantStageTask(project: Project, userRole?: string | null) {
     return null;
   }
 
+  const latestDone = [...activeStages].reverse().find((task) => task.status === 'done');
+  if (project.status === 'completed' || project.status === 'cancelled') {
+    return latestDone ?? activeStages[activeStages.length - 1];
+  }
+
   const currentStage = project.currentStage.trim().toLowerCase();
   const currentBusyStage = activeStages.find((task) => (
     task.status === 'busy'
@@ -74,7 +79,7 @@ function latestRelevantStageTask(project: Project, userRole?: string | null) {
     return latestBusy;
   }
 
-  return [...activeStages].reverse().find((task) => task.status === 'done') ?? activeStages[activeStages.length - 1];
+  return latestDone ?? activeStages[activeStages.length - 1];
 }
 
 function latestCommentForStage(project: Project, stageTask: TaskItem | null) {
