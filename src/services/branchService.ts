@@ -5,25 +5,47 @@ import { createNextBranchCode, createNextProjectId } from '../utils/branchProjec
 
 const branchesStorageKey = 'psg-rebrand:branches';
 
-/**
- * Format a branch name as "PSG [Division] [Branch Name]"
- */
-export function formatBranchName(division: Division, branchName: string): string {
-  const baseName = extractBranchName(branchName).trim();
-  return `PSG ${division} ${baseName}`;
+export function normalizeBranchLocationValue(value?: string | null) {
+  return (value ?? '').trim().replace(/^,\s*/, '').trim();
+}
+
+export function formatBranchLocation(town?: string, province?: string) {
+  const normalizedParts = [town, province]
+    .map((value) => normalizeBranchLocationValue(value))
+    .filter(Boolean);
+
+  return normalizedParts.join(' ');
 }
 
 /**
- * Extract the base branch name by removing "PSG [Division] " prefix
+ * Format a branch name as "[Branch Name] [Division]" when division is supplied.
+ */
+export function formatBranchName(division: Division, branchName: string): string {
+  const baseName = extractBranchName(branchName).trim();
+  if (!baseName) {
+    return division;
+  }
+
+  return division ? `${baseName} ${division}`.trim() : baseName;
+}
+
+/**
+ * Extract the base branch name by removing any PSG prefix and division label.
  */
 export function extractBranchName(fullName: string): string {
-  // If the name already starts with "PSG ", extract the part after "PSG Division "
-  const psgMatch = fullName.match(/^PSG\s+(?:Wealth|Insure|Wealth\s+Insure|Asset|Trust)\s+(.+)$/i);
+  const trimmedName = fullName.trim();
+
+  const psgMatch = trimmedName.match(/^PSG\s+(?:Wealth|Insure|Wealth\s+Insure|Asset|Trust)\s+(.+)$/i);
   if (psgMatch) {
-    return psgMatch[1];
+    return psgMatch[1].trim();
   }
-  // Otherwise, return the name as-is
-  return fullName;
+
+  const genericPsgMatch = trimmedName.match(/^PSG\s+(.+)$/i);
+  if (genericPsgMatch) {
+    return genericPsgMatch[1].trim();
+  }
+
+  return trimmedName;
 }
 
 export interface CreateBranchInput {
@@ -82,7 +104,7 @@ function rowToBranch(row: BranchRow): Branch {
     code: row.code ?? undefined,
     name: row.name ?? 'Unknown branch',
     division: isDivision(row.division) ? row.division : 'Wealth',
-    province: row.province ?? 'Not captured',
+    province: normalizeBranchLocationValue(row.province) || 'Not captured',
     city: row.city ?? undefined,
     town: row.town ?? 'Not captured',
     physicalAddress: row.physical_address ?? '',
@@ -240,7 +262,7 @@ function buildBranchInsertPayload(input: CreateBranchInput) {
   const payload = {
     name: input.name,
     division: input.division,
-    province: input.province,
+    province: normalizeBranchLocationValue(input.province) || null,
     city: input.city?.trim() || null,
     town: input.town,
     physical_address: input.physicalAddress,

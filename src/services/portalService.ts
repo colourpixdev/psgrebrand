@@ -1726,7 +1726,7 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
   return updatedProject?.files ?? [...currentFiles, { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId: relationalTaskId ?? undefined }];
 }
 
-export async function getProjectFileUrl(file: ProjectFile, options: { download?: boolean } = {}) {
+export async function getProjectFileUrl(file: ProjectFile, options: { download?: boolean; thumbnail?: boolean } = {}) {
   const client = supabase;
 
   if (!client || !file.path) {
@@ -1738,7 +1738,10 @@ export async function getProjectFileUrl(file: ProjectFile, options: { download?:
   try {
     const { data, error } = await client.storage
       .from(projectFilesBucket)
-      .createSignedUrl(file.path, 60 * 60, options.download ? { download: file.name } : undefined);
+      .createSignedUrl(file.path, 60 * 60, {
+        ...(options.download ? { download: file.name } : {}),
+        ...(options.thumbnail ? { transform: { width: 640, height: 480, resize: 'contain', quality: 70 } } : {}),
+      });
 
     if (!error && data?.signedUrl) {
       return data.signedUrl;

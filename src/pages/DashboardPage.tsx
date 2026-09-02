@@ -73,12 +73,8 @@ export function DashboardPage() {
     refreshFollowedProjects();
     syncFromServer();
     window.addEventListener(getFollowChangedEventName(), refreshFollowedProjects);
-    window.addEventListener('focus', syncFromServer);
-    document.addEventListener('visibilitychange', syncFromServer);
     return () => {
       window.removeEventListener(getFollowChangedEventName(), refreshFollowedProjects);
-      window.removeEventListener('focus', syncFromServer);
-      document.removeEventListener('visibilitychange', syncFromServer);
     };
   }, [canManageFollowedBranchesForUser, user?.email]);
   const isLoading = isLoadingBranches || isLoadingProjects;

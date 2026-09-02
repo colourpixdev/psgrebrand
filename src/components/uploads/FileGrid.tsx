@@ -85,7 +85,7 @@ export function FileGrid({
 
     files.forEach((file) => {
       const key = file.path ?? file.name;
-      if (!file.path || !isImageFile(file) && !isPdfFile(file) || requestedThumbnailKeys.current.has(key)) {
+      if (!file.path || !isImageFile(file) || requestedThumbnailKeys.current.has(key)) {
         return;
       }
 

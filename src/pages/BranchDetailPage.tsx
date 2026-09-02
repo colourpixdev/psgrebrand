@@ -40,6 +40,14 @@ function formatPhoneHref(phone: string) {
   return `tel:${normalized}`;
 }
 
+function formatBranchLocation(town?: string, province?: string) {
+  const normalizedParts = [town, province]
+    .map((value) => typeof value === 'string' ? value.trim().replace(/^,\s*/, '').trim() : '')
+    .filter(Boolean);
+
+  return normalizedParts.join(' ');
+}
+
 function byUpdatedAtDesc(a: Project, b: Project) {
   return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '');
 }
@@ -343,7 +351,7 @@ export function BranchDetailPage() {
       }
 
       thumbnailRequestedKeys.current.add(key);
-      getProjectFileUrl(file).then((url) => {
+      getProjectFileUrl(file, { thumbnail: true }).then((url) => {
         if (url) {
           setThumbnails((current) => ({ ...current, [key]: url }));
         }
@@ -431,7 +439,7 @@ export function BranchDetailPage() {
                 <h2 className="text-3xl font-semibold text-white">{branch.name}</h2>
                 <ProjectFollowButton projectId={branch.id} legacyProjectIds={branchProjects.map((project) => project.id)} userEmail={user?.email} userRole={user?.role} noun="branch" />
               </div>
-              <p className="mt-2 text-sm text-slate-400">{branch.town} {branch.province}</p>
+              <p className="mt-2 text-sm text-slate-400">{formatBranchLocation(branch.town, branch.province)}</p>
               <p className="mt-2 text-sm text-slate-300">{branch.physicalAddress}</p>
               <p className="mt-2 text-sm text-slate-300"><span className="text-slate-500">Signage company:</span> {branch.signageCompany || 'Not captured'}</p>
               <p className="mt-1 text-sm text-slate-300"><span className="text-slate-500">Supplier address:</span> {branch.signageAddress || 'Not captured'}</p>

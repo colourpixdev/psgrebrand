@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { DatePickerInput } from '../components/DatePickerInput';
 import { addProjectComment, addProjectTask, answerProjectQuestion, askProjectQuestion, deleteProject, deleteProjectActivity, deleteProjectComment, deleteProjectFile, deleteProjectTask, getProjectById, getProjectFileUrl, markProjectQuestionRead, renameProjectFile, reorderProjectTask, updateProjectActivity, updateProjectComment, updateProjectSummary, updateProjectTask, uploadProjectFile, upsertProjectStageTask } from '../services/portalService';
-import { getBranchById, updateBranch } from '../services/branchService';
+import { getBranchById, updateBranch, formatBranchLocation } from '../services/branchService';
 import { useAuth } from '../contexts/AuthContext';
 import { followProjectForUser } from '../services/projectFollowService';
 import { useSaveFeedback } from '../contexts/SaveFeedbackContext';
@@ -248,7 +248,7 @@ export function ProjectDetailPage() {
         return;
       }
 
-      void getProjectFileUrl(file).then((url) => {
+      void getProjectFileUrl(file, { thumbnail: true }).then((url) => {
         if (url) {
           setStageImageUrls((current) => ({ ...current, [file.path as string]: url }));
         }
@@ -927,7 +927,7 @@ export function ProjectDetailPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">Branch</h3>
                   <div><span className="text-cyan-200">Name:</span> {branch.name}</div>
                   <div><span className="text-cyan-200">Division:</span> {branch.division}</div>
-                  <div><span className="text-cyan-200">Town/Province:</span> {branch.town} {branch.province}</div>
+                  <div><span className="text-cyan-200">Town/Province:</span> {formatBranchLocation(branch.town, branch.province)}</div>
                   <div><span className="text-cyan-200">Address:</span> {branch.physicalAddress || 'Not captured'}</div>
                   {hasMarketingCoordinator ? <div><span className="text-cyan-200">Marketing coordinator:</span> {marketingCoordinatorName}{marketingCoordinatorName && marketingCoordinatorEmail ? ` · ${marketingCoordinatorEmail}` : marketingCoordinatorEmail}</div> : null}
                   <div className="grid gap-3 border-t border-white/10 pt-3">
