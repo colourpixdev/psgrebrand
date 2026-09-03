@@ -21,15 +21,7 @@ export async function checkSupabaseReachability(): Promise<SupabaseHealth> {
       throw new Error(sessionError.message);
     }
 
-    let queryError: { message: string } | null = null;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      const { error } = await supabase.from('projects').select('id').limit(1);
-      if (!error) {
-        queryError = null;
-        break;
-      }
-      queryError = error;
-    }
+    const { error: queryError } = await supabase.from('projects').select('id').limit(1);
 
     if (queryError) {
       const isNetworkError = queryError.message.toLowerCase().includes('failed to fetch');

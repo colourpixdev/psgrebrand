@@ -1271,45 +1271,38 @@ export async function getProjects(options: { includeFiles?: boolean } = {}): Pro
       )];
 
       if (workspaceIds.length > 0) {
-        const { data: workspaces } = await client
-          .from('rebrand_workspaces')
-          .select('id')
-          .in('id', workspaceIds);
+        const { data: allTasks, error: allTasksError } = await client
+          .from('project_tasks')
+          .select('*, responsible_person:profiles!project_tasks_responsible_person_id_fkey(name, email, profile_title)')
+          .in('workspace_id', workspaceIds)
+          .is('deleted_at', null)
+          .order('sort_order', { ascending: true });
 
-        if (workspaces && workspaces.length > 0) {
-          const { data: allTasks, error: allTasksError } = await client
-            .from('project_tasks')
-            .select('*, responsible_person:profiles!project_tasks_responsible_person_id_fkey(name, email, profile_title)')
-            .in('workspace_id', workspaceIds)
-            .is('deleted_at', null)
-            .order('sort_order', { ascending: true });
+        // Keep each project's relational tasks keyed by its explicit workspace ID.
+        const assigneeResults = await Promise.all(workspaceIds.map((workspaceId) => client.rpc('get_rebrand_task_assignees', { workspace_uuid: workspaceId })));
+        const assigneeByTaskId = new Map(assigneeResults.flatMap((result) => (result.data ?? []) as TaskAssigneeRow[]).map((assignee) => [assignee.task_id, assignee]));
+        const tasksByWorkspace = new Map<string, TaskItem[]>();
+        (allTasks ?? []).forEach((taskRow) => {
+          const wsId = (taskRow as ProjectTaskRow).workspace_id;
+          const tasks = tasksByWorkspace.get(wsId) ?? [];
+          tasks.push(convertRelationalTaskToTaskItem({
+            ...(taskRow as ProjectTaskRow),
+            responsible_person: assigneeByTaskId.get((taskRow as ProjectTaskRow).id) ?? (taskRow as ProjectTaskRow).responsible_person ?? null,
+          }));
+          tasksByWorkspace.set(wsId, tasks);
+        });
 
-          // Keep each project's relational tasks keyed by its explicit workspace ID.
-          const assigneeResults = await Promise.all(workspaceIds.map((workspaceId) => client.rpc('get_rebrand_task_assignees', { workspace_uuid: workspaceId })));
-          const assigneeByTaskId = new Map(assigneeResults.flatMap((result) => (result.data ?? []) as TaskAssigneeRow[]).map((assignee) => [assignee.task_id, assignee]));
-          const tasksByWorkspace = new Map<string, TaskItem[]>();
-          (allTasks ?? []).forEach((taskRow) => {
-            const wsId = (taskRow as ProjectTaskRow).workspace_id;
-            const tasks = tasksByWorkspace.get(wsId) ?? [];
-            tasks.push(convertRelationalTaskToTaskItem({
-              ...(taskRow as ProjectTaskRow),
-              responsible_person: assigneeByTaskId.get((taskRow as ProjectTaskRow).id) ?? (taskRow as ProjectTaskRow).responsible_person ?? null,
-            }));
-            tasksByWorkspace.set(wsId, tasks);
+        const hydratedProjects = projects.map((project) => {
+          const workspaceId = (data as ProjectRow[]).find((row) => row.id === project.id)?.rebrand_workspace_id;
+          if (!workspaceId) return project;
+          const relationalTasks = tasksByWorkspace.get(workspaceId) ?? [];
+          return applyRelationalProjectData(project, {
+            workspaceId,
+            tasks: relationalTasks,
+            tasksAvailable: !allTasksError && (relationalTasks.length > 0 || project.tasks.length === 0),
           });
-
-          const hydratedProjects = projects.map((project) => {
-            const workspaceId = (data as ProjectRow[]).find((row) => row.id === project.id)?.rebrand_workspace_id;
-            if (!workspaceId) return project;
-            const relationalTasks = tasksByWorkspace.get(workspaceId) ?? [];
-            return applyRelationalProjectData(project, {
-              workspaceId,
-              tasks: relationalTasks,
-              tasksAvailable: !allTasksError && (relationalTasks.length > 0 || project.tasks.length === 0),
-            });
-          });
-          return includeFiles ? hydrateProjectFiles(hydratedProjects) : hydratedProjects;
-        }
+        });
+        return includeFiles ? hydrateProjectFiles(hydratedProjects) : hydratedProjects;
       }
     } catch (err) {
       console.error('Failed to fetch relational tasks.', err);

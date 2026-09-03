@@ -80,12 +80,12 @@ export function addBreadcrumb(message: string, context?: MonitoringContext) {
 export function getMonitoringFetch() {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const startedAt = performance.now();
-    const maxAttempts = 4;
+    const maxAttempts = 2;
     let lastError: unknown = undefined;
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+      const timeoutId = window.setTimeout(() => controller.abort(), 8000);
 
       try {
         const response = await fetch(input, {
