@@ -528,6 +528,7 @@ export function ProjectDetailPage() {
       return updateProjectTask({
         projectId: projectId ?? '',
         taskId: task.id,
+        taskText: task.text,
         text: nextText,
         completed,
         status,

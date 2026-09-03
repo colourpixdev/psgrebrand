@@ -817,6 +817,7 @@ export type AddProjectTaskInput = {
 export type UpdateProjectTaskInput = {
   projectId: string;
   taskId: string;
+  taskText?: string;
   text?: string;
   completed?: boolean;
   status?: TaskItem['status'];
@@ -2674,10 +2675,14 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     throw new Error('Project not found.');
   }
 
-  const existingTask = existingProject.tasks.find((task) => task.id === input.taskId);
+  const existingTask = existingProject.tasks.find((task) => task.id === input.taskId)
+    ?? (input.taskText
+      ? existingProject.tasks.find((task) => normalizeTaskTitle(task.stage ?? task.text) === normalizeTaskTitle(input.taskText as string))
+      : undefined);
   if (!existingTask) {
     throw new Error('Task not found.');
   }
+  const resolvedTaskId = existingTask.id;
 
   const text = input.text?.trim();
   if (input.text !== undefined && !text) {
@@ -2705,7 +2710,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
   }
 
   const now = new Date().toISOString();
-  const tasks = existingProject.tasks.map((task) => task.id === input.taskId
+  const tasks = existingProject.tasks.map((task) => task.id === resolvedTaskId
     ? {
       ...task,
       text: text ?? task.text,
@@ -2733,7 +2738,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     .eq('id', existingProject.workspaceId)
     .maybeSingle();
 
-  if (workspaceData?.id && isUuid(input.taskId)) {
+  if (workspaceData?.id && isUuid(resolvedTaskId)) {
     const taskUpdate = {
       title: text ?? existingTask.text,
       status: relationalStatus,
@@ -2750,7 +2755,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     const { data: updatedTask, error: updateError } = await client
       .from('project_tasks')
       .update(taskUpdate)
-      .eq('id', input.taskId)
+      .eq('id', resolvedTaskId)
       .eq('workspace_id', workspaceData.id)
       .select('id')
       .maybeSingle();
@@ -2762,10 +2767,10 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     await recordProjectActivity({
       eventType: 'task_status_changed',
       entityType: 'project_task',
-      entityId: input.taskId,
+      entityId: resolvedTaskId,
       workspaceId: workspaceData.id,
       projectId: input.projectId,
-      taskId: input.taskId,
+      taskId: resolvedTaskId,
       oldValues: { status: existingTask.status },
       newValues: { status: nextStatus, assignee_id: assignedProfileId },
       metadata: { actor: input.actor },
