@@ -477,28 +477,30 @@ export function ReportsPage() {
   const canExportReports = can(user, 'export_reports');
   const exportProjects = displayedProjects.length > 0 ? displayedProjects : scopedProjects;
   const reportName = `${selectedReport.label} report`;
-  const completedCount = displayedProjects.filter((project) => project.status === 'completed').length;
-  const averageProgress = displayedProjects.length
-    ? Math.round(displayedProjects.reduce((sum, project) => sum + project.progress, 0) / displayedProjects.length)
-    : 0;
+  const reportStatusCounts = displayedProjects.reduce<Record<ReportCompletionStatus, number>>((counts, project) => {
+    counts[getReportCompletionStatus(project)] += 1;
+    return counts;
+  }, { not_started: 0, in_progress: 0, completed: 0 });
 
   return (
     <div className="space-y-6">
       <section className="grid gap-4">
-        <div className="grid gap-3 rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft sm:grid-cols-2">
+        <div className="grid gap-3 rounded-[2rem] border border-white/10 bg-slate-950/50 p-5 shadow-soft sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p className="text-sm text-slate-400">Matching projects</p>
             <p className="mt-2 text-3xl font-semibold text-white">{displayedProjects.length}</p>
           </div>
           <div>
-            <p className="text-sm text-slate-400">Completed</p>
-            <p className="mt-2 text-3xl font-semibold text-emerald-200">{completedCount}</p>
+            <p className="text-sm text-slate-400">In progress</p>
+            <p className="mt-2 text-3xl font-semibold text-sky-200">{reportStatusCounts.in_progress}</p>
           </div>
-          <div className="sm:col-span-2">
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10">
-              <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-400" style={{ width: `${averageProgress}%` }} />
-            </div>
-            <p className="mt-2 text-xs text-slate-400">Average progress: {averageProgress}%</p>
+          <div>
+            <p className="text-sm text-slate-400">Completed</p>
+            <p className="mt-2 text-3xl font-semibold text-emerald-200">{reportStatusCounts.completed}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-400">Not started</p>
+            <p className="mt-2 text-3xl font-semibold text-amber-200">{reportStatusCounts.not_started}</p>
           </div>
         </div>
       </section>
