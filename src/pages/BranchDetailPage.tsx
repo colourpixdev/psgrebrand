@@ -735,7 +735,7 @@ export function BranchDetailPage() {
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-500">All tasks</p>
                   <div className="mt-4 space-y-3 text-sm text-slate-200">
                     {project.tasks.length > 0 ? project.tasks.map((task) => {
-                      const taskFiles = project.files.filter((file) => file.taskId === task.id);
+                      const taskFiles = project.files.filter((file) => file.taskId === task.id || file.taskId === task.legacyTaskId);
                       const taskKey = `${project.id}-${task.id}`;
                       const taskComments = (project.comments ?? []).filter((c) => c.taskId === task.id).sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
                       return (
