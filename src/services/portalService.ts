@@ -1249,7 +1249,10 @@ export async function getProjects(options: { includeFiles?: boolean } = {}): Pro
 
   await hydrateAuthSession();
 
-  const { data, error } = await client.from('projects').select('*').order('updated_at', { ascending: false });
+  const projectSelect = includeFiles
+    ? '*'
+    : 'id, workspace_id, rebrand_workspace_id, workspace_name, client_company, graphics_partner, project_type, project_type_name, site_label, delivery_partner_label, branch_id, branch_code, branch, province, town, physical_address, latitude, longitude, manager, manager_email, designer, current_stage, report_stage_task_id, status, project_start_date, target_date, brief_requested_date, installation_date, completion_date, updated_at, progress, branch_manager_view_only';
+  const { data, error } = await client.from('projects').select(projectSelect).order('updated_at', { ascending: false });
 
   if (error) {
     throw error;
@@ -1260,12 +1263,12 @@ export async function getProjects(options: { includeFiles?: boolean } = {}): Pro
   }
 
   // Fetch relational tasks for all projects in parallel
-  const projects = (data as ProjectRow[]).map(mapProjectRow);
+  const projects = (data as unknown as ProjectRow[]).map(mapProjectRow);
   
   if (client && projects.length > 0) {
     try {
       const workspaceIds = [...new Set(
-        (data as ProjectRow[])
+        (data as unknown as ProjectRow[])
           .map((row) => row.rebrand_workspace_id)
           .filter((workspaceId): workspaceId is string => Boolean(workspaceId))
       )];
@@ -1293,7 +1296,7 @@ export async function getProjects(options: { includeFiles?: boolean } = {}): Pro
         });
 
         const hydratedProjects = projects.map((project) => {
-          const workspaceId = (data as ProjectRow[]).find((row) => row.id === project.id)?.rebrand_workspace_id;
+          const workspaceId = (data as unknown as ProjectRow[]).find((row) => row.id === project.id)?.rebrand_workspace_id;
           if (!workspaceId) return project;
           const relationalTasks = tasksByWorkspace.get(workspaceId) ?? [];
           return applyRelationalProjectData(project, {
