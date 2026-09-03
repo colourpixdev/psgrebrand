@@ -1560,7 +1560,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   return mapProjectRow(data as ProjectRow);
 }
 
-export async function uploadProjectFile(projectId: string, file: File, currentFiles: ProjectFile[], taskId?: string): Promise<ProjectFile[]> {
+export async function uploadProjectFile(projectId: string, file: File, currentFiles: ProjectFile[], taskId?: string): Promise<Project> {
   const client = supabase;
 
   if (!client) {
@@ -1725,7 +1725,11 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
 
   await recordProjectFileActivity(projectId, workspace.id, 'file_uploaded', projectFile.id, relationalTaskId ?? undefined, { display_name: file.name, actor: 'upload' });
   const updatedProject = await getProjectById(projectId);
-  return updatedProject?.files ?? [...currentFiles, { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId: relationalTaskId ?? undefined }];
+  if (!updatedProject) {
+    throw new Error('The file was uploaded, but the project could not be refreshed. Reload the project before continuing.');
+  }
+
+  return updatedProject;
 }
 
 export async function getProjectFileUrl(file: ProjectFile, options: { download?: boolean; thumbnail?: boolean } = {}) {

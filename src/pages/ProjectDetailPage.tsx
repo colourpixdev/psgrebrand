@@ -612,7 +612,7 @@ export function ProjectDetailPage() {
 
   const uploadMutation = useMutation({
     mutationFn: ({ file, taskId }: { file: File; taskId?: string }) => uploadProjectFile(projectId ?? '', file, project?.files ?? [], taskId),
-    onSuccess: (updatedFiles) => syncProject({ ...selectedProject, files: updatedFiles }, 'File uploaded.'),
+    onSuccess: (updatedProject) => syncProject(updatedProject, 'File uploaded.'),
   });
 
   const uploadFiles = async (files: File[], taskId?: string) => {
