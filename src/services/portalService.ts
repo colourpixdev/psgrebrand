@@ -2505,7 +2505,7 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
   ];
 
   // Update project activity log
-  const { error: projectUpdateError } = await client
+  const { data: updatedProjectRow, error: projectUpdateError } = await client
     .from('projects')
     .update({
       rebrand_workspace_id: workspaceId,
@@ -2513,10 +2513,15 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
       activity,
       updated_at: now,
     })
-    .eq('id', input.projectId);
+    .eq('id', input.projectId)
+    .select('id')
+    .maybeSingle();
 
   if (projectUpdateError) {
     throw projectUpdateError;
+  }
+  if (!updatedProjectRow) {
+    throw new Error('The stage was created but the project task list could not be saved. Refresh and try again.');
   }
 
   return {
