@@ -1729,6 +1729,28 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     throw new Error('The file was uploaded, but the project could not be refreshed. Reload the project before continuing.');
   }
 
+  const uploadedFile = updatedProject.files.find((item) => item.id === projectFile.id)
+    ?? { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId: relationalTaskId ?? undefined };
+  const legacyFiles = mapLegacyFiles((projectRow as ProjectRow).files);
+  const nextFiles = legacyFiles.some((item) => item.id === uploadedFile.id)
+    ? legacyFiles
+    : [...legacyFiles, uploadedFile];
+  const { data: persistedProject, error: projectSnapshotError } = await client
+    .from('projects')
+    .update({
+      rebrand_workspace_id: workspace.id,
+      tasks: updatedProject.tasks,
+      files: nextFiles,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', projectId)
+    .select('id')
+    .maybeSingle();
+
+  if (projectSnapshotError || !persistedProject) {
+    throw projectSnapshotError ?? new Error('The photo was uploaded, but the project stage list could not be preserved.');
+  }
+
   return updatedProject;
 }
 
