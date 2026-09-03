@@ -1304,7 +1304,7 @@ export async function getProjects(options: { includeFiles?: boolean } = {}): Pro
   return includeFiles ? hydrateProjectFiles(projects) : projects;
 }
 
-export async function getProjectById(projectId: string): Promise<Project | undefined> {
+export async function getProjectById(projectId: string, options: { includeFiles?: boolean } = {}): Promise<Project | undefined> {
   const client = supabase;
 
   if (!client) {
@@ -1341,6 +1341,10 @@ export async function getProjectById(projectId: string): Promise<Project | undef
         tasks: relationalTasks.data,
         tasksAvailable: relationalTasks.available && (relationalTasks.data.length > 0 || project.tasks.length === 0),
       });
+
+    if (options.includeFiles === false) {
+      return project;
+    }
 
     const relationalFiles = await getWorkspaceFiles(workspaceId);
     project = applyRelationalProjectData(project, {
@@ -2356,7 +2360,7 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
 
   await hydrateAuthSession();
 
-  const existingProject = await getProjectById(input.projectId);
+  const existingProject = await getProjectById(input.projectId, { includeFiles: false });
   if (!existingProject) {
     throw new Error('Project not found.');
   }
@@ -2640,7 +2644,7 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
 
   await hydrateAuthSession();
 
-  const existingProject = await getProjectById(input.projectId);
+  const existingProject = await getProjectById(input.projectId, { includeFiles: false });
   if (!existingProject) {
     throw new Error('Project not found.');
   }
@@ -2890,7 +2894,7 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
 
   await hydrateAuthSession();
 
-  const existingProject = await getProjectById(input.projectId);
+  const existingProject = await getProjectById(input.projectId, { includeFiles: false });
   if (!existingProject) {
     throw new Error('Project not found.');
   }
