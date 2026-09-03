@@ -75,25 +75,21 @@ function latestRelevantStageTask(project: Project, userRole?: string | null) {
     return null;
   }
 
-  const latestDone = [...activeStages].reverse().find((task) => task.status === 'done');
-  if (project.status === 'completed' || project.status === 'cancelled') {
-    return latestDone ?? activeStages[activeStages.length - 1];
-  }
-
   const currentStage = project.currentStage.trim().toLowerCase();
   const currentBusyStage = activeStages.find((task) => (
-    task.status === 'busy'
+    getTaskStatus(task) === 'busy'
       && (task.stage ?? task.text).trim().toLowerCase() === currentStage
   ));
   if (currentBusyStage) {
     return currentBusyStage;
   }
 
-  const latestBusy = [...activeStages].reverse().find((task) => task.status === 'busy');
+  const latestBusy = [...activeStages].reverse().find((task) => getTaskStatus(task) === 'busy');
   if (latestBusy) {
     return latestBusy;
   }
 
+  const latestDone = [...activeStages].reverse().find((task) => getTaskStatus(task) === 'done');
   return latestDone ?? activeStages[activeStages.length - 1];
 }
 
@@ -102,8 +98,20 @@ function latestCommentForStage(project: Project, stageTask: TaskItem | null) {
     return '';
   }
 
+  const stageKey = (stageTask.stage ?? stageTask.text).trim().toLowerCase();
   return project.comments
-    .filter((comment) => comment.taskId === stageTask.id && comment.message.trim())
+    .filter((comment) => {
+      if (!comment.message.trim()) {
+        return false;
+      }
+
+      if (comment.taskId === stageTask.id) {
+        return true;
+      }
+
+      const linkedTask = project.tasks.find((task) => task.id === comment.taskId);
+      return Boolean(linkedTask && (linkedTask.stage ?? linkedTask.text).trim().toLowerCase() === stageKey);
+    })
     .sort((left, right) => Date.parse(right.date) - Date.parse(left.date))[0]?.message ?? '';
 }
 
