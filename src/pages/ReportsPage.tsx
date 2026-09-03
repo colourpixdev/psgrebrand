@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { unzipSync, zipSync } from 'fflate';
 import { FileText, Search } from 'lucide-react';
 import { getProjects } from '../services/portalService';
 import { getAllBranches } from '../services/branchService';
@@ -256,6 +257,23 @@ function excelRowHeight(row: Array<string | number>, commentColumnWidth: number)
   return Math.max(24, Math.min(360, wrappedLines * 15 + 9));
 }
 
+function addExcelFreezePane(workbookData: ArrayBuffer) {
+  const files = unzipSync(new Uint8Array(workbookData));
+  const sheetPath = 'xl/worksheets/sheet1.xml';
+  const sheetXml = new TextDecoder().decode(files[sheetPath]);
+  const frozenSheetXml = sheetXml.replace(
+    '<sheetViews><sheetView workbookViewId="0"/>',
+    '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView>',
+  );
+
+  if (frozenSheetXml === sheetXml) {
+    throw new Error('Unable to add the frozen header row to the Excel report.');
+  }
+
+  files[sheetPath] = new TextEncoder().encode(frozenSheetXml);
+  return zipSync(files);
+}
+
 async function downloadExcel(projects: Project[], reportName: string, userRole?: string | null) {
   const XLSX = await import('xlsx-js-style');
   const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Report Status', 'Stage', 'Comment', 'Date'];
@@ -268,7 +286,6 @@ async function downloadExcel(projects: Project[], reportName: string, userRole?:
     ...rows.map((row) => ({ hpt: excelRowHeight(row, commentColumnWidth) })),
   ];
   worksheet['!autofilter'] = { ref: `A1:I${rows.length + 1}` };
-  worksheet['!print_title_rows'] = '1:1';
   worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
 
   for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
@@ -303,7 +320,14 @@ async function downloadExcel(projects: Project[], reportName: string, userRole?:
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Rollout report');
-  const workbookData = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  workbook.Workbook = {
+    ...(workbook.Workbook ?? {}),
+    Names: [
+      ...((workbook.Workbook ?? {}).Names ?? []),
+      { Name: '_xlnm.Print_Titles', Sheet: 0, Ref: "'Rollout report'!$1:$1" },
+    ],
+  };
+  const workbookData = addExcelFreezePane(XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }));
   const blob = new Blob([workbookData], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
