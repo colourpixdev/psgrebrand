@@ -11,7 +11,7 @@ import { getTaskStatus, isTaskOutstanding } from '../utils/taskStatus';
 import { normalizeRole, type Branch, type Project, type ProjectStatus, type TaskItem } from '../types/domain';
 
 type ReportType = 'single-branch-detail' | 'multi-branch-overview' | 'operational-blockers';
-type ReportCompletionStatus = 'not_started' | 'outstanding' | 'completed';
+type ReportCompletionStatus = 'not_started' | 'in_progress' | 'completed';
 
 const statusLabels: Record<ProjectStatus, string> = {
   on_schedule: 'On Schedule',
@@ -30,7 +30,7 @@ const taskStatusLabels: Record<NonNullable<TaskItem['status']>, string> = { pend
 
 const reportCompletionStatusLabels: Record<ReportCompletionStatus, string> = {
   not_started: 'Not started',
-  outstanding: 'Outstanding',
+  in_progress: 'In progress',
   completed: 'Completed',
 };
 
@@ -39,7 +39,7 @@ function getReportCompletionStatus(project: Project): ReportCompletionStatus {
     return 'not_started';
   }
 
-  return project.status === 'completed' ? 'completed' : 'outstanding';
+  return project.status === 'completed' ? 'completed' : 'in_progress';
 }
 
 function shouldHidePendingStagesForUser(userRole?: string | null) {
@@ -378,7 +378,7 @@ export function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>('multi-branch-overview');
   const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
   const [branchName, setBranchName] = useState('all');
-  const [completion, setCompletion] = useState<'all' | 'completed' | 'outstanding'>('all');
+  const [completion, setCompletion] = useState<'all' | ReportCompletionStatus>('all');
   const [marketingCoordinator, setMarketingCoordinator] = useState('all');
   const [query, setQuery] = useState('');
 
@@ -438,11 +438,9 @@ export function ReportsPage() {
       return false;
     }
 
-    if (completion === 'completed' && project.status !== 'completed') {
-      return false;
-    }
+    const reportCompletionStatus = getReportCompletionStatus(project);
 
-    if (completion === 'outstanding' && project.status === 'completed') {
+    if (completion !== 'all' && reportCompletionStatus !== completion) {
       return false;
     }
 
@@ -519,7 +517,8 @@ export function ReportsPage() {
             Completion
             <select value={completion} onChange={(event) => setCompletion(event.target.value as typeof completion)} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white outline-none focus:border-sky-400/50">
               <option value="all">All projects</option>
-              <option value="outstanding">Outstanding</option>
+              <option value="in_progress">In progress</option>
+              <option value="not_started">Not started</option>
               <option value="completed">Completed</option>
             </select>
           </label>
