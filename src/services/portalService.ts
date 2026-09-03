@@ -1093,7 +1093,8 @@ function applyRelationalProjectData(project: Project, data: RelationalProjectDat
       stage: task.stage ? canonicalizeProjectStageName(task.stage) : task.stage,
       text: task.text.trim(),
     }))
-    .filter((task) => Boolean(task.text));
+    .filter((task) => Boolean(task.text))
+    .filter((task, index, tasks) => tasks.findIndex((candidate) => normalizeTaskTitle(candidate.text) === normalizeTaskTitle(task.text)) === index);
   const relationalTaskNames = new Set(relationalTasks.map((task) => task.text.trim().toLowerCase()));
   const nextTasks = data.tasksAvailable === false || data.tasks === undefined
     ? project.tasks
@@ -1643,37 +1644,6 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     relationalTaskId = (matchingTasks ?? []).find((task) => task.id === taskId
       || (taskTitle && normalizeTaskTitle(task.title) === normalizeTaskTitle(taskTitle)))?.id ?? null;
 
-    if (!relationalTaskId && taskTitle) {
-      const [{ data: workflowStage }, { data: responsibilityGroup }] = await Promise.all([
-        client.from('workflow_stages').select('id').eq('stage_key', workflowStageKeyForTaskTitle(taskTitle)).maybeSingle(),
-        client.from('responsibility_groups').select('id').eq('group_key', 'colourpix').maybeSingle(),
-      ]);
-      if (workflowStage?.id && responsibilityGroup?.id) {
-        const nextSortOrder = (matchingTasks ?? []).reduce((max, task) => Math.max(max, Number(task.sort_order ?? 0)), 0) + 1;
-        const { data: createdTask, error: createTaskError } = await client
-          .from('project_tasks')
-          .insert({
-            workspace_id: workspace.id,
-            stage_id: workflowStage.id,
-            title: taskTitle,
-            status: 'not_started',
-            priority: 'normal',
-            sort_order: nextSortOrder,
-            responsible_group_id: responsibilityGroup.id,
-            required_action: '',
-            is_current: false,
-            created_by: uploadedBy,
-            updated_by: uploadedBy,
-          })
-          .select('id')
-          .maybeSingle();
-        if (createTaskError) {
-          await client.storage.from(projectFilesBucket).remove([path]);
-          throw createTaskError;
-        }
-        relationalTaskId = createdTask?.id ?? null;
-      }
-    }
   }
 
   const { data: category } = await client.from('file_categories').select('id').eq('category_key', 'other').maybeSingle();
@@ -2932,7 +2902,7 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
 
   const now = new Date().toISOString();
   const deletedStage = (existingTask.stage ?? existingTask.text).trim();
-  const tasks = existingProject.tasks.filter((task) => task.id !== input.taskId && !(isUuid(input.taskId) && normalizeTaskTitle(task.text) === normalizeTaskTitle(deletedStage)));
+  const tasks = existingProject.tasks.filter((task) => task.id !== input.taskId);
   const { data: legacyProjectRow, error: legacyProjectError } = await client
     .from('projects')
     .select('tasks')
@@ -2941,8 +2911,9 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
   if (legacyProjectError) {
     throw legacyProjectError;
   }
-  const legacyTasks = mapLegacyTasks((legacyProjectRow as ProjectRow).tasks)
-    .filter((task) => task.id !== input.taskId && normalizeTaskTitle(task.text) !== normalizeTaskTitle(deletedStage));
+  const legacyTaskSnapshot = mapLegacyTasks((legacyProjectRow as ProjectRow).tasks);
+  const legacyTaskToRemove = legacyTaskSnapshot.find((task) => task.id === input.taskId || normalizeTaskTitle(task.text) === normalizeTaskTitle(deletedStage));
+  const legacyTasks = legacyTaskSnapshot.filter((task) => task.id !== legacyTaskToRemove?.id);
   const nextStage = tasks.find((task) => (task.stage ?? task.text).trim()) as TaskItem | undefined;
   const currentStage = deletedStage === existingProject.currentStage.trim()
     ? nextStage ? (nextStage.stage ?? nextStage.text).trim() : 'New Project'
@@ -2968,9 +2939,10 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
       throw relationalTasksError;
     }
 
-    const matchingRelationalTaskIds = (relationalTasks ?? [])
-      .filter((task) => isUuid(input.taskId) ? task.id === input.taskId : normalizeTaskTitle(task.title) === normalizeTaskTitle(deletedStage))
-      .map((task) => task.id);
+    const matchingRelationalTask = (relationalTasks ?? []).find((task) => isUuid(input.taskId)
+      ? task.id === input.taskId
+      : normalizeTaskTitle(task.title) === normalizeTaskTitle(deletedStage));
+    const matchingRelationalTaskIds = matchingRelationalTask ? [matchingRelationalTask.id] : [];
 
     const { error: deleteError } = matchingRelationalTaskIds.length > 0
       ? await client
