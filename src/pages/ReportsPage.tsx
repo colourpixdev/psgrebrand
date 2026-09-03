@@ -11,6 +11,7 @@ import { getTaskStatus, isTaskOutstanding } from '../utils/taskStatus';
 import { normalizeRole, type Branch, type Project, type ProjectStatus, type TaskItem } from '../types/domain';
 
 type ReportType = 'single-branch-detail' | 'multi-branch-overview' | 'operational-blockers';
+type ReportCompletionStatus = 'not_started' | 'outstanding' | 'completed';
 
 const statusLabels: Record<ProjectStatus, string> = {
   on_schedule: 'On Schedule',
@@ -26,6 +27,20 @@ const statusLabels: Record<ProjectStatus, string> = {
 };
 
 const taskStatusLabels: Record<NonNullable<TaskItem['status']>, string> = { pending: 'Pending', busy: 'Busy', done: 'Completed' };
+
+const reportCompletionStatusLabels: Record<ReportCompletionStatus, string> = {
+  not_started: 'Not started',
+  outstanding: 'Outstanding',
+  completed: 'Completed',
+};
+
+function getReportCompletionStatus(project: Project): ReportCompletionStatus {
+  if (!project.projectStartDate?.trim()) {
+    return 'not_started';
+  }
+
+  return project.status === 'completed' ? 'completed' : 'outstanding';
+}
 
 function shouldHidePendingStagesForUser(userRole?: string | null) {
   const role = normalizeRole(userRole ?? undefined);
@@ -171,6 +186,7 @@ function projectSpreadsheetRows(projects: Project[], userRole?: string | null) {
     const stageTask = latestRelevantStageTask(project, userRole);
     const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set';
     const latestComment = latestCommentForStage(project, stageTask);
+    const reportStatus = reportCompletionStatusLabels[getReportCompletionStatus(project)];
 
     return [
       project.id,
@@ -178,6 +194,7 @@ function projectSpreadsheetRows(projects: Project[], userRole?: string | null) {
       formatReportDate(project.projectStartDate ?? ''),
       formatReportDate(project.installationDate ?? ''),
       project.manager,
+      reportStatus,
       latestStageName,
       latestComment,
       formatReportDate(stageTask?.startedDate ?? ''),
@@ -187,17 +204,17 @@ function projectSpreadsheetRows(projects: Project[], userRole?: string | null) {
 
 async function downloadExcel(projects: Project[], reportName: string, userRole?: string | null) {
   const XLSX = await import('xlsx-js-style');
-  const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Stage', 'Comment', 'Date'];
+  const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Report Status', 'Stage', 'Comment', 'Date'];
   const rows = projectSpreadsheetRows(projects, userRole);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   worksheet['!cols'] = [
-    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 32 }, { wch: 42 }, { wch: 18 },
+    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 32 }, { wch: 42 }, { wch: 18 },
   ];
   worksheet['!rows'] = [
     { hpt: 30 },
-    ...rows.map((row) => ({ hpt: Math.max(24, String(row[6] ?? '').split(/\r?\n/).length * 15 + 9) })),
+    ...rows.map((row) => ({ hpt: Math.max(24, String(row[7] ?? '').split(/\r?\n/).length * 15 + 9) })),
   ];
-  worksheet['!autofilter'] = { ref: `A1:H${rows.length + 1}` };
+  worksheet['!autofilter'] = { ref: `A1:I${rows.length + 1}` };
   worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
 
   for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
@@ -216,16 +233,18 @@ async function downloadExcel(projects: Project[], reportName: string, userRole?:
       cell.s = {
         fill: { fgColor: { rgb: rowIndex % 2 === 0 ? 'F0F9FF' : 'FFFFFF' } },
         font: { color: { rgb: '172033' }, sz: 10 },
-        alignment: { vertical: 'top', wrapText: columnIndex === 5 || columnIndex === 6 },
+        alignment: { vertical: 'top', wrapText: columnIndex === 5 || columnIndex === 6 || columnIndex === 7 },
         border: { bottom: { style: 'thin', color: { rgb: 'D7E3EA' } } },
       };
     }
-    const stageCell = worksheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: 5 })];
-    stageCell.s = {
-      ...stageCell.s,
-      font: { bold: true, color: { rgb: '075985' }, sz: 10 },
-      alignment: { horizontal: 'center', vertical: 'top', wrapText: true },
-    };
+    [5, 6].forEach((columnIndex) => {
+      const stageCell = worksheet[XLSX.utils.encode_cell({ r: rowIndex + 1, c: columnIndex })];
+      stageCell.s = {
+        ...stageCell.s,
+        font: { bold: true, color: { rgb: '075985' }, sz: 10 },
+        alignment: { horizontal: 'center', vertical: 'top', wrapText: true },
+      };
+    });
   });
 
   const workbook = XLSX.utils.book_new();
@@ -258,7 +277,7 @@ function branchDetailHtml(projects: Project[], reportName: string, branchName: s
     return `
       <section class="card">
         <h2>${escapeHtml(project.id)} - ${escapeHtml(project.projectTypeName)}</h2>
-        <p><strong>Stage:</strong> ${escapeHtml(project.currentStage)} | <strong>Status:</strong> ${escapeHtml(statusLabels[project.status])}</p>
+        <p><strong>Stage:</strong> ${escapeHtml(project.currentStage)} | <strong>Status:</strong> ${escapeHtml(reportCompletionStatusLabels[getReportCompletionStatus(project)])}</p>
         <p><strong>Address:</strong> ${escapeHtml(project.physicalAddress || project.town)}</p>
         <p><strong>Manager:</strong> ${escapeHtml(project.manager || 'Not assigned')}</p>
         <p><strong>Pending tasks:</strong> ${escapeHtml(pendingTasks.length)}</p>
@@ -327,13 +346,14 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
           <p class="meta">${projects.length} project${projects.length === 1 ? '' : 's'} · Generated ${escapeHtml(new Date().toLocaleDateString())}</p>
         </header>
         <table>
-            <thead><tr>${['Project ID', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Stage', 'Comment', 'Date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+              <thead><tr>${['Project ID', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Report Status', 'Stage', 'Comment', 'Date'].map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
               <tbody>${projects.map((project) => { const stageTask = latestRelevantStageTask(project, userRole); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; const latestComment = latestCommentForStage(project, stageTask); return `<tr>${[
       project.id,
       project.branch,
       project.projectStartDate ?? '',
       project.installationDate ?? '',
       project.manager,
+            reportCompletionStatusLabels[getReportCompletionStatus(project)],
       latestStageName,
       latestComment,
       stageTask?.startedDate ?? '',
@@ -592,7 +612,7 @@ export function ReportsPage() {
             }
           }}
         >
-          <table className="w-full min-w-[1050px] text-left text-sm">
+          <table className="w-full min-w-[1150px] text-left text-sm">
             <thead className="bg-white/5 text-xs uppercase tracking-[0.18em] text-slate-400">
               <tr>
                 <th className="px-5 py-4 font-medium">Project ID</th>
@@ -600,6 +620,7 @@ export function ReportsPage() {
                 <th className="px-5 py-4 font-medium">Project Start Date</th>
                 <th className="px-5 py-4 font-medium">Installation Date</th>
                 <th className="px-5 py-4 font-medium">Marketing Manager</th>
+                <th className="px-5 py-4 font-medium">Report Status</th>
                 <th className="px-5 py-4 font-medium">Stage</th>
                 <th className="px-5 py-4 font-medium">Comment</th>
                 <th className="px-5 py-4 font-medium">Date</th>
@@ -607,7 +628,7 @@ export function ReportsPage() {
             </thead>
             <tbody className="divide-y divide-white/10">
               {isLoading ? (
-                <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
+                <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-400">Loading projects...</td></tr>
               ) : displayedProjects.length > 0 ? displayedProjects.map((project) => (
                 <tr key={project.id} className="text-slate-300 transition hover:bg-white/5">
                   {(() => { const stageTask = latestRelevantStageTask(project, user?.role); const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set'; const latestComment = latestCommentForStage(project, stageTask); return <>
@@ -616,13 +637,14 @@ export function ReportsPage() {
                   <td className="px-5 py-4">{project.projectStartDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.installationDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.manager || 'Not set'}</td>
+                  <td className="px-5 py-4 font-semibold text-sky-200">{reportCompletionStatusLabels[getReportCompletionStatus(project)]}</td>
                   <td className="px-5 py-4">{latestStageName}</td>
                   <td className="max-w-sm whitespace-normal px-5 py-4">{latestComment || 'Not set'}</td>
                   <td className="px-5 py-4">{stageTask?.startedDate || 'Not set'}</td>
                   </>; })()}
                 </tr>
               )) : (
-                <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-400">No projects match the selected filters.</td></tr>
+                <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-400">No projects match the selected filters.</td></tr>
               )}
             </tbody>
           </table>
