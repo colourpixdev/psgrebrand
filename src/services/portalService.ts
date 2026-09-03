@@ -2906,7 +2906,8 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
 
   const now = new Date().toISOString();
   const deletedStage = (existingTask.stage ?? existingTask.text).trim();
-  const tasks = existingProject.tasks.filter((task) => task.id !== input.taskId);
+  const deletedStageKey = normalizeTaskTitle(deletedStage);
+  const tasks = existingProject.tasks.filter((task) => normalizeTaskTitle(task.stage ?? task.text) !== deletedStageKey);
   const { data: legacyProjectRow, error: legacyProjectError } = await client
     .from('projects')
     .select('tasks')
@@ -2916,8 +2917,7 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
     throw legacyProjectError;
   }
   const legacyTaskSnapshot = mapLegacyTasks((legacyProjectRow as ProjectRow).tasks);
-  const legacyTaskToRemove = legacyTaskSnapshot.find((task) => task.id === input.taskId || normalizeTaskTitle(task.text) === normalizeTaskTitle(deletedStage));
-  const legacyTasks = legacyTaskSnapshot.filter((task) => task.id !== legacyTaskToRemove?.id);
+  const legacyTasks = legacyTaskSnapshot.filter((task) => normalizeTaskTitle(task.stage ?? task.text) !== deletedStageKey);
   const nextStage = tasks.find((task) => (task.stage ?? task.text).trim()) as TaskItem | undefined;
   const currentStage = deletedStage === existingProject.currentStage.trim()
     ? nextStage ? (nextStage.stage ?? nextStage.text).trim() : 'New Project'
@@ -2943,10 +2943,9 @@ export async function deleteProjectTask(input: DeleteProjectTaskInput): Promise<
       throw relationalTasksError;
     }
 
-    const matchingRelationalTask = (relationalTasks ?? []).find((task) => isUuid(input.taskId)
-      ? task.id === input.taskId
-      : normalizeTaskTitle(task.title) === normalizeTaskTitle(deletedStage));
-    const matchingRelationalTaskIds = matchingRelationalTask ? [matchingRelationalTask.id] : [];
+    const matchingRelationalTaskIds = (relationalTasks ?? [])
+      .filter((task) => normalizeTaskTitle(task.title) === deletedStageKey)
+      .map((task) => task.id);
 
     const { error: deleteError } = matchingRelationalTaskIds.length > 0
       ? await client
