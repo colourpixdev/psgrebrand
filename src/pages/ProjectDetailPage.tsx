@@ -110,6 +110,31 @@ function getStagePlan(project: Project): ProjectStage[] {
   return [...uniqueStages.values()];
 }
 
+function stageStatusRank(task: TaskItem) {
+  const status = getTaskStatus(task);
+  return status === 'busy' ? 0 : status === 'done' ? 1 : 2;
+}
+
+function compareStagesByStatusAndStartedDate(leftTask: TaskItem, rightTask: TaskItem) {
+  const statusDifference = stageStatusRank(leftTask) - stageStatusRank(rightTask);
+  if (statusDifference !== 0) {
+    return statusDifference;
+  }
+
+  const leftStarted = Date.parse(leftTask.startedDate ?? '');
+  const rightStarted = Date.parse(rightTask.startedDate ?? '');
+  const leftHasStarted = Number.isFinite(leftStarted);
+  const rightHasStarted = Number.isFinite(rightStarted);
+  if (leftHasStarted !== rightHasStarted) {
+    return leftHasStarted ? -1 : 1;
+  }
+  if (leftHasStarted && leftStarted !== rightStarted) {
+    return rightStarted - leftStarted;
+  }
+
+  return (rightTask.createdAt ?? '').localeCompare(leftTask.createdAt ?? '');
+}
+
 export function ProjectDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -759,18 +784,7 @@ export function ProjectDetailPage() {
   const projectComments = selectedProject.comments.filter((comment) => comment.kind !== 'question');
   const isQuestionRequester = (question: CommentItem) => (question.requesterEmail ? question.requesterEmail === user?.email : question.author === user?.name);
   const unreadAnswers = projectQuestions.filter((question) => question.status === 'answered' && question.unreadForRequester && isQuestionRequester(question));
-  const mergedTasks = [...selectedProject.tasks].sort((leftTask, rightTask) => {
-    // Respect manual reordering by sort_order if available, otherwise fall back to date-based sorting
-    const leftSort = leftTask.sortOrder ?? Number.MAX_SAFE_INTEGER;
-    const rightSort = rightTask.sortOrder ?? Number.MAX_SAFE_INTEGER;
-    if (leftSort !== Number.MAX_SAFE_INTEGER || rightSort !== Number.MAX_SAFE_INTEGER) {
-      return leftSort - rightSort;
-    }
-    // Fallback: sort by dates if sort_order is not set
-    const leftValue = leftTask.createdAt ?? leftTask.startedDate ?? leftTask.dueDate ?? leftTask.completedAt ?? '';
-    const rightValue = rightTask.createdAt ?? rightTask.startedDate ?? rightTask.dueDate ?? rightTask.completedAt ?? '';
-    return rightValue.localeCompare(leftValue);
-  });
+  const mergedTasks = [...selectedProject.tasks].sort(compareStagesByStatusAndStartedDate);
   const stagePlan = getStagePlan(selectedProject);
   const currentStageTask = findTaskById(selectedProject.tasks, viewedTaskId);
   const viewedStageValue = currentStageTask?.stage ?? currentStageTask?.text ?? selectedProject.currentStage;

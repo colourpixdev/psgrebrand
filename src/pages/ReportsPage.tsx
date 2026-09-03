@@ -59,13 +59,34 @@ function filterVisibleStagesForUser(tasks: TaskItem[], userRole?: string | null)
   return tasks.filter((task) => !isPendingStageTask(task));
 }
 
+function stageStatusRank(task: TaskItem) {
+  const status = getTaskStatus(task);
+  return status === 'busy' ? 0 : status === 'done' ? 1 : 2;
+}
+
+function compareStagesForReport(leftTask: TaskItem, rightTask: TaskItem) {
+  const statusDifference = stageStatusRank(leftTask) - stageStatusRank(rightTask);
+  if (statusDifference !== 0) {
+    return statusDifference;
+  }
+
+  const leftStarted = Date.parse(leftTask.startedDate ?? '');
+  const rightStarted = Date.parse(rightTask.startedDate ?? '');
+  const leftHasStarted = Number.isFinite(leftStarted);
+  const rightHasStarted = Number.isFinite(rightStarted);
+  if (leftHasStarted !== rightHasStarted) {
+    return leftHasStarted ? -1 : 1;
+  }
+  if (leftHasStarted && leftStarted !== rightStarted) {
+    return rightStarted - leftStarted;
+  }
+
+  return (rightTask.createdAt ?? '').localeCompare(leftTask.createdAt ?? '');
+}
+
 function projectStageTimeline(project: Project, userRole?: string | null) {
   return [...filterVisibleStagesForUser(project.tasks, userRole)]
-    .sort((a, b) => {
-      const aStamp = new Date(a.startedDate ?? a.createdAt ?? 0).getTime();
-      const bStamp = new Date(b.startedDate ?? b.createdAt ?? 0).getTime();
-      return aStamp - bStamp;
-    });
+    .sort(compareStagesForReport);
 }
 
 function latestRelevantStageTask(project: Project, userRole?: string | null) {
@@ -91,12 +112,12 @@ function latestRelevantStageTask(project: Project, userRole?: string | null) {
     return currentBusyStage;
   }
 
-  const latestBusy = [...activeStages].reverse().find((task) => getTaskStatus(task) === 'busy');
+  const latestBusy = activeStages.find((task) => getTaskStatus(task) === 'busy');
   if (latestBusy) {
     return latestBusy;
   }
 
-  const latestDone = [...activeStages].reverse().find((task) => getTaskStatus(task) === 'done');
+  const latestDone = activeStages.find((task) => getTaskStatus(task) === 'done');
   return latestDone ?? activeStages[activeStages.length - 1];
 }
 
@@ -400,8 +421,8 @@ export function ReportsPage() {
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: () => getProjects({ includeFiles: false }),
-    refetchOnMount: 'always',
-    staleTime: 0,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
   });
   const hidePendingStages = shouldHidePendingStagesForUser(user?.role);
   const { data: branches = [] } = useQuery({

@@ -1687,18 +1687,16 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     throw currentVersionError;
   }
 
-  if (taskId && !relationalTaskId) {
-    const legacyFiles = mapLegacyFiles((projectRow as ProjectRow).files);
-    const legacyFile = { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId };
-    const { error: legacyFileError } = await client
-      .from('projects')
-      .update({ files: [...legacyFiles, legacyFile], updated_at: new Date().toISOString() })
-      .eq('id', projectId);
-    if (legacyFileError) {
-      await client.from('project_files').delete().eq('id', projectFile.id);
-      await client.storage.from(projectFilesBucket).remove([path]);
-      throw legacyFileError;
-    }
+  const legacyFiles = mapLegacyFiles((projectRow as ProjectRow).files);
+  const legacyFile = { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId };
+  const { error: legacyFileError } = await client
+    .from('projects')
+    .update({ files: [...legacyFiles, legacyFile], updated_at: new Date().toISOString() })
+    .eq('id', projectId);
+  if (legacyFileError) {
+    await client.from('project_files').delete().eq('id', projectFile.id);
+    await client.storage.from(projectFilesBucket).remove([path]);
+    throw legacyFileError;
   }
 
   await recordProjectFileActivity(projectId, workspace.id, 'file_uploaded', projectFile.id, relationalTaskId ?? undefined, { display_name: file.name, actor: 'upload' });
@@ -1714,7 +1712,6 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     taskByKey.set(normalizeTaskTitle(item.stage ?? item.text), item);
   });
   const preservedTasks = [...taskByKey.values()];
-  const legacyFiles = mapLegacyFiles((projectRow as ProjectRow).files);
   const nextFiles = legacyFiles.some((item) => item.id === uploadedFile.id)
     ? legacyFiles
     : [...legacyFiles, uploadedFile];
