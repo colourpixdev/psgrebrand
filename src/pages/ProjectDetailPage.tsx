@@ -120,6 +120,7 @@ export function ProjectDetailPage() {
   const [commentMessage, setCommentMessage] = useState('');
   const [journalTaskId, setJournalTaskId] = useState('');
   const [currentStageDraft, setCurrentStageDraft] = useState<ProjectStage>('New Project');
+  const [reportStageTaskIdDraft, setReportStageTaskIdDraft] = useState('');
   const [viewedTaskId, setViewedTaskId] = useState('');
   const [statusDraft, setStatusDraft] = useState<ProjectStatus>('in_progress');
   const [projectStartDateDraft, setProjectStartDateDraft] = useState('');
@@ -188,6 +189,7 @@ export function ProjectDetailPage() {
       const nextViewedTaskId = requestedTask?.id ?? matchingCurrentStageTask?.id ?? project.tasks.find((task) => !task.completed)?.id ?? project.tasks[0]?.id ?? '';
 
       setCurrentStageDraft(project.currentStage);
+      setReportStageTaskIdDraft(project.reportStageTaskId ?? '');
       setViewedTaskId(nextViewedTaskId);
       if (requestedTask) {
         setExpandedAccordionTaskIds([requestedTask.id]);
@@ -331,6 +333,7 @@ export function ProjectDetailPage() {
           projectId: projectId ?? '',
           actor: user?.name ?? 'Workspace user',
           currentStage: currentStageDraft,
+          reportStageTaskId: reportStageTaskIdDraft,
           currentTaskId: viewedTaskId || undefined,
           status: statusDraft,
           projectStartDate: projectStartDateDraft,
@@ -370,6 +373,7 @@ export function ProjectDetailPage() {
       projectId: projectId ?? '',
       actor: user?.name ?? 'Workspace user',
       currentStage,
+      reportStageTaskId: selectedProject.reportStageTaskId,
       currentTaskId: taskId,
       status: selectedProject.status,
       projectStartDate: selectedProject.projectStartDate,
@@ -902,6 +906,7 @@ export function ProjectDetailPage() {
                   <div className="grid gap-4 md:grid-cols-1">
                     <DatePickerInput label="Project start date" value={projectStartDateDraft} onChange={setProjectStartDateDraft} placeholder="Select project start date" />
                     <DatePickerInput label="Installation date" value={installationDateDraft} onChange={setInstallationDateDraft} placeholder="Select installation date" />
+                    {canEditProjectStatus ? <label className="grid gap-2">Report stage<select value={reportStageTaskIdDraft} onChange={(event) => setReportStageTaskIdDraft(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50"><option value="">Automatic latest stage</option>{selectedProject.tasks.map((task) => <option key={task.id} value={task.id}>{task.stage ?? task.text}</option>)}</select></label> : null}
                     {canEditProjectStatus ? <label className="grid gap-2">Project status<select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as ProjectStatus)} className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-white outline-none focus:border-cyan-300/50">{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label> : null}
                   </div>
                 </section>

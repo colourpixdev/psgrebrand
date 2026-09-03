@@ -54,6 +54,7 @@ type ProjectRow = {
   manager_email: string;
   designer: string;
   current_stage: string;
+  report_stage_task_id?: string | null;
   status: Project['status'];
   project_start_date?: string | null;
   target_date: string;
@@ -725,6 +726,7 @@ export type UpdateProjectSummaryInput = {
   projectId: string;
   actor: string;
   currentStage: Project['currentStage'];
+  reportStageTaskId?: string;
   currentTaskId?: string;
   status: Project['status'];
   progress?: number;
@@ -1056,6 +1058,7 @@ function mapProjectRow(row: ProjectRow): Project {
     managerEmail: row.manager_email ?? '',
     designer: row.designer ?? '',
     currentStage: currentStage as Project['currentStage'],
+    reportStageTaskId: row.report_stage_task_id ?? undefined,
     status,
     projectStartDate: row.project_start_date ?? '',
     targetDate: row.target_date ?? '',
@@ -1865,6 +1868,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
   const now = new Date().toISOString();
   const summaryPayload = {
     current_stage: currentStage,
+    report_stage_task_id: input.reportStageTaskId?.trim() || null,
     status: input.status,
     project_start_date: projectStartDate || null,
     target_date: targetDate,
@@ -1960,6 +1964,7 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
   return {
     ...existingProject,
     currentStage,
+    reportStageTaskId: input.reportStageTaskId?.trim() || undefined,
     status: input.status,
     projectStartDate,
     targetDate,
@@ -3039,8 +3044,37 @@ export async function deleteProjectFile(input: DeleteProjectFileInput): Promise<
   const relationalFile = existingProject.files.find((file) => input.filePath ? file.path === input.filePath : file.name === input.fileName);
   if (relationalFile?.id && existingProject.workspaceId) {
     const deletedBy = await getCurrentProfileId();
+    const { data: projectRow, error: projectRowError } = await client
+      .from('projects')
+      .select('files')
+      .eq('id', input.projectId)
+      .single();
+    if (projectRowError) {
+      throw projectRowError;
+    }
+
+    const legacyFiles = mapLegacyFiles((projectRow as ProjectRow).files);
+    const remainingLegacyFiles = legacyFiles.filter((file) => file.id !== relationalFile.id && file.path !== relationalFile.path);
+    const legacyFilesChanged = remainingLegacyFiles.length !== legacyFiles.length;
+    if (legacyFilesChanged) {
+      const { error: legacyFileError } = await client
+        .from('projects')
+        .update({ files: remainingLegacyFiles, updated_at: new Date().toISOString() })
+        .eq('id', input.projectId);
+      if (legacyFileError) {
+        throw legacyFileError;
+      }
+    }
+
     const { error } = await client.from('project_files').update({ deleted_at: new Date().toISOString(), deleted_by: deletedBy, updated_at: new Date().toISOString() }).eq('id', relationalFile.id).is('deleted_at', null);
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
+
+    if (relationalFile.path) {
+      await client.storage.from(projectFilesBucket).remove([relationalFile.path]);
+    }
+
     await recordProjectFileActivity(input.projectId, existingProject.workspaceId, 'file_updated', relationalFile.id, relationalFile.taskId, { action: 'deleted', actor: input.actor, display_name: input.fileName });
     return getProjectById(input.projectId) as Promise<Project>;
   }

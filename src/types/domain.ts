@@ -94,6 +94,7 @@ export interface Project {
   managerEmail: string;
   designer: string;
   currentStage: ProjectStage;
+  reportStageTaskId?: string;
   status: ProjectStatus;
   projectStartDate?: string;
   targetDate: string;

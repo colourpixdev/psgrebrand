@@ -75,6 +75,13 @@ function latestRelevantStageTask(project: Project, userRole?: string | null) {
     return null;
   }
 
+  const selectedReportStage = project.reportStageTaskId
+    ? activeStages.find((task) => task.id === project.reportStageTaskId)
+    : undefined;
+  if (selectedReportStage) {
+    return selectedReportStage;
+  }
+
   const currentStage = project.currentStage.trim().toLowerCase();
   const currentBusyStage = activeStages.find((task) => (
     getTaskStatus(task) === 'busy'
