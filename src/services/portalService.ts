@@ -2492,6 +2492,11 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
     throw new Error(taskError?.message ?? 'Failed to add project task.');
   }
 
+  const newTaskItem = convertRelationalTaskToTaskItem(newTask as ProjectTaskRow);
+  const legacyTasks = existingProject.tasks.some((existingTask) => existingTask.id === newTaskItem.id)
+    ? existingProject.tasks
+    : [...existingProject.tasks, newTaskItem];
+
   // Record activity
   const now = new Date().toISOString();
   const activity = [
@@ -2500,15 +2505,24 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
   ];
 
   // Update project activity log
-  await client
+  const { error: projectUpdateError } = await client
     .from('projects')
-    .update({ activity, updated_at: now })
+    .update({
+      rebrand_workspace_id: workspaceId,
+      tasks: legacyTasks,
+      activity,
+      updated_at: now,
+    })
     .eq('id', input.projectId);
+
+  if (projectUpdateError) {
+    throw projectUpdateError;
+  }
 
   return {
     ...existingProject,
     workspaceId,
-    tasks: [...existingProject.tasks, convertRelationalTaskToTaskItem(newTask as ProjectTaskRow)],
+    tasks: legacyTasks,
     activity,
     updatedAt: now,
   };
