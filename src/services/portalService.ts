@@ -2675,14 +2675,31 @@ export async function updateProjectTask(input: UpdateProjectTaskInput): Promise<
     throw new Error('Project not found.');
   }
 
-  const existingTask = existingProject.tasks.find((task) => task.id === input.taskId)
+  let existingTask = existingProject.tasks.find((task) => task.id === input.taskId)
     ?? (input.taskText
       ? existingProject.tasks.find((task) => normalizeTaskTitle(task.stage ?? task.text) === normalizeTaskTitle(input.taskText as string))
       : undefined);
+
+  const workspaceId = existingProject.workspaceId;
+  const { data: relationalTasks } = workspaceId && isUuid(workspaceId)
+    ? await client
+      .from('project_tasks')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .is('deleted_at', null)
+    : { data: null };
+  const relationalTask = (relationalTasks as ProjectTaskRow[] | null)?.find((task) => (
+    task.id === input.taskId
+      || (existingTask && normalizeTaskTitle(task.title) === normalizeTaskTitle(existingTask.stage ?? existingTask.text))
+      || (input.taskText && normalizeTaskTitle(task.title) === normalizeTaskTitle(input.taskText))
+  ));
+  if (!existingTask && relationalTask) {
+    existingTask = convertRelationalTaskToTaskItem(relationalTask);
+  }
   if (!existingTask) {
     throw new Error('Task not found.');
   }
-  const resolvedTaskId = existingTask.id;
+  const resolvedTaskId = relationalTask?.id ?? existingTask.id;
 
   const text = input.text?.trim();
   if (input.text !== undefined && !text) {
