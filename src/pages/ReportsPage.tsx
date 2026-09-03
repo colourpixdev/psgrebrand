@@ -251,6 +251,7 @@ async function downloadExcel(projects: Project[], reportName: string, userRole?:
     ...rows.map((row) => ({ hpt: Math.max(24, String(row[7] ?? '').split(/\r?\n/).length * 15 + 9) })),
   ];
   worksheet['!autofilter'] = { ref: `A1:I${rows.length + 1}` };
+  worksheet['!print_title_rows'] = '1:1';
   worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
 
   for (let columnIndex = 0; columnIndex < headers.length; columnIndex += 1) {
