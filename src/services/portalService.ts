@@ -1124,7 +1124,19 @@ function applyRelationalProjectData(project: Project, data: RelationalProjectDat
   const relationalFiles = data.filesAvailable === false || data.files === undefined || data.files === null ? null : data.files;
   const nextFiles = relationalFiles === null
     ? project.files
-    : [...relationalFiles, ...project.files.filter((legacyFile) => !relationalFiles.some((file) => file.path && legacyFile.path === file.path || file.id && legacyFile.id === file.id))];
+    : [
+      ...relationalFiles.map((file) => {
+        const legacyFile = project.files.find((candidate) => (
+          file.id && candidate.id === file.id
+          || file.path && candidate.path === file.path
+        ));
+        return file.taskId || !legacyFile?.taskId ? file : { ...file, taskId: legacyFile.taskId };
+      }),
+      ...project.files.filter((legacyFile) => !relationalFiles.some((file) => (
+        file.path && legacyFile.path === file.path
+        || file.id && legacyFile.id === file.id
+      ))),
+    ];
   const remapFileTaskIds = (files: ProjectFile[]) => files.map((file) => file.taskId && legacyTaskIdToRelationalId.has(file.taskId)
     ? { ...file, taskId: legacyTaskIdToRelationalId.get(file.taskId) }
     : file);

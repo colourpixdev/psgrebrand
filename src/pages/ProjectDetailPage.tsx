@@ -803,7 +803,7 @@ export function ProjectDetailPage() {
     ? currentStageAssigneeNames.join(', ')
     : currentStageTask?.assigneeName?.trim() || 'Unassigned';
   const currentStageFiles = currentStageTask
-    ? selectedProject.files.filter((file) => !file.taskId || file.taskId === currentStageTask.id)
+    ? selectedProject.files.filter((file) => !file.taskId || file.taskId === currentStageTask.id || file.taskId === currentStageTask.legacyTaskId)
     : [];
   const currentStageComments = currentStageTask ? projectComments.filter((comment) => comment.taskId === currentStageTask.id) : [];
   const summaryStageOptions = Array.from(
@@ -1079,7 +1079,7 @@ export function ProjectDetailPage() {
               const taskUpdates = projectComments
                 .filter((comment) => comment.taskId === task.id)
                 .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
-              const taskFiles = selectedProject.files.filter((file) => file.taskId === task.id);
+              const taskFiles = selectedProject.files.filter((file) => file.taskId === task.id || file.taskId === task.legacyTaskId);
               const statusStyles: Record<NonNullable<TaskItem['status']>, string> = {
                 pending: 'border-slate-400/20 bg-slate-700/20 text-slate-200 hover:bg-slate-700/30',
                 busy: 'border-amber-400/30 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25',
