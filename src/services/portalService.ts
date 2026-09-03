@@ -1106,7 +1106,7 @@ function applyRelationalProjectData(project: Project, data: RelationalProjectDat
   const unmatchedTasks = [...nextTasks];
 
   project.tasks.forEach((legacyTask) => {
-    const legacyTaskIndex = unmatchedTasks.findIndex((task) => task.text.trim().toLowerCase() === legacyTask.text.trim().toLowerCase());
+    const legacyTaskIndex = unmatchedTasks.findIndex((task) => normalizeTaskTitle(task.text) === normalizeTaskTitle(legacyTask.text));
     if (legacyTaskIndex >= 0) {
       const relationalTask = unmatchedTasks[legacyTaskIndex];
       legacyTaskIdToRelationalId.set(legacyTask.legacyTaskId ?? legacyTask.id, relationalTask.id);
@@ -1700,7 +1700,8 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
   }
 
   const legacyFiles = mapLegacyFiles((projectRow as ProjectRow).files);
-  const legacyFile = { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId };
+  const persistedTaskId = relationalTaskId ?? taskId;
+  const legacyFile = { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId: persistedTaskId };
   const { error: legacyFileError } = await client
     .from('projects')
     .update({ files: [...legacyFiles, legacyFile], updated_at: new Date().toISOString() })
@@ -1718,7 +1719,7 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
   }
 
   const uploadedFile = updatedProject.files.find((item) => item.id === projectFile.id)
-    ?? { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId: relationalTaskId ?? undefined };
+    ?? { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId: persistedTaskId };
   const taskByKey = new Map<string, TaskItem>();
   [...mapLegacyTasks((projectRow as ProjectRow).tasks), ...updatedProject.tasks].forEach((item) => {
     taskByKey.set(normalizeTaskTitle(item.stage ?? item.text), item);
