@@ -1872,6 +1872,24 @@ export async function updateProjectSummary(input: UpdateProjectSummaryInput): Pr
     activity,
     updated_at: now,
   };
+
+  if (input.status !== 'completed' && existingProject.workspaceId && isUuid(existingProject.workspaceId)) {
+    const { error: workspaceReactivationError } = await client
+      .from('rebrand_workspaces')
+      .update({
+        lifecycle_state: 'active',
+        archived_at: null,
+        archived_by: null,
+        updated_at: now,
+      })
+      .eq('id', existingProject.workspaceId)
+      .eq('lifecycle_state', 'archived');
+
+    if (workspaceReactivationError) {
+      throw workspaceReactivationError;
+    }
+  }
+
   let { data, error } = await client
     .from('projects')
     .update(summaryPayload)
