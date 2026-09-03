@@ -275,6 +275,14 @@ export function BranchesPage() {
   function beginEdit(branch: Branch) {
     setEditingBranchId(branch.id);
     const primaryContact = getEditablePrimaryContact(branch);
+    const linkedProject = projects.find((project) => (
+      project.branchId === branch.id
+      || project.branch.trim().toLowerCase() === branch.name.trim().toLowerCase()
+    ));
+    const marketingCoordinatorEmail = branch.marketingCoordinatorEmail
+      ?? linkedProject?.managerEmail
+      ?? users.find((item) => item.name.trim().toLowerCase() === linkedProject?.manager.trim().toLowerCase())?.email
+      ?? '';
     setEditData({
       name: extractBranchName(branch.name),
       division: branch.division,
@@ -291,7 +299,7 @@ export function BranchesPage() {
       contactPhone: primaryContact?.phone ?? branch.contactPhone ?? '',
       contactDesignation: primaryContact?.designation ?? '',
       contacts: getAdditionalBranchContacts(branch),
-      marketingCoordinatorEmail: branch.marketingCoordinatorEmail ?? '',
+      marketingCoordinatorEmail,
     });
     setError(null);
     setSuccessMessage(null);
