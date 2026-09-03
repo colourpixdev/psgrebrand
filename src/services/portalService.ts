@@ -2404,11 +2404,28 @@ export async function addProjectTask(input: AddProjectTaskInput): Promise<Projec
 
   const { data: workspace, error: workspaceError } = await client
     .from('rebrand_workspaces')
-    .select('id, current_stage_id')
+    .select('id, current_stage_id, lifecycle_state')
     .eq('id', workspaceId)
     .single();
   if (workspaceError || !workspace) {
     throw new Error(workspaceError?.message ?? 'Workspace for task was not found.');
+  }
+
+  if (workspace.lifecycle_state === 'archived') {
+    const { error: workspaceReactivationError } = await client
+      .from('rebrand_workspaces')
+      .update({
+        lifecycle_state: 'active',
+        archived_at: null,
+        archived_by: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', workspaceId)
+      .eq('lifecycle_state', 'archived');
+
+    if (workspaceReactivationError) {
+      throw workspaceReactivationError;
+    }
   }
 
   const { data: fallbackStage, error: stageError } = workspace.current_stage_id
