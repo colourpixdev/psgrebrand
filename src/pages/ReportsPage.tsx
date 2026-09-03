@@ -238,17 +238,34 @@ function projectSpreadsheetRows(projects: Project[], userRole?: string | null) {
   });
 }
 
+function excelColumnWidths(headers: string[], rows: Array<Array<string | number>>) {
+  return headers.map((header, columnIndex) => {
+    const longestLine = [header, ...rows.map((row) => String(row[columnIndex] ?? ''))]
+      .flatMap((value) => value.split(/\r?\n/))
+      .reduce((longest, value) => Math.max(longest, value.length), 0);
+    const minimumWidth = columnIndex === 7 ? 24 : 12;
+    const maximumWidth = columnIndex === 7 ? 72 : columnIndex === 1 ? 36 : 28;
+
+    return { wch: Math.min(maximumWidth, Math.max(minimumWidth, longestLine + 2)) };
+  });
+}
+
+function excelRowHeight(row: Array<string | number>, commentColumnWidth: number) {
+  const comment = String(row[7] ?? '');
+  const wrappedLines = comment.split(/\r?\n/).reduce((total, line) => total + Math.max(1, Math.ceil(line.length / commentColumnWidth)), 0);
+  return Math.max(24, Math.min(360, wrappedLines * 15 + 9));
+}
+
 async function downloadExcel(projects: Project[], reportName: string, userRole?: string | null) {
   const XLSX = await import('xlsx-js-style');
   const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Report Status', 'Stage', 'Comment', 'Date'];
   const rows = projectSpreadsheetRows(projects, userRole);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  worksheet['!cols'] = [
-    { wch: 17 }, { wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 32 }, { wch: 42 }, { wch: 18 },
-  ];
+  worksheet['!cols'] = excelColumnWidths(headers, rows);
+  const commentColumnWidth = worksheet['!cols'][7]?.wch ?? 24;
   worksheet['!rows'] = [
     { hpt: 30 },
-    ...rows.map((row) => ({ hpt: Math.max(24, String(row[7] ?? '').split(/\r?\n/).length * 15 + 9) })),
+    ...rows.map((row) => ({ hpt: excelRowHeight(row, commentColumnWidth) })),
   ];
   worksheet['!autofilter'] = { ref: `A1:I${rows.length + 1}` };
   worksheet['!print_title_rows'] = '1:1';
