@@ -9,7 +9,7 @@ import { getUsers } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
 import { can, filterProjectsForUser } from '../utils/permissions';
 import { getTaskStatus, isTaskOutstanding } from '../utils/taskStatus';
-import { normalizeRole, type Branch, type Project, type ProjectStatus, type TaskItem } from '../types/domain';
+import { normalizeRole, type Branch, type Project, type ProjectStatus, type TaskItem, type UserRecord } from '../types/domain';
 
 type ReportType = 'single-branch-detail' | 'multi-branch-overview' | 'operational-blockers';
 type ReportCompletionStatus = 'not_started' | 'in_progress' | 'completed';
@@ -218,7 +218,19 @@ function formatFileName(reportName: string) {
   return `${reportName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${date}`;
 }
 
-function projectSpreadsheetRows(projects: Project[], userRole?: string | null) {
+function marketingCoordinatorForProject(project: Project, branches: Branch[], users: UserRecord[]) {
+  const branch = branches.find((item) => (
+    item.id === project.branchId
+    || item.name.trim().toLowerCase() === project.branch.trim().toLowerCase()
+  ));
+  const coordinatorEmail = branch?.marketingCoordinatorEmail?.trim().toLowerCase();
+
+  return branch?.marketingCoordinatorName?.trim()
+    || users.find((item) => item.email.trim().toLowerCase() === coordinatorEmail)?.name
+    || 'Unassigned';
+}
+
+function projectSpreadsheetRows(projects: Project[], branches: Branch[], users: UserRecord[], userRole?: string | null) {
   return projects.map((project) => {
     const stageTask = latestRelevantStageTask(project, userRole);
     const latestStageName = stageTask ? (stageTask.stage ?? stageTask.text) : project.currentStage || 'Not set';
@@ -230,7 +242,7 @@ function projectSpreadsheetRows(projects: Project[], userRole?: string | null) {
       project.branch,
       formatReportDate(project.projectStartDate ?? ''),
       formatReportDate(project.installationDate ?? ''),
-      project.manager,
+      marketingCoordinatorForProject(project, branches, users),
       reportStatus,
       latestStageName,
       latestComment,
@@ -274,10 +286,10 @@ function addExcelFreezePane(workbookData: ArrayBuffer) {
   return zipSync(files);
 }
 
-async function downloadExcel(projects: Project[], reportName: string, userRole?: string | null) {
+async function downloadExcel(projects: Project[], reportName: string, branches: Branch[], users: UserRecord[], userRole?: string | null) {
   const XLSX = await import('xlsx-js-style');
   const headers = ['Branch reference', 'Branch', 'Project Start Date', 'Installation Date', 'Marketing Manager', 'Report Status', 'Stage', 'Comment', 'Date'];
-  const rows = projectSpreadsheetRows(projects, userRole);
+  const rows = projectSpreadsheetRows(projects, branches, users, userRole);
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   worksheet['!cols'] = excelColumnWidths(headers, rows);
   const commentColumnWidth = worksheet['!cols'][7]?.wch ?? 24;
@@ -337,7 +349,7 @@ async function downloadExcel(projects: Project[], reportName: string, userRole?:
   URL.revokeObjectURL(url);
 }
 
-function branchDetailHtml(projects: Project[], reportName: string, branchName: string, userName?: string, userRole?: string | null) {
+function branchDetailHtml(projects: Project[], reportName: string, branchName: string, branches: Branch[], users: UserRecord[], userName?: string, userRole?: string | null) {
   const cards = projects.map((project) => {
     const pendingTasks = filterVisibleStagesForUser(project.tasks, userRole).filter(isTaskOutstanding);
     const participants = filterVisibleStagesForUser(project.tasks, userRole).flatMap((task) => task.assignees ?? []);
@@ -357,7 +369,7 @@ function branchDetailHtml(projects: Project[], reportName: string, branchName: s
         <h2>${escapeHtml(project.id)} - ${escapeHtml(project.projectTypeName)}</h2>
         <p><strong>Stage:</strong> ${escapeHtml(project.currentStage)} | <strong>Status:</strong> ${escapeHtml(reportCompletionStatusLabels[getReportCompletionStatus(project)])}</p>
         <p><strong>Address:</strong> ${escapeHtml(project.physicalAddress || project.town)}</p>
-        <p><strong>Manager:</strong> ${escapeHtml(project.manager || 'Not assigned')}</p>
+        <p><strong>Marketing coordinator:</strong> ${escapeHtml(marketingCoordinatorForProject(project, branches, users))}</p>
         <p><strong>Pending tasks:</strong> ${escapeHtml(pendingTasks.length)}</p>
         <ul>
           ${pendingTasks.map((task) => `<li>${escapeHtml(task.text)} ${task.assignees?.length ? `- ${escapeHtml(task.assignees.map((assignee) => `${assignee.name} (${assignee.designation})`).join(', '))}` : ''}</li>`).join('') || '<li>No pending tasks</li>'}
@@ -395,9 +407,9 @@ function branchDetailHtml(projects: Project[], reportName: string, branchName: s
   `;
 }
 
-function openPdfReport(projects: Project[], reportName: string, reportType: ReportType, selectedBranchName: string, userName?: string, userRole?: string | null) {
+function openPdfReport(projects: Project[], reportName: string, reportType: ReportType, selectedBranchName: string, branches: Branch[], users: UserRecord[], userName?: string, userRole?: string | null) {
   const html = reportType === 'single-branch-detail'
-    ? branchDetailHtml(projects, reportName, selectedBranchName, userName, userRole)
+    ? branchDetailHtml(projects, reportName, selectedBranchName, branches, users, userName, userRole)
     : `
     <!doctype html>
     <html>
@@ -430,7 +442,7 @@ function openPdfReport(projects: Project[], reportName: string, reportType: Repo
       project.branch,
       project.projectStartDate ?? '',
       project.installationDate ?? '',
-      project.manager,
+      marketingCoordinatorForProject(project, branches, users),
             reportCompletionStatusLabels[getReportCompletionStatus(project)],
       latestStageName,
       latestComment,
@@ -512,7 +524,7 @@ export function ReportsPage() {
       return false;
     }
 
-    if (marketingCoordinator !== 'all' && project.manager !== marketingCoordinator) {
+    if (marketingCoordinator !== 'all' && marketingCoordinatorForProject(project, branches, users) !== marketingCoordinator) {
       return false;
     }
 
@@ -527,7 +539,7 @@ export function ReportsPage() {
     }
 
     return true;
-  }), [branchName, completion, getProjectBranch, marketingCoordinator, normalizedQuery, reportType, scopedProjects, status]);
+  }), [branchName, branches, completion, getProjectBranch, marketingCoordinator, normalizedQuery, reportType, scopedProjects, status, users]);
 
   const hiddenPendingStageProjects = useMemo(() => {
     if (!hidePendingStages) {
@@ -650,11 +662,11 @@ export function ReportsPage() {
         <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm leading-6 text-slate-400">{selectedReport.description}</p>
           <div className="flex flex-wrap gap-3">
-            <button type="button" disabled={!canExportReports} onClick={() => downloadExcel(exportProjects, reportName, user?.role)} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!canExportReports} onClick={() => downloadExcel(exportProjects, reportName, branches, users, user?.role)} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
               <FileText className="h-4 w-4" />
               Excel report
             </button>
-            <button type="button" disabled={!canExportReports} onClick={() => openPdfReport(exportProjects, reportName, reportType, branchName, user?.name, user?.role)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!canExportReports} onClick={() => openPdfReport(exportProjects, reportName, reportType, branchName, branches, users, user?.name, user?.role)} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">
               <FileText className="h-4 w-4" />
               PDF report
             </button>
@@ -715,7 +727,7 @@ export function ReportsPage() {
                   <td className="px-5 py-4 text-white"><Link to={`/projects/${project.id}`} className="font-medium hover:text-sky-100">{project.branch}</Link></td>
                   <td className="px-5 py-4">{project.projectStartDate || 'Not set'}</td>
                   <td className="px-5 py-4">{project.installationDate || 'Not set'}</td>
-                  <td className="px-5 py-4">{project.manager || 'Not set'}</td>
+                  <td className="px-5 py-4">{marketingCoordinatorForProject(project, branches, users)}</td>
                   <td className="px-5 py-4 font-semibold text-sky-200">{reportCompletionStatusLabels[getReportCompletionStatus(project)]}</td>
                   <td className="px-5 py-4">{latestStageName}</td>
                   <td className="max-w-sm whitespace-normal px-5 py-4">{latestComment || 'Not set'}</td>
