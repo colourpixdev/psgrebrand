@@ -1731,6 +1731,11 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
 
   const uploadedFile = updatedProject.files.find((item) => item.id === projectFile.id)
     ?? { id: projectFile.id, name: file.name, path, size: file.size, type: file.type || undefined, uploadedAt: new Date().toISOString(), taskId: relationalTaskId ?? undefined };
+  const taskByKey = new Map<string, TaskItem>();
+  [...mapLegacyTasks((projectRow as ProjectRow).tasks), ...updatedProject.tasks].forEach((item) => {
+    taskByKey.set(normalizeTaskTitle(item.stage ?? item.text), item);
+  });
+  const preservedTasks = [...taskByKey.values()];
   const legacyFiles = mapLegacyFiles((projectRow as ProjectRow).files);
   const nextFiles = legacyFiles.some((item) => item.id === uploadedFile.id)
     ? legacyFiles
@@ -1739,7 +1744,6 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     .from('projects')
     .update({
       rebrand_workspace_id: workspace.id,
-      tasks: updatedProject.tasks,
       files: nextFiles,
       updated_at: new Date().toISOString(),
     })
@@ -1751,7 +1755,7 @@ export async function uploadProjectFile(projectId: string, file: File, currentFi
     throw projectSnapshotError ?? new Error('The photo was uploaded, but the project stage list could not be preserved.');
   }
 
-  return updatedProject;
+  return { ...updatedProject, tasks: preservedTasks };
 }
 
 export async function getProjectFileUrl(file: ProjectFile, options: { download?: boolean; thumbnail?: boolean } = {}) {
