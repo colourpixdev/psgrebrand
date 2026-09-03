@@ -93,7 +93,7 @@ function getStagePlan(project: Project): ProjectStage[] {
     }
 
     const canonicalStage = canonicalizeProjectStageName(stageName);
-    if (!canonicalStage || isHiddenLegacyProjectStage(canonicalStage)) {
+    if (!canonicalStage) {
       return;
     }
 
@@ -791,7 +791,7 @@ export function ProjectDetailPage() {
   const summaryStageOptions = Array.from(
     new Map(
       [selectedProject.currentStage, ...stagePlan]
-        .filter((stage) => Boolean(stage) && !isHiddenLegacyProjectStage(stage))
+        .filter((stage) => Boolean(stage))
         .map((stage) => {
           const canonicalStage = canonicalizeProjectStageName(stage);
           return [normalizeStageKey(canonicalStage), canonicalStage] as [string, ProjectStage];

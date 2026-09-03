@@ -1055,7 +1055,7 @@ function mapProjectRow(row: ProjectRow): Project {
     manager: row.manager ?? 'Unknown manager',
     managerEmail: row.manager_email ?? '',
     designer: row.designer ?? '',
-    currentStage: currentStage && !isHiddenLegacyProjectStage(currentStage) ? currentStage as Project['currentStage'] : template.name,
+    currentStage: currentStage as Project['currentStage'],
     status,
     projectStartDate: row.project_start_date ?? '',
     targetDate: row.target_date ?? '',
@@ -1093,7 +1093,7 @@ function applyRelationalProjectData(project: Project, data: RelationalProjectDat
       stage: task.stage ? canonicalizeProjectStageName(task.stage) : task.stage,
       text: task.text.trim(),
     }))
-    .filter((task) => Boolean(task.text) && !isHiddenLegacyProjectStage(task.stage ?? task.text));
+    .filter((task) => Boolean(task.text));
   const relationalTaskNames = new Set(relationalTasks.map((task) => task.text.trim().toLowerCase()));
   const nextTasks = data.tasksAvailable === false || data.tasks === undefined
     ? project.tasks
