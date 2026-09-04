@@ -326,16 +326,21 @@ async function hydrateProjectFiles(projects: Project[]): Promise<Project[]> {
   const client = supabase;
   if (!client || projects.length === 0) return projects;
 
-  return Promise.all(projects.map(async (project) => {
+  const workspaceIds = [...new Set(projects
+    .map((project) => project.workspaceId)
+    .filter((workspaceId): workspaceId is string => Boolean(workspaceId) && workspaceId !== defaultWorkspace.id))];
+  const filesByWorkspace = await getWorkspaceFilesForWorkspaces(workspaceIds);
+
+  return projects.map((project) => {
     if (!project.workspaceId || project.workspaceId === defaultWorkspace.id) return project;
 
-    const files = await getWorkspaceFiles(project.workspaceId);
+    const files = filesByWorkspace.get(project.workspaceId) ?? null;
     return applyRelationalProjectData(project, {
       workspaceId: project.workspaceId,
       files,
       filesAvailable: files !== null && (files.length > 0 || project.files.length === 0),
     });
-  }));
+  });
 }
 
 function createTaskId() {
