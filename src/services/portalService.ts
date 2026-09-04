@@ -1257,7 +1257,12 @@ export async function getProjects(options: { includeFiles?: boolean } = {}): Pro
   const projectSelect = includeFiles
     ? '*'
     : 'id, workspace_id, rebrand_workspace_id, workspace_name, client_company, graphics_partner, project_type, project_type_name, site_label, delivery_partner_label, branch_id, branch_code, branch, province, town, physical_address, latitude, longitude, manager, manager_email, designer, current_stage, report_stage_task_id, status, project_start_date, target_date, brief_requested_date, installation_date, completion_date, updated_at, progress, branch_manager_view_only';
-  const { data, error } = await client.from('projects').select(projectSelect).order('updated_at', { ascending: false });
+  let { data, error } = await client.from('projects').select(projectSelect).order('updated_at', { ascending: false });
+
+  if (error && !includeFiles && isMissingProjectColumnError(error.message) && projectSelect.includes('brief_requested_date')) {
+    const legacyProjectSelect = projectSelect.replace(', brief_requested_date', '');
+    ({ data, error } = await client.from('projects').select(legacyProjectSelect).order('updated_at', { ascending: false }));
+  }
 
   if (error) {
     throw error;
