@@ -1282,8 +1282,38 @@ export async function getProjects(options: { includeFiles?: boolean } = {}): Pro
           .order('sort_order', { ascending: true });
 
         // Keep each project's relational tasks keyed by its explicit workspace ID.
-        const assigneeResults = await Promise.all(workspaceIds.map((workspaceId) => client.rpc('get_rebrand_task_assignees', { workspace_uuid: workspaceId })));
-        const assigneeByTaskId = new Map(assigneeResults.flatMap((result) => (result.data ?? []) as TaskAssigneeRow[]).map((assignee) => [assignee.task_id, assignee]));
+        let assignees: TaskAssigneeRow[] = [];
+        try {
+          const batchAssigneeResult = await client.rpc('get_rebrand_task_assignees_batch', { workspace_uuids: workspaceIds });
+          if (batchAssigneeResult.error) {
+            throw batchAssigneeResult.error;
+          }
+          assignees = (batchAssigneeResult.data ?? []) as TaskAssigneeRow[];
+        } catch (rpcError) {
+          const rpcMessage = rpcError instanceof Error ? rpcError.message : String(rpcError ?? '');
+          const isMissingAssigneeFunction = /does not exist|undefined function|42883|42703/i.test(rpcMessage);
+
+          if (isMissingAssigneeFunction) {
+            try {
+              const fallbackResults = await Promise.all(
+                workspaceIds.map(async (workspaceId) => {
+                  const result = await client.rpc('get_rebrand_task_assignees', { workspace_uuid: workspaceId });
+                  return result.data ?? [];
+                })
+              );
+              assignees = fallbackResults.flat() as TaskAssigneeRow[];
+            } catch (fallbackError) {
+              const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError ?? '');
+              console.warn('Task assignee enrichment unavailable; continuing without assignee metadata.', fallbackMessage);
+              assignees = [];
+            }
+          } else {
+            console.warn('Task assignee lookup failed; continuing without assignee metadata.', rpcMessage);
+            assignees = [];
+          }
+        }
+
+        const assigneeByTaskId = new Map(((assignees ?? []) as TaskAssigneeRow[]).map((assignee) => [assignee.task_id, assignee]));
         const tasksByWorkspace = new Map<string, TaskItem[]>();
         (allTasks ?? []).forEach((taskRow) => {
           const wsId = (taskRow as ProjectTaskRow).workspace_id;
