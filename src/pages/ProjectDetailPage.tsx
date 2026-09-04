@@ -307,8 +307,8 @@ export function ProjectDetailPage() {
       refreshTasks.push(queryClient.invalidateQueries({ queryKey: ['portal-summary'] }));
     }
 
-    refreshTasks.push(queryClient.refetchQueries({ queryKey: ['project', projectId], exact: true }));
     await Promise.all(refreshTasks).catch(() => undefined);
+    void queryClient.refetchQueries({ queryKey: ['project', projectId], exact: true }).catch(() => undefined);
   };
 
   const taskUpdateMutation = useMutation({
