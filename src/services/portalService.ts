@@ -1276,7 +1276,9 @@ export async function getProjects(options: { includeFiles?: boolean } = {}): Pro
 
   if (error && !includeFiles && isMissingProjectColumnError(error.message) && projectSelect.includes('brief_requested_date')) {
     const legacyProjectSelect = projectSelect.replace(', brief_requested_date', '');
-    ({ data, error } = await client.from('projects').select(legacyProjectSelect).order('updated_at', { ascending: false }));
+    const legacyResult = await client.from('projects').select(legacyProjectSelect).order('updated_at', { ascending: false });
+    data = legacyResult.data as typeof data;
+    error = legacyResult.error as typeof error;
   }
 
   if (error) {
