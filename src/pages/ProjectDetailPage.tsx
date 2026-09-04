@@ -283,7 +283,7 @@ export function ProjectDetailPage() {
     });
   }, [project?.files, stageImageUrls]);
 
-  const syncProject = (updatedProject: Project, successMessage?: string, options?: { refreshProjectList?: boolean; refreshSummary?: boolean }) => {
+  const syncProject = async (updatedProject: Project, successMessage?: string, options?: { refreshProjectList?: boolean; refreshSummary?: boolean }) => {
     const { refreshProjectList = false, refreshSummary = false } = options ?? {};
 
     queryClient.setQueryData(['project', projectId], updatedProject);
@@ -307,9 +307,8 @@ export function ProjectDetailPage() {
       refreshTasks.push(queryClient.invalidateQueries({ queryKey: ['portal-summary'] }));
     }
 
-    if (refreshTasks.length > 0) {
-      void Promise.all(refreshTasks).catch(() => undefined);
-    }
+    refreshTasks.push(queryClient.refetchQueries({ queryKey: ['project', projectId], exact: true }));
+    await Promise.all(refreshTasks).catch(() => undefined);
   };
 
   const taskUpdateMutation = useMutation({
