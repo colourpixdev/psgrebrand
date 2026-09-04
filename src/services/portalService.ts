@@ -283,18 +283,26 @@ async function recordProjectFileActivity(projectId: string, workspaceId: string,
 }
 
 async function getWorkspaceFiles(workspaceId: string): Promise<ProjectFile[] | null> {
+  const filesByWorkspace = await getWorkspaceFilesForWorkspaces([workspaceId]);
+  return filesByWorkspace.has(workspaceId) ? filesByWorkspace.get(workspaceId) ?? null : null;
+}
+
+async function getWorkspaceFilesForWorkspaces(workspaceIds: string[]): Promise<Map<string, ProjectFile[] | null>> {
   const client = supabase;
-  if (!client) return null;
+  const filesByWorkspace = new Map<string, ProjectFile[] | null>();
+  if (!client || workspaceIds.length === 0) return filesByWorkspace;
 
   const { data, error } = await client
     .from('project_files')
     .select('id, workspace_id, task_id, display_name, current_version_id, created_at')
-    .eq('workspace_id', workspaceId)
+    .in('workspace_id', workspaceIds)
     .is('deleted_at', null)
     .order('created_at', { ascending: true });
 
-  if (error || !data) return null;
-  if (data.length === 0) return [];
+  if (error || !data) {
+    workspaceIds.forEach((workspaceId) => filesByWorkspace.set(workspaceId, null));
+    return filesByWorkspace;
+  }
 
   const versionIds = data.map((file) => file.current_version_id).filter((id): id is string => Boolean(id));
   const { data: versions } = versionIds.length > 0
@@ -302,7 +310,14 @@ async function getWorkspaceFiles(workspaceId: string): Promise<ProjectFile[] | n
     : { data: [] };
   const versionsById = new Map((versions ?? []).map((version) => [version.id, version]));
 
-  return (data as RelationalProjectFileRow[]).map((file) => convertRelationalFileToProjectFile(file, file.current_version_id ? versionsById.get(file.current_version_id) : undefined));
+  workspaceIds.forEach((workspaceId) => filesByWorkspace.set(workspaceId, []));
+  (data as RelationalProjectFileRow[]).forEach((file) => {
+    const workspaceFiles = filesByWorkspace.get(file.workspace_id) ?? [];
+    workspaceFiles.push(convertRelationalFileToProjectFile(file, file.current_version_id ? versionsById.get(file.current_version_id) : undefined));
+    filesByWorkspace.set(file.workspace_id, workspaceFiles);
+  });
+
+  return filesByWorkspace;
 }
 
 async function resolveProjectWorkspaceId(projectRow: ProjectRow): Promise<string | null> {
